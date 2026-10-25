@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.9-draft",
-  "status": "design-assumptions-not-validated",
+  "designStatus": "design-assumptions-not-validated",
   "tickMs": 100,
   "positionUnitsPerTile": 1000,
   "hpMilliPerHp": 1000,

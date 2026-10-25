@@ -36,10 +36,11 @@ const rank = z.strictObject({
 export const battleConfigSchema = z
   .strictObject({
     schemaVersion: z.literal("1.9-draft"),
-    tickMs: positive,
+    designStatus: z.literal("design-assumptions-not-validated"),
+    tickMs: z.literal(100),
     positionUnitsPerTile: positive,
-    hpMilliPerHp: positive,
-    modifierBasisPoints: positive,
+    hpMilliPerHp: z.literal(1000),
+    modifierBasisPoints: z.literal(10000),
     soldierHp: positive,
     baseEngagementBp: bp,
     unitTypes: unitRecord(unit),

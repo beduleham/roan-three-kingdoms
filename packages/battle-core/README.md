@@ -1,27 +1,31 @@
-# battle-core — Phase 0
+# battle-core — Phase 1
 
-순수 TypeScript 전투 코어의 개발 기반입니다. 전투 엔진은 아직 구현하지 않았습니다.
-Node.js 22 이상과 npm을 사용합니다. 루트 package-lock.json으로 버전을 고정합니다.
+순수 TypeScript의 결정적 headless 전투 코어입니다. 단계 번호는
+CODEX_IMPLEMENTATION_PLAN.md를 따릅니다. Node.js 22 이상과 npm을 사용합니다.
 
 저장소 루트에서 실행:
 
 ```sh
-npm ci --cache /workspace/.npm-cache
+npm ci
 npm run typecheck
-npm test
+npm run test
 npm run sim:smoke
 npm run format:check
 ```
 
-- strict 타입 검사에는 참조 contracts.ts도 포함됩니다.
-- Zod 스키마는 모든 설정 필드, 숫자 범위, 필수 병종/상성,
-  사기 임계값 순서와 증강 레벨 순서를 검사합니다.
-- 기본 진입점 @roan/battle-core는 Node.js에 의존하지 않는 설정 스키마,
-  parseBattleConfig 검증 함수, BattleConfig 타입만 제공합니다.
-- JSON 파일을 읽는 loadBattleConfig는 별도 Node 전용 진입점
-  @roan/battle-core/node에서 제공합니다. smoke도 이 진입점을 사용합니다.
-- sim:smoke는 빌드 후 원본 설정 로딩을 검증하고
-  simulationImplemented: false를 출력합니다. 전투 시뮬레이션 검증이 아닙니다.
-- 원본 JSON은 status 키를 중복 선언합니다. 표준 JSON.parse에 따라
-  뒤쪽 상태 설정 객체가 사용됩니다. 원본 파일과 밸런스 수치는 수정하지 않았습니다.
-- Phase 1의 createBattle/step, 피해 계산, 상태 전이, 리플레이 및 게임 UI/서버는 미구현입니다.
+- 기본 진입점 @roan/battle-core는 설정 스키마·검증, 모델 타입,
+  createBattle/step, 정수 피해 계산과 canonical 리플레이 해시를 제공합니다.
+  파일 시스템·네트워크·DOM·벽시계·난수에 의존하지 않습니다.
+- @roan/battle-core/node만 Node.js JSON 파일 로더를 제공합니다.
+- createBattle(config, seed, scenario?)는 입력을 복사·검증합니다.
+  step(state, commands)는 입력을 변경하지 않고 새 state와 해당 tick의 events를 반환합니다.
+  livingSoldiers는 HP 풀에서 병사 수를 계산해 중복 저장하지 않습니다.
+- 설정의 designStatus는 미검증 메타데이터, status는 전투 상태 설정입니다.
+- sim:smoke는 양방향 접촉 시나리오를 1,000tick 두 번 재생하고,
+  입력 배열을 뒤집어도 상태·이벤트 해시가 일치하는지 검사합니다.
+  이 결과는 게임 밸런스를 검증한 결과가 아닙니다.
+- ATTACK은 이번 tick의 공격 의도입니다. contacts와 safe는 신뢰된 시나리오에서 제공합니다.
+  모든 부대의 피해·사기·전열 변화를 계산한 뒤 동시에 반영합니다.
+- 패주·붕괴 지속시간, 면역, 비교전 회복을 처리합니다.
+  실제 이동·AI·스킬·UI·네트워크는 미구현입니다.
+- 미확정 사항과 임시 가정은 루트 OPEN_DECISIONS.md를 참고하세요.
