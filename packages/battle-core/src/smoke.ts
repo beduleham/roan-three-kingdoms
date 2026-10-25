@@ -12,6 +12,8 @@ const initial = createBattle(config, 42, {
   squads: [
     {
       id: "a",
+      position: { x: 0, y: 0 },
+      facing: { x: 1, y: 0 },
       ownerPlayerId: "p1",
       nationId: "n1",
       unitType: "infantry",
@@ -20,6 +22,8 @@ const initial = createBattle(config, 42, {
     },
     {
       id: "b",
+      position: { x: 4000, y: 0 },
+      facing: { x: -1, y: 0 },
       ownerPlayerId: "p2",
       nationId: "n2",
       unitType: "infantry",
@@ -27,33 +31,33 @@ const initial = createBattle(config, 42, {
       hpMilli: 2000000,
     },
   ],
-  contacts: [
-    { attackerId: "a", targetId: "b" },
-    { attackerId: "b", targetId: "a" },
-  ],
 });
-const frames: BattleInput[][] = Array.from({ length: 1000 }, (_, tick) => [
-  {
-    playerId: "p1",
-    command: {
-      type: "ATTACK",
-      seq: tick,
-      requestedTick: tick,
-      squadIds: ["a"],
-      targetSquadId: "b",
-    },
-  },
-  {
-    playerId: "p2",
-    command: {
-      type: "ATTACK",
-      seq: tick,
-      requestedTick: tick,
-      squadIds: ["b"],
-      targetSquadId: "a",
-    },
-  },
-]);
+const frames: BattleInput[][] = Array.from({ length: 1000 }, (_, tick) =>
+  tick === 0
+    ? [
+        {
+          playerId: "p1",
+          command: {
+            type: "ATTACK",
+            seq: tick,
+            requestedTick: tick,
+            squadIds: ["a"],
+            targetSquadId: "b",
+          },
+        },
+        {
+          playerId: "p2",
+          command: {
+            type: "ATTACK",
+            seq: tick,
+            requestedTick: tick,
+            squadIds: ["b"],
+            targetSquadId: "a",
+          },
+        },
+      ]
+    : [],
+);
 const first = replay(initial, frames);
 const second = replay(
   initial,
@@ -63,12 +67,14 @@ if (
   first.stateHash !== second.stateHash ||
   first.eventHash !== second.eventHash ||
   first.state.tick !== 1000 ||
+  first.events.filter((e) => e.type === "ORDER_ACCEPTED").length !== 2 ||
+  !first.events.some((e) => e.type === "FSM_CHANGED" && e.reason === "CHASE") ||
   !first.events.some((e) => e.type === "ATTACK_HIT" && e.delta === -6720)
 )
   throw new Error("Battle smoke replay failed");
 console.log(
   JSON.stringify({
-    phase: 1,
+    phase: 2,
     ticks: first.state.tick,
     stateHash: first.stateHash,
     eventHash: first.eventHash,
@@ -79,6 +85,7 @@ console.log(
       hpMilli: s.hpMilli,
       status: s.fsmState,
     })),
-    scope: "headless fixed-contact scenario; not a game balance validation",
+    scope:
+      "headless spatial persistent-order scenario; not a game balance validation",
   }),
 );
