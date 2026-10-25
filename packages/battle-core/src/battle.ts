@@ -3,6 +3,7 @@ import {
   commandSchema,
   natural,
   scenarioSchema,
+  skillEffectSchema,
   type BattleEvent,
   type BattleInput,
   type BattleScenario,
@@ -19,6 +20,18 @@ import {
   rangeUnits,
   speedUnits,
 } from "./spatial.js";
+import { skillMultiplier } from "./effects.js";
+import {
+  initializeCommanders,
+  beginWarriorTick,
+  synchronizeCommanders,
+  validateWarriorCommand,
+  acceptWarriorCommand,
+  cancelCharge,
+  resolveCharges,
+  splitCommanderDamage,
+  finishWarriorTick,
+} from "./warrior.js";
 import { canonicalJson } from "./canonical.js";
 
 const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -78,6 +91,41 @@ function validate(state: BattleState): void {
           commander.ownerPlayerId)
     )
       throw new Error("Invalid commander");
+  }
+  if (
+    new Set(state.commanders.map((c) => c.ownerPlayerId)).size !==
+    state.commanders.length
+  )
+    throw new Error("One commander per player is supported");
+  for (const c of state.commanders) {
+    if (
+      c.reassignTargetId !== null &&
+      squads.get(c.reassignTargetId)?.ownerPlayerId !== c.ownerPlayerId
+    )
+      throw new Error("Invalid reassignment target");
+    if ((c.hpMilli === 0) !== (c.status === "WOUNDED"))
+      throw new Error("Inconsistent commander injury");
+    if (c.respawnZoneIndex !== null) {
+      const zone = state.safeZones[c.respawnZoneIndex];
+      if (!zone || zone.nationId !== players.get(c.ownerPlayerId)?.nationId)
+        throw new Error("Invalid friendly respawn zone");
+    }
+  }
+  for (const e of state.skillEffects) {
+    skillEffectSchema.parse(e);
+    if (
+      !state.commanders.some((c) => c.id === e.sourceCommanderId) ||
+      e.targetSquadIds.some((id) => !squads.has(id))
+    )
+      throw new Error("Invalid effect reference");
+  }
+  for (const s of state.squads) {
+    if (
+      s.charge &&
+      (!state.commanders.some((c) => c.id === s.charge!.sourceCommanderId) ||
+        !squads.has(s.charge.targetSquadId))
+    )
+      throw new Error("Invalid charge reference");
   }
   if (new Set(state.impactedContacts).size !== state.impactedContacts.length)
     throw new Error("Invalid contact history");
@@ -140,10 +188,12 @@ export function createBattle(
     tick: 0,
     ...parsed,
     impactedContacts: [],
+    skillEffects: [],
   };
   for (const s of state.squads) normalizeStatus(s, state.config);
   for (const list of [state.players, state.squads, state.commanders])
     list.sort((a, b) => compare(a.id, b.id));
+  initializeCommanders(state);
   validate(state);
   return state;
 }
@@ -164,6 +214,8 @@ export function step(
   );
   const emit = (event: Omit<BattleEvent, "tick">) =>
     events.push({ tick: state.tick, ...event });
+  state.commanders.sort((a, b) => compare(a.id, b.id));
+  beginWarriorTick(state, emit);
   const squads = new Map(state.squads.map((s) => [s.id, s]));
   const players = new Map(state.players.map((p) => [p.id, p]));
   const valid: BattleInput[] = [];
@@ -205,6 +257,8 @@ export function step(
     else if (cmd.requestedTick !== state.tick) reason = "WRONG_TICK";
     else if (new Set(cmd.squadIds).size !== cmd.squadIds.length)
       reason = "DUPLICATE_SQUAD";
+    else if (cmd.type === "CAST_SKILL" || cmd.type === "REASSIGN_COMMANDER")
+      reason = validateWarriorCommand(state, playerId, cmd);
     else if (owned.some((s) => !s || s.ownerPlayerId !== playerId))
       reason = "NOT_OWNER";
     else if (
@@ -223,7 +277,12 @@ export function step(
       continue;
     }
     player!.lastCommandSeq = cmd.seq;
+    if (cmd.type === "CAST_SKILL" || cmd.type === "REASSIGN_COMMANDER") {
+      acceptWarriorCommand(state, cmd, emit);
+      continue;
+    }
     for (const s of owned) {
+      cancelCharge(s!, emit, "DIRECT_ORDER");
       acceptOrder(s!, cmd, state);
       emit({
         type: "ORDER_ACCEPTED",
@@ -233,11 +292,29 @@ export function step(
       });
     }
   }
+  const beforeMovement = new Map(
+    state.squads.map((s) => [s.id, { ...s.position }]),
+  );
   advanceOrders(state);
-  const deltas = new Map<
-    string,
-    { hp: bigint; morale: number; cohesion: number }
-  >();
+  synchronizeCommanders(state, emit);
+  const { deltas, moraleSources } = resolveCharges(state, beforeMovement, emit);
+  // Q resolves before basic attacks. All Q impacts use the same movement snapshot.
+  const combat = new Map(
+    state.squads.map((s) => {
+      const q = deltas.get(s.id);
+      const copy = {
+        ...s,
+        morale: clamp(s.morale - (q?.morale ?? 0)),
+        cohesion: clamp(s.cohesion - (q?.cohesion ?? 0)),
+      };
+      if (
+        copy.morale === 0 ||
+        (copy.cohesion === 0 && copy.breakImmunityTicks === 0)
+      )
+        copy.fsmState = "BROKEN";
+      return [s.id, copy] as const;
+    }),
+  );
   const impacted: string[] = [];
   // All attacks read the same pre-damage snapshot.
   for (const attacker of [...state.squads].sort((a, b) =>
@@ -246,8 +323,15 @@ export function step(
     if (attacker.fsmState !== "ENGAGE" || forced(attacker)) continue;
     const target = squads.get(attacker.currentTargetId ?? "");
     if (!target || target.hpMilli === 0) continue;
+    if (forced(combat.get(attacker.id)!)) continue;
     const contact = contactFor(attacker, target);
-    const damage = calculateDamage(attacker, target, contact, config);
+    const damage = calculateDamage(
+      combat.get(attacker.id)!,
+      target,
+      contact,
+      config,
+      skillMultiplier(state, attacker, "attack"),
+    );
     const key = contactKey(attacker.id, target.id);
     const delta = deltas.get(target.id) ?? {
       hp: 0n,
@@ -260,6 +344,11 @@ export function step(
       if (!state.impactedContacts.includes(key)) {
         delta.morale += config.directions[contact.direction].moraleImpact;
         delta.cohesion += config.directions[contact.direction].cohesionImpact;
+        if (config.directions[contact.direction].moraleImpact > 0) {
+          const sources = moraleSources.get(target.id) ?? new Set<string>();
+          sources.add(attacker.id);
+          moraleSources.set(target.id, sources);
+        }
       }
     }
     deltas.set(target.id, delta);
@@ -272,6 +361,8 @@ export function step(
     });
   }
   state.impactedContacts = impacted.sort(compare);
+  const commanderDamage = splitCommanderDamage(state, deltas);
+  const routed = new Set<string>();
   // Safety sees all simultaneous deaths, not partially applied damage.
   const safetySnapshot = structuredClone(state);
   for (const s of safetySnapshot.squads) {
@@ -314,6 +405,7 @@ export function step(
             ? "SQUAD_ROUTED"
             : "SQUAD_BROKEN";
       emit({ type, actorId: s.id });
+      if (type === "SQUAD_ROUTED") routed.add(s.id);
     } else if (s.fsmState === "ROUTED" || s.fsmState === "BROKEN") {
       s.statusRemainingTicks = Math.max(0, s.statusRemainingTicks - 1);
       if (
@@ -419,6 +511,7 @@ export function step(
         targetId: s.currentTargetId,
       });
   }
+  finishWarriorTick(state, commanderDamage, routed, moraleSources, emit);
   state.tick = safeInteger(BigInt(state.tick) + 1n);
   validate(state);
   return { state, events };

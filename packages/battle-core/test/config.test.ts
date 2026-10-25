@@ -23,6 +23,18 @@ describe("Phase 0 config loading and validation", () => {
     ).toThrow("status");
   });
 
+  it("validates provisional warrior thresholds without changing declared skill values", () => {
+    expect(original.warriorAssumptions.designStatus).toBe(
+      "provisional-not-balance-validated",
+    );
+    expect(original.warriorSkills.Q.cooldownTicks).toBe(250);
+    expect(original.warriorSkills.W.durationTicks).toBe(60);
+    expect(original.warriorSkills.R.durationTicks).toBe(80);
+    const invalid = structuredClone(original);
+    invalid.warriorAssumptions.chargeMaxTravelUnits = 100;
+    expect(() => parseBattleConfig(invalid)).toThrow("warriorAssumptions");
+  });
+
   it.each([
     [
       "missing tick",

@@ -1,6 +1,6 @@
 # 쌈국지 현대화 — Codex 전달용 기술 명세 패키지 v1.9
 
-기술 명세와 Phase 0/1/2의 순수 TypeScript headless 전투 코어를 포함합니다.
+기술 명세와 Phase 0/1/2 및 Phase 3 장수·무장 스킬 부분의 순수 TypeScript headless 전투 코어를 포함합니다.
 개발 범위는 CODEX_IMPLEMENTATION_PLAN.md의 단계 번호를 기준으로 합니다.
 
 ## 파일 안내
@@ -27,6 +27,7 @@ npm run format:check
 미확정 정책과 임시 가정은 [OPEN_DECISIONS.md](OPEN_DECISIONS.md)를 참고하세요.
 sim:smoke는 1,000tick headless 교전의 상태·이벤트 해시 재현성을 검사합니다.
 Phase 2의 지속 명령·이동·기본 AI·진형을 구현했습니다.
-시야/전장의 안개, 스킬·증강·UI·네트워크는 아직 구현하지 않았습니다.
+장수 동행·재배속·부상·재출전과 무장 Q/W/R을 추가했습니다. Phase 3 전체는 미완료입니다.
+시야/전장의 안개, 증강·UI·네트워크·성장 시스템은 아직 구현하지 않았습니다.
 
 **주의:** 밸런스 수치는 테스트용 초안입니다. 이 패키지는 게임 완성도 또는 승률 균형을 검증한 결과를 포함하지 않습니다.

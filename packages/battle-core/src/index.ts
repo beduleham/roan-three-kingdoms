@@ -4,6 +4,8 @@ export { createBattle, step } from "./battle.js";
 export { applyBp, calculateDamage, livingSoldiers } from "./damage.js";
 export { canonicalJson, hashReplayValue, replay } from "./replay.js";
 export type {
+  Skill,
+  SkillEffect,
   Position,
   Order,
   BattleState,

@@ -29,6 +29,7 @@ export function calculateDamage(
   defender: Squad,
   contact: Contact,
   config: BattleConfig,
+  skillBp = 10000,
 ): number {
   if (
     attacker.hpMilli === 0 ||
@@ -74,7 +75,7 @@ export function calculateDamage(
     10000,
     morale,
     10000,
-    10000,
+    skillBp,
     defenseBp,
   ])
     damage = applyBp(damage, bp);
