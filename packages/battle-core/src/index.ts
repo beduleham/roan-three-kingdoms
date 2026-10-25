@@ -18,3 +18,9 @@ export type {
   BattleEvent,
   StepResult,
 } from "./model.js";
+
+export {
+  augmentDefinitionSchema,
+  augmentDefinitionsSchema,
+} from "./augments.js";
+export type { AugmentDefinition } from "./augments.js";
