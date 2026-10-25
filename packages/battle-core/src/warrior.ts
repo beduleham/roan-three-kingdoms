@@ -245,6 +245,7 @@ export function acceptWarriorCommand(
     state.config.warriorSkills[cmd.skill].cooldownTicks;
   emit({
     type: "SKILL_CAST",
+    targetSquadIds: targets.map((s) => s.id),
     actorId: c.id,
     sourceCommanderId: c.id,
     skill: cmd.skill,

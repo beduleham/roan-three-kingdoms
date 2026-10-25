@@ -266,6 +266,7 @@ export interface BattleEvent {
   skill?: Skill;
   effectId?: string;
   moraleDelta?: number;
+  targetSquadIds?: string[];
 }
 export interface StepResult {
   state: BattleState;

@@ -55,3 +55,27 @@ Phase 3 전체 완료가 아닙니다. 증강 파이프라인만 구현했으며
 초기 제시 후보는 state.augmentProgress에 저장되어 초기 리플레이 스냅샷에 포함됩니다.
 후속 제시는 AUGMENT_OFFERED, 선택은 AUGMENT_SELECTED, 효과는 AUGMENT_EFFECT_APPLIED/EXPIRED로 기록합니다.
 공격·이동 BP 보정만 지원하며 상세 임시 정책은 OPEN_DECISIONS.md에 기록합니다.
+
+## 실험용 증강 experimental-v0.1
+
+실험 데이터는 기본 진입점에 등록하지 않습니다. 빌드 후 다음처럼 신뢰된 시나리오에 명시적으로 주입합니다.
+
+```ts
+import { experimentalAugments } from "@roan/battle-core/experimental-v0.1";
+const state = createBattle(config, seed, {
+  ...scenario,
+  augmentDefinitions: experimentalAugments,
+});
+```
+
+정의 주입만으로 효과를 얻지는 않습니다. 제시 후보에 대해 플레이어의 SELECT_AUGMENT가 필요합니다.
+데이터의 version은 experimental-v0.1이며 모든 수치는 미검증입니다. 운영 기본 정의는 빈 배열입니다.
+기존 합성 fixture와 별도이며 운영 밸런스 승인 또는 Phase 3 전체 완료를 의미하지 않습니다.
+
+재현 비교는 npm run sim:experimental로 실행합니다. JSON만 저장하려면 npm run build 후
+node packages/battle-core/dist/experimental-cli.js > comparison.json을 실행합니다.
+무선택과 각 증강을 같은 시나리오/전투 입력으로 비교하며 attackDamageByA는 전체 기본 공격 피해 합계,
+cohesionLostByD는 음수 전열 변화 합계, sampleSquads는 30tick 시점입니다.
+상태/이벤트 해시는 각 조건을 두 번 실행하여 비교합니다. 실제 플레이 밸런스 검증은 아닙니다.
+
+이번 실행의 JSON은 [experimental-v0.1-comparison.json](reports/experimental-v0.1-comparison.json)에 저장했습니다.

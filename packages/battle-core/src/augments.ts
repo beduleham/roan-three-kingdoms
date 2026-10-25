@@ -1,3 +1,4 @@
+import { applyBp } from "./damage.js";
 import { augmentPolicy } from "./augment-policy.js";
 import { canonicalJson } from "./canonical.js";
 import { z } from "zod";
@@ -7,6 +8,11 @@ export const augmentDefinitionSchema = z.strictObject({
   id: z.string().min(1),
   category: z.string().min(1),
   minLevel: integer.min(1).max(40),
+  sourceSkill: z.enum(["Q", "W", "R"]).optional(),
+  targetPolicy: z.enum(["legacy", "cast-targets"]).optional(),
+  endOnDisabled: z.boolean().optional(),
+  version: z.string().optional(),
+  designStatus: z.literal("experimental-not-balance-validated").optional(),
   trigger: z.enum(["onChargeImpact", "onSkillCast", "onCohesionBroken"]),
   eligibility: z.strictObject({
     unitTypes: z
@@ -14,7 +20,7 @@ export const augmentDefinitionSchema = z.strictObject({
       .min(1),
   }),
   effect: z.strictObject({
-    stat: z.enum(["attack", "speed"]),
+    stat: z.enum(["attack", "speed", "cohesionDamageReduction"]),
     bonusBp: integer.max(augmentPolicy.maxBonusBp),
   }),
   durationTicks: integer.positive(),
@@ -44,6 +50,10 @@ export interface AugmentEffect {
   squadId: string;
   expiresAt: number;
   stacks: number;
+  startsAt?: number;
+  sourceCommanderId?: string;
+  sourceCommandSeq?: number;
+  skill?: "Q" | "W" | "R";
 }
 type Emit = (event: Omit<BattleEvent, "tick">) => void;
 export function offerAugments(state: BattleState, emit: Emit): void {
@@ -109,14 +119,41 @@ export function selectAugment(
     return "INELIGIBLE";
   return;
 }
+function enabledSquad(s: Squad | undefined): boolean {
+  return (
+    !!s && s.hpMilli > 0 && s.fsmState !== "BROKEN" && s.fsmState !== "ROUTED"
+  );
+}
+function enabledSource(state: BattleState, id: string | undefined): boolean {
+  const c = state.commanders.find((c) => c.id === id);
+  return (
+    !!c &&
+    c.classId === "warrior" &&
+    c.hpMilli > 0 &&
+    c.status === "ACTIVE" &&
+    enabledSquad(state.squads.find((s) => s.id === c.assignedSquadId))
+  );
+}
+function disabledEffect(state: BattleState, e: AugmentEffect): boolean {
+  const d = state.augmentDefinitions.find((d) => d.id === e.augmentId)!;
+  return (
+    !!d.endOnDisabled &&
+    (!enabledSource(state, e.sourceCommanderId) ||
+      !enabledSquad(state.squads.find((s) => s.id === e.squadId)))
+  );
+}
 export function expireAugments(state: BattleState, emit: Emit): void {
   state.augmentEffects = state.augmentEffects.filter((e) => {
-    if (e.expiresAt > state.tick) return true;
+    if (e.expiresAt > state.tick && !disabledEffect(state, e)) return true;
     emit({
       type: "AUGMENT_EFFECT_EXPIRED",
       actorId: e.playerId,
       targetId: e.squadId,
       effectId: e.augmentId,
+      ...(e.sourceCommanderId
+        ? { sourceCommanderId: e.sourceCommanderId }
+        : {}),
+      reason: e.expiresAt <= state.tick ? "DURATION" : "DISABLED",
     });
     return false;
   });
@@ -136,7 +173,12 @@ export function processAugmentEvents(
   } as const;
   const seen = new Set<string>();
   events.forEach((event, index) => {
-    const key = canonicalJson(event);
+    if (event.tick !== state.tick) return;
+    const key =
+      event.effectId &&
+      (event.type === "CHARGE_IMPACT" || event.type === "SKILL_CAST")
+        ? canonicalJson([event.type, event.effectId])
+        : canonicalJson(event);
     if (seen.has(key)) return;
     seen.add(key);
     const trigger = triggerMap[event.type as keyof typeof triggerMap];
@@ -158,10 +200,38 @@ export function processAugmentEvents(
       if (selectionIndex >= index) continue;
       const d = state.augmentDefinitions.find((d) => d.id === id)!;
       if (d.trigger !== trigger) continue;
+      const source = state.commanders.find(
+        (c) => c.id === event.sourceCommanderId,
+      );
+      if (
+        d.sourceSkill &&
+        (event.skill !== d.sourceSkill ||
+          !source ||
+          source.ownerPlayerId !== owner ||
+          source.classId !== "warrior")
+      )
+        continue;
+      if (
+        d.endOnDisabled &&
+        (!enabledSource(state, event.sourceCommanderId) ||
+          events
+            .slice(index + 1)
+            .some(
+              (e) =>
+                e.actorId === event.sourceCommanderId &&
+                (e.type === "COMMANDER_REASSIGNING" ||
+                  e.type === "COMMANDER_WOUNDED"),
+            ))
+      )
+        continue;
       for (const squad of state.squads.filter(
         (s) =>
-          s.ownerPlayerId === owner &&
+          (d.targetPolicy === "cast-targets"
+            ? !!event.targetSquadIds?.includes(s.id) &&
+              s.nationId === state.players.find((p) => p.id === owner)!.nationId
+            : s.ownerPlayerId === owner) &&
           s.hpMilli > 0 &&
+          (!d.endOnDisabled || enabledSquad(s)) &&
           d.eligibility.unitTypes.includes(s.unitType) &&
           (trigger === "onSkillCast" || s.id === actor?.id),
       )) {
@@ -169,7 +239,8 @@ export function processAugmentEvents(
           (e) =>
             e.playerId === owner &&
             e.augmentId === id &&
-            e.squadId === squad.id,
+            e.squadId === squad.id &&
+            (!d.sourceSkill || e.sourceCommanderId === event.sourceCommanderId),
         );
         if (effect && d.stackingPolicy.mode === "ignore") continue;
         const expiresAt = state.tick + 1 + d.durationTicks;
@@ -182,6 +253,14 @@ export function processAugmentEvents(
             squadId: squad.id,
             expiresAt,
             stacks: 1,
+            startsAt: state.tick + 1,
+            ...(d.sourceSkill
+              ? {
+                  sourceCommanderId: event.sourceCommanderId!,
+                  sourceCommandSeq: event.sourceCommandSeq!,
+                  skill: event.skill!,
+                }
+              : {}),
           };
           state.augmentEffects.push(effect);
         } else {
@@ -190,12 +269,20 @@ export function processAugmentEvents(
               ? Math.min(d.stackingPolicy.maxStacks, effect.stacks + 1)
               : 1;
           effect.expiresAt = expiresAt;
+          if (d.sourceSkill) effect.sourceCommandSeq = event.sourceCommandSeq!;
         }
         emit({
           type: "AUGMENT_EFFECT_APPLIED",
           actorId: owner!,
           targetId: squad.id,
           effectId: id,
+          ...(d.sourceSkill
+            ? {
+                sourceCommanderId: event.sourceCommanderId!,
+                sourceCommandSeq: event.sourceCommandSeq!,
+                skill: event.skill!,
+              }
+            : {}),
           reason: JSON.stringify([state.tick, index]),
         });
       }
@@ -209,10 +296,44 @@ export function augmentBonus(
 ): number {
   let sum = 0;
   for (const e of state.augmentEffects) {
-    if (e.squadId !== squad.id || e.expiresAt <= state.tick) continue;
+    if (
+      e.squadId !== squad.id ||
+      e.expiresAt <= state.tick ||
+      (e.startsAt ?? 0) > state.tick ||
+      disabledEffect(state, e)
+    )
+      continue;
     const d = state.augmentDefinitions.find((d) => d.id === e.augmentId)!;
     if (d.effect.stat === stat)
       sum += Math.min(d.stackingPolicy.capBp, d.effect.bonusBp * e.stacks);
   }
   return Math.min(augmentPolicy.maxBonusBp, sum);
+}
+
+/** Same definition across commanders takes its maximum; distinct definitions add up to the data cap. */
+export function cohesionDamageBp(state: BattleState, squad: Squad): number {
+  const byDefinition = new Map<string, number>();
+  for (const e of state.augmentEffects) {
+    if (
+      e.squadId !== squad.id ||
+      e.expiresAt <= state.tick ||
+      (e.startsAt ?? 0) > state.tick ||
+      disabledEffect(state, e)
+    )
+      continue;
+    const d = state.augmentDefinitions.find((d) => d.id === e.augmentId)!;
+    if (d.effect.stat !== "cohesionDamageReduction") continue;
+    const bonus = Math.min(d.stackingPolicy.capBp, d.effect.bonusBp * e.stacks);
+    byDefinition.set(d.id, Math.max(byDefinition.get(d.id) ?? 0, bonus));
+  }
+  return (
+    10000 -
+    Math.min(
+      augmentPolicy.maxCohesionReductionBp,
+      [...byDefinition.values()].reduce((a, b) => a + b, 0),
+    )
+  );
+}
+export function reduceCohesionDamage(total: number, bp: number): number {
+  return applyBp(total, bp);
 }

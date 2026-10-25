@@ -14,7 +14,8 @@
     "sim:smoke": "npm run build && node packages/battle-core/dist/smoke.js",
     "build": "tsc -p packages/battle-core/tsconfig.build.json",
     "format": "prettier --write packages package.json tsconfig.json vitest.config.ts",
-    "format:check": "prettier --check packages package.json tsconfig.json vitest.config.ts"
+    "format:check": "prettier --check packages package.json tsconfig.json vitest.config.ts",
+    "sim:experimental": "npm run build && node packages/battle-core/dist/experimental-cli.js"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
