@@ -1,3 +1,9 @@
+import {
+  offerAugments,
+  selectAugment,
+  expireAugments,
+  processAugmentEvents,
+} from "./augments.js";
 import { parseBattleConfig, type BattleConfig } from "./config.js";
 import {
   commandSchema,
@@ -47,6 +53,7 @@ function validate(state: BattleState): void {
     squads: state.squads,
     commanders: state.commanders,
     safeZones: state.safeZones,
+    augmentDefinitions: state.augmentDefinitions,
   });
   for (const entries of [state.players, state.squads, state.commanders]) {
     if (new Set(entries.map((x) => x.id)).size !== entries.length)
@@ -188,12 +195,16 @@ export function createBattle(
     tick: 0,
     ...parsed,
     impactedContacts: [],
+    augmentProgress: [],
+    augmentEffects: [],
+    augmentProcessedTick: -1,
     skillEffects: [],
   };
   for (const s of state.squads) normalizeStatus(s, state.config);
   for (const list of [state.players, state.squads, state.commanders])
     list.sort((a, b) => compare(a.id, b.id));
   initializeCommanders(state);
+  offerAugments(state, () => {});
   validate(state);
   return state;
 }
@@ -216,6 +227,8 @@ export function step(
     events.push({ tick: state.tick, ...event });
   state.commanders.sort((a, b) => compare(a.id, b.id));
   beginWarriorTick(state, emit);
+  expireAugments(state, emit);
+  offerAugments(state, emit);
   const squads = new Map(state.squads.map((s) => [s.id, s]));
   const players = new Map(state.players.map((p) => [p.id, p]));
   const valid: BattleInput[] = [];
@@ -233,7 +246,7 @@ export function step(
     (a, b) =>
       a.command.seq - b.command.seq ||
       compare(a.playerId, b.playerId) ||
-      compare(a.command.squadIds[0]!, b.command.squadIds[0]!) ||
+      compare(a.command.squadIds[0] ?? "", b.command.squadIds[0] ?? "") ||
       compare(canonicalJson(a), canonicalJson(b)),
   );
   for (let i = 0; i < malformed; i++)
@@ -257,6 +270,8 @@ export function step(
     else if (cmd.requestedTick !== state.tick) reason = "WRONG_TICK";
     else if (new Set(cmd.squadIds).size !== cmd.squadIds.length)
       reason = "DUPLICATE_SQUAD";
+    else if (cmd.type === "SELECT_AUGMENT")
+      reason = selectAugment(state, playerId, cmd.checkpoint, cmd.augmentId);
     else if (cmd.type === "CAST_SKILL" || cmd.type === "REASSIGN_COMMANDER")
       reason = validateWarriorCommand(state, playerId, cmd);
     else if (owned.some((s) => !s || s.ownerPlayerId !== playerId))
@@ -277,6 +292,21 @@ export function step(
       continue;
     }
     player!.lastCommandSeq = cmd.seq;
+    if (cmd.type === "SELECT_AUGMENT") {
+      const progress = state.augmentProgress.find(
+        (p) => p.playerId === playerId,
+      )!;
+      progress.selected.push(cmd.augmentId);
+      progress.spent++;
+      progress.offer = null;
+      emit({
+        type: "AUGMENT_SELECTED",
+        actorId: playerId,
+        effectId: cmd.augmentId,
+        sourceCommandSeq: cmd.seq,
+      });
+      continue;
+    }
     if (cmd.type === "CAST_SKILL" || cmd.type === "REASSIGN_COMMANDER") {
       acceptWarriorCommand(state, cmd, emit);
       continue;
@@ -512,6 +542,8 @@ export function step(
       });
   }
   finishWarriorTick(state, commanderDamage, routed, moraleSources, emit);
+  processAugmentEvents(state, [...events], emit);
+  offerAugments(state, emit);
   state.tick = safeInteger(BigInt(state.tick) + 1n);
   validate(state);
   return { state, events };

@@ -1,3 +1,4 @@
+import { augmentBonus } from "./augments.js";
 import type { BattleState, Commander, Squad } from "./model.js";
 
 export function commanderEnabled(c: Commander, state: BattleState): boolean {
@@ -38,5 +39,5 @@ export function skillMultiplier(
             : bp;
     bp = Math.max(bp, bonus);
   }
-  return bp;
+  return kind === "impact" ? bp : bp + augmentBonus(state, squad, kind);
 }

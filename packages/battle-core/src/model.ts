@@ -1,3 +1,9 @@
+import {
+  augmentDefinitionsSchema,
+  type AugmentDefinition,
+  type AugmentProgress,
+  type AugmentEffect,
+} from "./augments.js";
 import { z } from "zod";
 import type { BattleConfig } from "./config.js";
 
@@ -125,6 +131,7 @@ export const contactSchema = z.strictObject({
   preparedSpear: z.boolean().default(false),
 });
 export const scenarioSchema = z.strictObject({
+  augmentDefinitions: augmentDefinitionsSchema.default([]),
   players: z.array(playerSchema).default([]),
   squads: z.array(squadSchema).default([]),
   commanders: z.array(commanderSchema).default([]),
@@ -155,6 +162,10 @@ export const skillEffectSchema = z.strictObject({
 export type SkillEffect = z.infer<typeof skillEffectSchema>;
 export type Skill = "Q" | "W" | "R";
 export interface BattleState {
+  augmentDefinitions: AugmentDefinition[];
+  augmentProgress: AugmentProgress[];
+  augmentEffects: AugmentEffect[];
+  augmentProcessedTick: number;
   config: BattleConfig;
   seed: number;
   tick: number;
@@ -173,6 +184,13 @@ const baseCommand = {
 export const commandSchema = z.strictObject({
   playerId: id,
   command: z.discriminatedUnion("type", [
+    z.strictObject({
+      ...baseCommand,
+      squadIds: z.array(id).length(0).default([]),
+      type: z.literal("SELECT_AUGMENT"),
+      checkpoint: natural,
+      augmentId: id,
+    }),
     z.strictObject({
       ...baseCommand,
       type: z.literal("CAST_SKILL"),
@@ -205,12 +223,16 @@ export const commandSchema = z.strictObject({
 });
 export type BasicCommand = Exclude<
   z.infer<typeof commandSchema>["command"],
-  { type: "CAST_SKILL" | "REASSIGN_COMMANDER" }
+  { type: "CAST_SKILL" | "REASSIGN_COMMANDER" | "SELECT_AUGMENT" }
 >;
 export type BattleInput = z.infer<typeof commandSchema>;
 export interface BattleEvent {
   tick: number;
   type:
+    | "AUGMENT_OFFERED"
+    | "AUGMENT_SELECTED"
+    | "AUGMENT_EFFECT_APPLIED"
+    | "AUGMENT_EFFECT_EXPIRED"
     | "SKILL_CAST"
     | "SKILL_EFFECT_APPLIED"
     | "SKILL_EFFECT_EXPIRED"
