@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.9-draft",
+  "status": "design-assumptions-not-validated",
+  "tickMs": 100,
+  "positionUnitsPerTile": 1000,
+  "hpMilliPerHp": 1000,
+  "modifierBasisPoints": 10000,
+  "soldierHp": 100,
+  "baseEngagementBp": 6000,
+  "unitTypes": {
+    "infantry": {"dpsPerSoldier": 7, "defense": 25, "speedTilesPerSec": 2.0, "rangeTiles": 1},
+    "spears": {"dpsPerSoldier": 6, "defense": 20, "speedTilesPerSec": 1.8, "rangeTiles": 1},
+    "archers": {"dpsPerSoldier": 5, "defense": 10, "speedTilesPerSec": 1.9, "rangeTiles": 8},
+    "cavalry": {"dpsPerSoldier": 8, "defense": 25, "speedTilesPerSec": 3.2, "rangeTiles": 1}
+  },
+  "matchupBp": {
+    "infantry": {"infantry": 10000, "spears": 11000, "archers": 11500, "cavalry": 9500},
+    "spears": {"infantry": 10000, "spears": 10000, "archers": 8000, "cavalry": 11000},
+    "archers": {"infantry": 9500, "spears": 11000, "archers": 10000, "cavalry": 9000},
+    "cavalry": {"infantry": 10500, "spears": 9500, "archers": 13500, "cavalry": 10000}
+  },
+  "preparedSpearCounter": {"spearsVsCavalryBp": 13500, "cavalryVsSpearsBp": 5500},
+  "directions": {
+    "front": {"damageBp": 10000, "cohesionImpact": 0, "moraleImpact": 0},
+    "flank": {"damageBp": 11000, "cohesionImpact": 8, "moraleImpact": 0},
+    "rear": {"damageBp": 12000, "cohesionImpact": 12, "moraleImpact": 8}
+  },
+  "formations": {
+    "normal": {"attackBp": 10000, "incomingDamageBp": 10000, "speedBp": 10000},
+    "defense": {"attackBp": 8500, "incomingDamageBp": 8000, "speedBp": 8000},
+    "offense": {"attackBp": 11000, "incomingDamageBp": 11500, "speedBp": 10000}
+  },
+  "formationSwitchTicks": 15,
+  "moraleDamageBp": {"normal": 10000, "wavering": 9000, "panicked": 7500},
+  "moraleBands": {"normalFrom": 60, "waveringFrom": 30, "panickedFrom": 1},
+  "status": {"routTicks": 40, "routRecoveryMorale": 25, "breakTicks": 25, "breakRecoveryCohesion": 20, "breakImmunityTicks": 60, "regroupDelayTicks": 30, "cohesionRecoveryPerSecond": 4, "safeMoraleRecoveryPerSecond": 2},
+  "ai": {"defensiveChaseRadiusTiles": 0, "balancedChaseRadiusTiles": 5, "aggressiveChaseRadiusTiles": 10},
+  "commander": {"baseHp": 450, "woundedRespawnTicks": 130, "commandRadiusTiles": 10},
+  "warriorSkills": {
+    "Q": {"id": "warrior_charge", "cooldownTicks": 250, "cohesionDamage": 15, "moraleDamage": 8},
+    "W": {"id": "warrior_rally", "cooldownTicks": 350, "targetSquadLimit": 2, "moraleRestore": 12, "attackBonusBp": 11000, "durationTicks": 60},
+    "R": {"id": "warrior_breakthrough", "minLevel": 15, "cooldownTicks": 1000, "targetSquadLimit": 3, "chargeImpactBonusBp": 13000, "speedBonusBp": 11500, "durationTicks": 80, "routExtensionTicks": 10, "maxRoutExtensions": 1}
+  },
+  "augmentLevels": [5, 10, 16, 22, 28, 34, 38],
+  "rankCaps": {
+    "junior": {"minMerit": 0, "squads": 2, "soldiers": 40},
+    "sima": {"minMerit": 1200, "squads": 2, "soldiers": 50},
+    "xiaowei": {"minMerit": 3000, "squads": 3, "soldiers": 60},
+    "zhonglangjiang": {"minMerit": 6000, "squads": 3, "soldiers": 75},
+    "general": {"minMerit": 10500, "squads": 4, "soldiers": 90}
+  },
+  "globalDamageReductionCapBp": 3500,
+  "sampleExpectedDamage": {"infantry20VsDefense25OneTickHpMilli": 6720}
+}
