@@ -11,11 +11,11 @@
 **통과 조건:** 타입검사·빈 테스트 실행 가능; JSON 부적합 설정을 명확한 메시지로 거부.
 
 ## Phase 1 — 결정적 전투 코어
-- [ ] `BattleState`, `Squad`, `Commander`, `Player` 타입 구현.
-- [ ] `createBattle(config, seed)`와 `step(state, commands)` 순수 함수 구현.
-- [ ] 100ms tick, 고정소수점 BP 보정, 피해 계산, 동시 피해 반영.
-- [ ] 사기·전열 변화, 상태 전이, HP 소실/병사 수 환산.
-- [ ] 고정 순서 입력 처리와 해시 리플레이 기능.
+- [x] `BattleState`, `Squad`, `Commander`, `Player` 타입 구현.
+- [x] `createBattle(config, seed)`와 `step(state, commands)` 순수 함수 구현.
+- [x] 100ms tick, 고정소수점 BP 보정, 피해 계산, 동시 피해 반영.
+- [x] 사기·전열 변화, 상태 전이, HP 소실/병사 수 환산.
+- [x] 고정 순서 입력 처리와 해시 리플레이 기능.
 
 **통과 조건:** `TEST_CASES.md`의 계산/결정성/상태 범위 테스트 통과.
 

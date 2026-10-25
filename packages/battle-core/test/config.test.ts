@@ -12,6 +12,17 @@ describe("Phase 0 config loading and validation", () => {
     expect(parseBattleConfig(original)).not.toBe(original);
   });
 
+  it("keeps design metadata separate from battle status settings", () => {
+    const parsed = loadBattleConfig(path);
+    expect(parsed.designStatus).toBe("design-assumptions-not-validated");
+    expect(parsed.status.routTicks).toBe(40);
+    const { designStatus: _, ...missing } = original;
+    expect(() => parseBattleConfig(missing)).toThrow("designStatus");
+    expect(() =>
+      parseBattleConfig({ ...original, status: original.designStatus }),
+    ).toThrow("status");
+  });
+
   it.each([
     [
       "missing tick",
