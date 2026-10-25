@@ -1,6 +1,2 @@
-export {
-  battleConfigSchema,
-  parseBattleConfig,
-  loadBattleConfig,
-} from "./config.js";
+export { battleConfigSchema, parseBattleConfig } from "./config.js";
 export type { BattleConfig } from "./config.js";

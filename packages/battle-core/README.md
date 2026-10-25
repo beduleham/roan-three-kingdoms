@@ -16,8 +16,10 @@ npm run format:check
 - strict 타입 검사에는 참조 contracts.ts도 포함됩니다.
 - Zod 스키마는 모든 설정 필드, 숫자 범위, 필수 병종/상성,
   사기 임계값 순서와 증강 레벨 순서를 검사합니다.
-- parseBattleConfig는 외부 서비스에 의존하지 않습니다.
-  loadBattleConfig는 Node.js 파일 시스템으로 JSON을 읽는 진입점입니다.
+- 기본 진입점 @roan/battle-core는 Node.js에 의존하지 않는 설정 스키마,
+  parseBattleConfig 검증 함수, BattleConfig 타입만 제공합니다.
+- JSON 파일을 읽는 loadBattleConfig는 별도 Node 전용 진입점
+  @roan/battle-core/node에서 제공합니다. smoke도 이 진입점을 사용합니다.
 - sim:smoke는 빌드 후 원본 설정 로딩을 검증하고
   simulationImplemented: false를 출력합니다. 전투 시뮬레이션 검증이 아닙니다.
 - 원본 JSON은 status 키를 중복 선언합니다. 표준 JSON.parse에 따라

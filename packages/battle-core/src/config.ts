@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 const integer = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -172,14 +171,4 @@ export function parseBattleConfig(input: unknown): BattleConfig {
     );
   }
   return result.data;
-}
-
-export function loadBattleConfig(path: string | URL): BattleConfig {
-  let input: unknown;
-  try {
-    input = JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    throw new Error("Unable to load battle config", { cause: error });
-  }
-  return parseBattleConfig(input);
 }

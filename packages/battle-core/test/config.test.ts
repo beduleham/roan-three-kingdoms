@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { loadBattleConfig, parseBattleConfig } from "../src/index.js";
+import { parseBattleConfig } from "../src/index.js";
+import { loadBattleConfig } from "../src/node.js";
 
 const path = new URL("../../../battle_config.v1.json", import.meta.url);
 const original = JSON.parse(readFileSync(path, "utf8"));
