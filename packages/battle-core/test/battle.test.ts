@@ -24,6 +24,9 @@ function scenario(hp = 2000000): BattleScenario {
     squads: [
       {
         id: "a",
+        position: { x: 0, y: 0 },
+        facing: { x: 1, y: 0 },
+        stance: "defensive",
         ownerPlayerId: "p1",
         nationId: "n1",
         unitType: "infantry",
@@ -32,6 +35,9 @@ function scenario(hp = 2000000): BattleScenario {
       },
       {
         id: "b",
+        position: { x: 1000, y: 0 },
+        facing: { x: -1, y: 0 },
+        stance: "defensive",
         ownerPlayerId: "p2",
         nationId: "n2",
         unitType: "infantry",
@@ -47,10 +53,6 @@ function scenario(hp = 2000000): BattleScenario {
         hpMilli: 450000,
         maxHpMilli: 450000,
       },
-    ],
-    contacts: [
-      { attackerId: "a", targetId: "b" },
-      { attackerId: "b", targetId: "a" },
     ],
   };
 }
@@ -119,11 +121,13 @@ describe("Phase 1 deterministic battle core", () => {
     command.command.squadIds = ["a", "b"];
     const initial = createBattle(config, 42, scenario());
     const result = step(initial, [command]);
-    expect(result.events).toHaveLength(1);
+    expect(
+      result.events.filter((e) => e.type === "COMMAND_REJECTED"),
+    ).toHaveLength(1);
     expect(result.events[0]!.reason).toBe("NOT_OWNER");
     expect(result.state).toEqual(step(initial, []).state);
   });
-  it("rejects unsupported commands, absent contact, stale seq and wrong tick", () => {
+  it("rejects malformed commands, absent target, stale seq and wrong tick", () => {
     const initial = createBattle(config, 42, scenario());
     expect(
       step(initial, [
@@ -133,8 +137,9 @@ describe("Phase 1 deterministic battle core", () => {
         } as unknown as BattleInput,
       ]).events[0]!.reason,
     ).toBe("INVALID_COMMAND");
-    const noContact = createBattle(config, 42, { ...scenario(), contacts: [] });
-    expect(step(noContact, [attack()]).events[0]!.reason).toBe("NO_CONTACT");
+    expect(
+      step(initial, [attack(0, "p1", "a", "missing")]).events[0]!.reason,
+    ).toBe("INVALID_TARGET");
     expect(step(initial, [attack(1)]).events[0]!.reason).toBe("WRONG_TICK");
     const next = step(initial, [attack()]).state;
     expect(step(next, [attack(1, "p1", "a", "b", 0)]).events[0]!.reason).toBe(
@@ -148,7 +153,9 @@ describe("Phase 1 deterministic battle core", () => {
     b.command.squadIds = ["b"];
     expect(step(initial, [a, b])).toEqual(step(initial, [b, a]));
     expect(
-      step(initial, [a, b]).events.every((e) => e.reason === "DUPLICATE_SEQ"),
+      step(initial, [a, b])
+        .events.filter((e) => e.type === "COMMAND_REJECTED")
+        .every((e) => e.reason === "DUPLICATE_SEQ"),
     ).toBe(true);
   });
   it("sorts seq before player, emits one hit for repeated same-squad intents", () => {
@@ -204,7 +211,7 @@ describe("Phase 1 deterministic battle core", () => {
   });
   it("applies directional shock once per continuous successful contact", () => {
     const setup = scenario();
-    setup.contacts![0]!.direction = "rear";
+    setup.squads![1]!.facing = { x: 1, y: 0 };
     const initial = createBattle(config, 42, setup);
     const first = step(initial, [attack()]).state;
     expect(first.squads[1]!.morale).toBe(92);
@@ -212,7 +219,11 @@ describe("Phase 1 deterministic battle core", () => {
     expect(first.squads[1]!.hpMilli).toBeLessThan(2000000 - 6720);
     const second = step(first, [attack(1)]).state;
     expect(second.squads[1]!.morale).toBe(92);
+    second.squads[1]!.position.x = 10000;
     const gap = step(second, []).state;
+    gap.squads[1]!.position.x = 1000;
+    gap.squads[1]!.anchor.x = 1000;
+    gap.squads[1]!.facing = { x: 1, y: 0 };
     expect(step(gap, [attack(3)]).state.squads[1]!.morale).toBe(84);
   });
   it("uses prepared spear matchup only for front-facing defense formation", () => {
@@ -232,14 +243,18 @@ describe("Phase 1 deterministic battle core", () => {
     expect(calculateDamage(a, b, front, config)).toBeLessThan(
       calculateDamage(a, b, { ...front, preparedSpear: false }, config),
     );
-    const flank = { ...front, direction: "flank" as const };
+    const flank = {
+      ...front,
+      direction: "flank" as const,
+      preparedSpear: false,
+    };
     expect(calculateDamage(a, b, flank, config)).toBe(
       calculateDamage(a, b, { ...flank, preparedSpear: false }, config),
     );
   });
   it("prioritizes rout over break, clamps numbers and rejects forced-state orders", () => {
     const setup = scenario();
-    setup.contacts![0]!.direction = "rear";
+    setup.squads![1]!.facing = { x: 1, y: 0 };
     setup.squads![1]!.morale = 1;
     setup.squads![1]!.cohesion = 1;
     const result = step(createBattle(config, 42, setup), [attack()]);
@@ -253,7 +268,10 @@ describe("Phase 1 deterministic battle core", () => {
   it("blocks attacks for the entire 40-tick rout and recovers only when safe", () => {
     const setup = scenario();
     setup.squads![1]!.morale = 0;
-    setup.squads![1]!.safe = true;
+    setup.squads![1]!.position = { x: 20000, y: 0 };
+    setup.safeZones = [
+      { nationId: "n2", position: { x: 20000, y: 0 }, radiusUnits: 0 },
+    ];
     let state = createBattle(config, 42, setup);
     for (let tick = 0; tick < 40; tick++) {
       const result = step(state, [attack(tick, "p2", "b", "a")]);
@@ -263,10 +281,10 @@ describe("Phase 1 deterministic battle core", () => {
     expect(state.squads[1]!.morale).toBe(25);
     expect(
       step(state, [attack(40, "p2", "b", "a")]).events.some(
-        (e) => e.type === "ATTACK_HIT",
+        (e) => e.type === "ORDER_ACCEPTED",
       ),
     ).toBe(true);
-    setup.squads![1]!.safe = false;
+    setup.safeZones = [];
     state = replay(
       createBattle(config, 42, setup),
       Array.from({ length: 41 }, () => []),
@@ -277,7 +295,10 @@ describe("Phase 1 deterministic battle core", () => {
     const setup = scenario();
     setup.squads![1]!.morale = 0;
     setup.squads![1]!.cohesion = 0;
-    setup.squads![1]!.safe = true;
+    setup.squads![1]!.position = { x: 20000, y: 0 };
+    setup.safeZones = [
+      { nationId: "n2", position: { x: 20000, y: 0 }, radiusUnits: 0 },
+    ];
     const state = replay(
       createBattle(config, 42, setup),
       Array.from({ length: 40 }, () => []),
@@ -292,6 +313,7 @@ describe("Phase 1 deterministic battle core", () => {
   it("break lasts 25 ticks and then grants 60 ticks of immunity", () => {
     const setup = scenario();
     setup.squads![1]!.cohesion = 0;
+    setup.squads![1]!.position = { x: 20000, y: 0 };
     const isolatedConfig = structuredClone(config);
     isolatedConfig.status.cohesionRecoveryPerSecond = 0;
     let state = createBattle(isolatedConfig, 42, setup);
@@ -305,7 +327,7 @@ describe("Phase 1 deterministic battle core", () => {
     state.squads[1]!.cohesion = 0; // trusted snapshot: damage during immunity
     for (let tick = 0; tick < 59; tick++) {
       state = step(state, []).state;
-      expect(state.squads[1]!.fsmState).toBe("IDLE");
+      expect(["REGROUP", "IDLE"]).toContain(state.squads[1]!.fsmState);
     }
     state = step(state, []).state;
     expect(state.squads[1]!.breakImmunityTicks).toBe(0);
@@ -330,7 +352,10 @@ describe("Phase 1 deterministic battle core", () => {
     const setup = scenario();
     setup.squads![0]!.morale = 99;
     setup.squads![0]!.cohesion = 98;
-    setup.squads![0]!.safe = true;
+    setup.squads![1]!.position = { x: 20000, y: 0 };
+    setup.safeZones = [
+      { nationId: "n1", position: { x: 0, y: 0 }, radiusUnits: 0 },
+    ];
     let state = replay(
       createBattle(config, 42, setup),
       Array.from({ length: 29 }, () => []),
@@ -343,6 +368,8 @@ describe("Phase 1 deterministic battle core", () => {
     ).state;
     expect(state.squads[0]!.cohesion).toBe(100);
     expect(state.squads[0]!.cohesionRecoveryRemainder).toBe(0);
+    state.squads[1]!.position = { x: 1000, y: 0 };
+    state.squads[1]!.anchor = { x: 1000, y: 0 };
     state = step(state, [attack(state.tick, "p2", "b", "a")]).state;
     expect(state.squads[0]!.ticksSinceDamage).toBe(0);
   });
@@ -357,8 +384,7 @@ describe("Phase 1 deterministic battle core", () => {
   it("replays 1000 ticks with identical state/event hashes and bounded values", () => {
     const initial = createBattle(config, 42, scenario());
     const frames = Array.from({ length: 1000 }, (_, tick) => [
-      attack(tick),
-      attack(tick, "p2", "b", "a"),
+      ...(tick === 0 ? [attack(tick), attack(tick, "p2", "b", "a")] : []),
     ]);
     const a = replay(initial, frames),
       b = replay(

@@ -20,10 +20,11 @@
 **통과 조건:** `TEST_CASES.md`의 계산/결정성/상태 범위 테스트 통과.
 
 ## Phase 2 — 부대 AI와 명령
-- [ ] MOVE, ATTACK, ATTACK_MOVE, RETREAT, SET_STANCE, SET_FORMATION.
-- [ ] 기본 AI: 대기, 이동, 교전, 제한 추격, 복귀, 재정비.
+- [x] MOVE, ATTACK, ATTACK_MOVE, RETREAT, SET_STANCE, SET_FORMATION.
+- [x] 기본 AI: 대기, 이동, 교전, 제한 추격, 복귀, 재정비.
 - [ ] 지휘 반경, 목표 검사, 우선순위, 소유권 검증.
-- [ ] 방어진/공격진 전환 시간, 창병 정면 대기병 판정.
+  - 목표·우선순위·소유권 검증 완료. 스킬 지휘 반경은 Phase 3에서 연결하며 시야 검증은 미구현.
+- [x] 방어진/공격진 전환 시간, 창병 정면 대기병 판정.
 
 **통과 조건:** 수동 목표 명령 후 AI가 공격; 임의 Q 사용/전략적 후퇴 없음; 5tile 추격 한도 및 복귀 테스트.
 

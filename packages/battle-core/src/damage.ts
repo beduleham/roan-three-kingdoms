@@ -38,7 +38,7 @@ export function calculateDamage(
   )
     return 0;
   let matchup = config.matchupBp[attacker.unitType][defender.unitType];
-  if (contact.preparedSpear && contact.direction === "front") {
+  if (contact.preparedSpear) {
     if (
       attacker.unitType === "spears" &&
       attacker.formation === "defense" &&

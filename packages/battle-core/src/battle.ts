@@ -7,11 +7,18 @@ import {
   type BattleInput,
   type BattleScenario,
   type BattleState,
-  type Contact,
   type Squad,
   type StepResult,
 } from "./model.js";
 import { calculateDamage, livingSoldiers, safeInteger } from "./damage.js";
+import { acceptOrder, advanceOrders } from "./orders.js";
+import {
+  contactFor,
+  forced,
+  isSafe,
+  rangeUnits,
+  speedUnits,
+} from "./spatial.js";
 import { canonicalJson } from "./canonical.js";
 
 const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -26,7 +33,7 @@ function validate(state: BattleState): void {
     players: state.players,
     squads: state.squads,
     commanders: state.commanders,
-    contacts: state.contacts,
+    safeZones: state.safeZones,
   });
   for (const entries of [state.players, state.squads, state.commanders]) {
     if (new Set(entries.map((x) => x.id)).size !== entries.length)
@@ -72,20 +79,26 @@ function validate(state: BattleState): void {
     )
       throw new Error("Invalid commander");
   }
-  const keys = new Set<string>();
-  for (const contact of state.contacts) {
-    const a = squads.get(contact.attackerId),
-      b = squads.get(contact.targetId);
-    const key = contactKey(contact.attackerId, contact.targetId);
-    if (!a || !b || a.nationId === b.nationId || keys.has(key))
-      throw new Error("Invalid or duplicate contact");
-    keys.add(key);
-  }
-  if (
-    state.impactedContacts.some((key) => !keys.has(key)) ||
-    new Set(state.impactedContacts).size !== state.impactedContacts.length
-  )
+  if (new Set(state.impactedContacts).size !== state.impactedContacts.length)
     throw new Error("Invalid contact history");
+  for (const key of state.impactedContacts) {
+    const pair: unknown = JSON.parse(key);
+    if (
+      !Array.isArray(pair) ||
+      pair.length !== 2 ||
+      pair.some((id) => typeof id !== "string" || !squads.has(id))
+    )
+      throw new Error("Invalid contact history");
+  }
+  for (const squad of state.squads) {
+    rangeUnits(squad, state.config);
+    speedUnits(squad, state.config);
+    if (
+      (squad.pendingFormation === null) !==
+      (squad.formationRemainingTicks === 0)
+    )
+      throw new Error("Inconsistent formation transition");
+  }
 }
 function normalizeStatus(s: Squad, config: BattleConfig): Squad["fsmState"] {
   if (s.hpMilli === 0) {
@@ -99,10 +112,19 @@ function normalizeStatus(s: Squad, config: BattleConfig): Squad["fsmState"] {
   } else if (
     s.cohesion === 0 &&
     s.breakImmunityTicks === 0 &&
-    s.fsmState === "IDLE"
+    s.fsmState !== "ROUTED" &&
+    s.fsmState !== "BROKEN"
   ) {
     s.fsmState = "BROKEN";
     s.statusRemainingTicks = config.status.breakTicks;
+  }
+  if (forced(s)) {
+    s.order = null;
+    s.currentTargetId = null;
+    if (s.pendingFormation !== null) s.formation = "normal";
+    s.pendingFormation = null;
+    s.formationRemainingTicks = 0;
+    s.regroupRemainingTicks = 0;
   }
   return s.fsmState;
 }
@@ -122,17 +144,11 @@ export function createBattle(
   for (const s of state.squads) normalizeStatus(s, state.config);
   for (const list of [state.players, state.squads, state.commanders])
     list.sort((a, b) => compare(a.id, b.id));
-  state.contacts.sort((a, b) =>
-    compare(
-      contactKey(a.attackerId, a.targetId),
-      contactKey(b.attackerId, b.targetId),
-    ),
-  );
   validate(state);
   return state;
 }
 
-/** ATTACK is a one-tick headless intent. Contacts are trusted scenario data, never client commands. */
+/** Persistent orders, snapshot-based spatial decisions, then simultaneous combat. */
 export function step(
   input: BattleState,
   commands: readonly BattleInput[],
@@ -141,17 +157,15 @@ export function step(
   const state = structuredClone(input);
   const events: BattleEvent[] = [];
   const config = state.config;
+  state.squads.sort((a, b) => compare(a.id, b.id));
+  const previousFSM = new Map(state.squads.map((s) => [s.id, s.fsmState]));
+  const previousTargets = new Map(
+    state.squads.map((s) => [s.id, s.currentTargetId]),
+  );
   const emit = (event: Omit<BattleEvent, "tick">) =>
     events.push({ tick: state.tick, ...event });
   const squads = new Map(state.squads.map((s) => [s.id, s]));
   const players = new Map(state.players.map((p) => [p.id, p]));
-  const contacts = new Map(
-    state.contacts.map((c) => [contactKey(c.attackerId, c.targetId), c]),
-  );
-  const attacks = new Map<
-    string,
-    { target: Squad; contact: Contact; seq: number }
-  >();
   const valid: BattleInput[] = [];
   let malformed = 0;
   for (const raw of commands) {
@@ -181,7 +195,8 @@ export function step(
     const { playerId, command: cmd } = envelope;
     const player = players.get(playerId);
     const owned = cmd.squadIds.map((id) => squads.get(id));
-    const target = squads.get(cmd.targetSquadId);
+    const target =
+      cmd.type === "ATTACK" ? squads.get(cmd.targetSquadId) : undefined;
     let reason: string | undefined;
     if (!player) reason = "UNKNOWN_PLAYER";
     else if (counts.get(contactKey(playerId, String(cmd.seq)))! > 1)
@@ -193,15 +208,11 @@ export function step(
     else if (owned.some((s) => !s || s.ownerPlayerId !== playerId))
       reason = "NOT_OWNER";
     else if (
-      !target ||
-      target.hpMilli === 0 ||
-      target.nationId === player.nationId
+      cmd.type === "ATTACK" &&
+      (!target || target.hpMilli === 0 || target.nationId === player.nationId)
     )
       reason = "INVALID_TARGET";
-    else if (owned.some((s) => s!.fsmState !== "IDLE" || s!.hpMilli === 0))
-      reason = "FORCED_STATE";
-    else if (owned.some((s) => !contacts.has(contactKey(s!.id, target.id))))
-      reason = "NO_CONTACT";
+    else if (owned.some((s) => forced(s!))) reason = "FORCED_STATE";
     if (reason) {
       emit({
         type: "COMMAND_REJECTED",
@@ -213,19 +224,16 @@ export function step(
     }
     player!.lastCommandSeq = cmd.seq;
     for (const s of owned) {
-      attacks.set(s!.id, {
-        target: target!,
-        contact: contacts.get(contactKey(s!.id, target!.id))!,
-        seq: cmd.seq,
-      });
+      acceptOrder(s!, cmd, state);
       emit({
         type: "ORDER_ACCEPTED",
         actorId: s!.id,
-        targetId: target!.id,
+        ...(target ? { targetId: target.id } : {}),
         sourceCommandSeq: cmd.seq,
       });
     }
   }
+  advanceOrders(state);
   const deltas = new Map<
     string,
     { hp: bigint; morale: number; cohesion: number }
@@ -235,16 +243,13 @@ export function step(
   for (const attacker of [...state.squads].sort((a, b) =>
     compare(a.id, b.id),
   )) {
-    const attack = attacks.get(attacker.id);
-    if (!attack) continue;
-    const damage = calculateDamage(
-      attacker,
-      attack.target,
-      attack.contact,
-      config,
-    );
-    const key = contactKey(attacker.id, attack.target.id);
-    const delta = deltas.get(attack.target.id) ?? {
+    if (attacker.fsmState !== "ENGAGE" || forced(attacker)) continue;
+    const target = squads.get(attacker.currentTargetId ?? "");
+    if (!target || target.hpMilli === 0) continue;
+    const contact = contactFor(attacker, target);
+    const damage = calculateDamage(attacker, target, contact, config);
+    const key = contactKey(attacker.id, target.id);
+    const delta = deltas.get(target.id) ?? {
       hp: 0n,
       morale: 0,
       cohesion: 0,
@@ -253,22 +258,28 @@ export function step(
     if (damage > 0) {
       impacted.push(key);
       if (!state.impactedContacts.includes(key)) {
-        delta.morale +=
-          config.directions[attack.contact.direction].moraleImpact;
-        delta.cohesion +=
-          config.directions[attack.contact.direction].cohesionImpact;
+        delta.morale += config.directions[contact.direction].moraleImpact;
+        delta.cohesion += config.directions[contact.direction].cohesionImpact;
       }
     }
-    deltas.set(attack.target.id, delta);
+    deltas.set(target.id, delta);
     emit({
       type: "ATTACK_HIT",
       actorId: attacker.id,
-      targetId: attack.target.id,
-      sourceCommandSeq: attack.seq,
+      targetId: target.id,
+      ...(attacker.order ? { sourceCommandSeq: attacker.order.seq } : {}),
       delta: -damage,
     });
   }
   state.impactedContacts = impacted.sort(compare);
+  // Safety sees all simultaneous deaths, not partially applied damage.
+  const safetySnapshot = structuredClone(state);
+  for (const s of safetySnapshot.squads) {
+    const damage = deltas.get(s.id)?.hp ?? 0n;
+    s.hpMilli = Number(
+      BigInt(s.hpMilli) > damage ? BigInt(s.hpMilli) - damage : 0n,
+    );
+  }
   for (const s of state.squads) {
     const previousState = s.fsmState;
     const immunity = s.breakImmunityTicks;
@@ -307,18 +318,20 @@ export function step(
       s.statusRemainingTicks = Math.max(0, s.statusRemainingTicks - 1);
       if (
         s.statusRemainingTicks === 0 &&
-        (s.fsmState === "BROKEN" || (s.safe && !delta))
+        (s.fsmState === "BROKEN" || (isSafe(s, safetySnapshot) && !delta))
       ) {
-        if (s.fsmState === "ROUTED")
+        if (s.fsmState === "ROUTED") {
           s.morale = config.status.routRecoveryMorale;
-        else {
+          s.anchor = { ...s.position };
+        } else {
           s.cohesion = Math.max(
             s.cohesion,
             config.status.breakRecoveryCohesion,
           );
           s.breakImmunityTicks = config.status.breakImmunityTicks;
         }
-        s.fsmState = "IDLE";
+        s.fsmState = "REGROUP";
+        s.regroupRemainingTicks = config.status.regroupDelayTicks;
         emit({ type: "SQUAD_RECOVERED", actorId: s.id });
         const recoveredStatus = normalizeStatus(s, config);
         if (recoveredStatus === "BROKEN")
@@ -334,7 +347,13 @@ export function step(
         Number.MAX_SAFE_INTEGER,
         s.ticksSinceDamage + 1,
       );
-      if (s.hpMilli > 0 && s.fsmState === "IDLE" && previousState === "IDLE") {
+      if (
+        s.hpMilli > 0 &&
+        !forced(s) &&
+        previousState !== "BROKEN" &&
+        previousState !== "ROUTED" &&
+        s.fsmState !== "ENGAGE"
+      ) {
         for (const [field, remainder, rate, allowed] of [
           [
             "cohesion",
@@ -346,7 +365,7 @@ export function step(
             "morale",
             "moraleRecoveryRemainder",
             config.status.safeMoraleRecoveryPerSecond,
-            s.safe,
+            isSafe(s, safetySnapshot),
           ],
         ] as const) {
           if (!allowed) {
@@ -373,15 +392,32 @@ export function step(
     }
     if (immunity > 0 && s.breakImmunityTicks === immunity) {
       s.breakImmunityTicks--;
-      if (
-        s.breakImmunityTicks === 0 &&
-        s.fsmState === "IDLE" &&
-        s.cohesion === 0
-      ) {
+      if (s.breakImmunityTicks === 0 && !forced(s) && s.cohesion === 0) {
         normalizeStatus(s, config);
         emit({ type: "SQUAD_BROKEN", actorId: s.id });
       }
     }
+  }
+  for (const s of state.squads) {
+    if (s.pendingFormation !== null && !forced(s)) {
+      s.formationRemainingTicks--;
+      if (s.formationRemainingTicks === 0) {
+        s.formation = s.pendingFormation;
+        s.pendingFormation = null;
+        emit({ type: "FORMATION_COMPLETED", actorId: s.id });
+      }
+    }
+    if (previousFSM.get(s.id) !== s.fsmState)
+      emit({ type: "FSM_CHANGED", actorId: s.id, reason: s.fsmState });
+    if (
+      s.currentTargetId !== null &&
+      previousTargets.get(s.id) !== s.currentTargetId
+    )
+      emit({
+        type: "TARGET_ACQUIRED",
+        actorId: s.id,
+        targetId: s.currentTargetId,
+      });
   }
   state.tick = safeInteger(BigInt(state.tick) + 1n);
   validate(state);
