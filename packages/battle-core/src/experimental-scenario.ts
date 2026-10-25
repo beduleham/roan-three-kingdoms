@@ -157,47 +157,54 @@ export function compareExperimentalAugments(config: BattleConfig) {
     seed: 17,
     ticks: 1000,
     cases: [null, ...experimentalAugments.map((d) => d.id)].map((id) => {
-      const initial = createBattle(config, 17, experimentalScenario());
-      const frames = experimentalFrames(id);
-      const result = replay(initial, frames);
-      const repeat = replay(
-        initial,
-        frames.map((f) => [...f].reverse()),
-      );
-      let sample = initial;
-      for (const f of frames.slice(0, 30)) sample = step(sample, f).state;
-      return {
-        augment: id,
-        stateHash: result.stateHash,
-        eventHash: result.eventHash,
-        replayMatches:
-          result.stateHash === repeat.stateHash &&
-          result.eventHash === repeat.eventHash,
-        applied: result.events.filter(
-          (e) => e.type === "AUGMENT_EFFECT_APPLIED",
-        ).length,
-        attackDamageByA: result.events
-          .filter((e) => e.type === "ATTACK_HIT" && e.actorId === "a")
-          .reduce((n, e) => n - (e.delta ?? 0), 0),
-        cohesionLostByD: -result.events
-          .filter(
-            (e) =>
-              e.type === "COHESION_CHANGED" &&
-              e.actorId === "d" &&
-              (e.delta ?? 0) < 0,
-          )
-          .reduce((n, e) => n + (e.delta ?? 0), 0),
-        dBroken: result.events.filter(
-          (e) => e.type === "SQUAD_BROKEN" && e.actorId === "d",
-        ).length,
-        sampleTick: sample.tick,
-        sampleSquads: sample.squads.map((s) => ({
-          id: s.id,
-          hpMilli: s.hpMilli,
-          cohesion: s.cohesion,
-          position: s.position,
-        })),
-      };
+      return compareExperimentalAugmentCase(config, id);
     }),
+  };
+}
+
+/** One condition, two complete 1,000-tick runs, shared by the CLI and isolated tests. */
+export function compareExperimentalAugmentCase(
+  config: BattleConfig,
+  id: string | null,
+) {
+  const initial = createBattle(config, 17, experimentalScenario());
+  const frames = experimentalFrames(id);
+  const result = replay(initial, frames);
+  const repeat = replay(
+    initial,
+    frames.map((f) => [...f].reverse()),
+  );
+  let sample = initial;
+  for (const f of frames.slice(0, 30)) sample = step(sample, f).state;
+  return {
+    augment: id,
+    stateHash: result.stateHash,
+    eventHash: result.eventHash,
+    replayMatches:
+      result.stateHash === repeat.stateHash &&
+      result.eventHash === repeat.eventHash,
+    applied: result.events.filter((e) => e.type === "AUGMENT_EFFECT_APPLIED")
+      .length,
+    attackDamageByA: result.events
+      .filter((e) => e.type === "ATTACK_HIT" && e.actorId === "a")
+      .reduce((n, e) => n - (e.delta ?? 0), 0),
+    cohesionLostByD: -result.events
+      .filter(
+        (e) =>
+          e.type === "COHESION_CHANGED" &&
+          e.actorId === "d" &&
+          (e.delta ?? 0) < 0,
+      )
+      .reduce((n, e) => n + (e.delta ?? 0), 0),
+    dBroken: result.events.filter(
+      (e) => e.type === "SQUAD_BROKEN" && e.actorId === "d",
+    ).length,
+    sampleTick: sample.tick,
+    sampleSquads: sample.squads.map((s) => ({
+      id: s.id,
+      hpMilli: s.hpMilli,
+      cohesion: s.cohesion,
+      position: s.position,
+    })),
   };
 }

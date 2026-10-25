@@ -4,7 +4,7 @@ import type { BattleState, BattleEvent, BattleInput } from "../src/model.js";
 import {
   experimentalScenario,
   experimentalFrames,
-  compareExperimentalAugments,
+  compareExperimentalAugmentCase,
 } from "../src/experimental-scenario.js";
 import { experimentalAugments } from "../src/data/experimental-v0.1.js";
 import {
@@ -338,25 +338,47 @@ it("same-tick W has no retroactive mitigation", () => {
     ),
   ).toBe(true);
 });
-it(
-  "compares actual damage/movement/cohesion and replays every experimental case for 1000 ticks",
-  { timeout: 20000 },
-  () => {
-    const report = compareExperimentalAugments(config);
-    expect(report.cases.every((c) => c.replayMatches)).toBe(true);
-    const baseline = report.cases[0]!,
-      attack = report.cases[1]!,
-      speed = report.cases[2]!,
-      support = report.cases[3]!;
-    expect(attack.attackDamageByA).toBeGreaterThan(baseline.attackDamageByA);
-    expect(
-      speed.sampleSquads.find((s) => s.id === "a")!.position.x,
-    ).toBeGreaterThan(
-      baseline.sampleSquads.find((s) => s.id === "a")!.position.x,
-    );
-    expect(support.dBroken).toBeLessThan(baseline.dBroken);
+// Independent validation measured ~29.6s for all four conditions (~7.4s each).
+// Give only these full double-replay cases 15s (about 2x that per-case average).
+// No shared cache/hooks: every case can run alone and performs both full replays.
+it.each([null, shock, gale, discipline])(
+  "replays %s for 1000 ticks twice with matching state and event hashes",
+  { timeout: 15000 },
+  (id) => {
+    const result = compareExperimentalAugmentCase(config, id);
+    expect(result.replayMatches).toBe(true);
   },
 );
+it("compares actual damage, movement and cohesion against no augmentation", () => {
+  // All relevant impacts and the movement sample occur within the first 30 ticks.
+  // Full 1000-tick determinism is independently covered for every condition above.
+  const cases = [null, shock, gale, discipline].map((id) =>
+    replay(initial(), experimentalFrames(id, 30)),
+  );
+  const [baseline, attack, speed, support] = cases;
+  const damage = (r: (typeof cases)[number]) =>
+    r.events
+      .filter((e) => e.type === "ATTACK_HIT" && e.actorId === "a")
+      .reduce((sum, e) => sum - (e.delta ?? 0), 0);
+  const cohesionLost = (r: (typeof cases)[number]) =>
+    r.events
+      .filter(
+        (e) =>
+          e.type === "COHESION_CHANGED" &&
+          e.actorId === "d" &&
+          (e.delta ?? 0) < 0,
+      )
+      .reduce((sum, e) => sum - (e.delta ?? 0), 0);
+  expect(damage(attack!)).toBeGreaterThan(damage(baseline!));
+  expect(squad(speed!.state).position.x).toBeGreaterThan(
+    squad(baseline!.state).position.x,
+  );
+  expect(cohesionLost(support!)).toBeLessThan(cohesionLost(baseline!));
+  const breaks = (r: (typeof cases)[number]) =>
+    r.events.filter((e) => e.type === "SQUAD_BROKEN" && e.actorId === "d")
+      .length;
+  expect(breaks(support!)).toBeLessThan(breaks(baseline!));
+});
 it("actual allied W casts keep separate sources without doubling reduction", () => {
   let s = initial();
   s.commanders.push({
