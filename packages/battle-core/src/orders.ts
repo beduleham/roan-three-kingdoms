@@ -1,4 +1,6 @@
-import type { BattleInput, BattleState, Squad } from "./model.js";
+import type { BasicCommand, BattleState, Squad } from "./model.js";
+import { advanceCharge } from "./warrior.js";
+import { skillMultiplier } from "./effects.js";
 import {
   chaseRadius,
   compareIds,
@@ -12,7 +14,7 @@ import {
 
 export function acceptOrder(
   s: Squad,
-  cmd: BattleInput["command"],
+  cmd: BasicCommand,
   state: BattleState,
 ): void {
   if (cmd.type === "SET_STANCE") {
@@ -46,7 +48,11 @@ function move(
   state: BattleState,
 ): void {
   const before = s.position;
-  s.position = moveTowards(before, destination, speedUnits(s, state.config));
+  s.position = moveTowards(
+    before,
+    destination,
+    speedUnits(s, state.config, skillMultiplier(state, s, "speed")),
+  );
   const dx = s.position.x - before.x,
     dy = s.position.y - before.y;
   if (dx !== 0 || dy !== 0) s.facing = { x: dx, y: dy };
@@ -82,6 +88,10 @@ export function advanceOrders(state: BattleState): void {
     if (s.fsmState === "REGROUP" && s.regroupRemainingTicks > 0) {
       s.regroupRemainingTicks--;
       if (s.regroupRemainingTicks === 0) s.fsmState = "IDLE";
+      continue;
+    }
+    if (s.charge !== null) {
+      advanceCharge(s, snapshot, state);
       continue;
     }
     const order = s.order;
@@ -151,7 +161,7 @@ export function advanceOrders(state: BattleState): void {
         const proposed = moveTowards(
           s.position,
           target.position,
-          speedUnits(s, state.config),
+          speedUnits(s, state.config, skillMultiplier(state, s, "speed")),
         );
         if (within(s.anchor, proposed, radius)) move(s, proposed, state);
         else returnToAnchor(s, state);

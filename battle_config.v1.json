@@ -41,6 +41,27 @@
     "W": {"id": "warrior_rally", "cooldownTicks": 350, "targetSquadLimit": 2, "moraleRestore": 12, "attackBonusBp": 11000, "durationTicks": 60},
     "R": {"id": "warrior_breakthrough", "minLevel": 15, "cooldownTicks": 1000, "targetSquadLimit": 3, "chargeImpactBonusBp": 13000, "speedBonusBp": 11500, "durationTicks": 80, "routExtensionTicks": 10, "maxRoutExtensions": 1}
   },
+  "warriorAssumptions": {
+    "designStatus": "provisional-not-balance-validated",
+    "commanderMoveUnitsPerTick": 200,
+    "protectedSoldiersPercent": 40,
+    "weakenedSoldiersPercent": 20,
+    "protectedCohesionMin": 40,
+    "protectedDamageShareBp": 1000,
+    "weakenedDamageShareBp": 2500,
+    "exposedDamageShareBp": 5000,
+    "chargePreparationUnits": 2000,
+    "chargeCollisionRadiusUnits": 250,
+    "chargeMaxTravelUnits": 10000,
+    "chargePathToleranceUnits": 50,
+    "chargeMaxDurationTicks": 100,
+    "chargeObstructionPolicy": "cancel-on-other-enemy",
+    "reassignmentPolicy": "retarget-from-current-position",
+    "effectStacking": "refresh-source-max-across-sources",
+    "rallyRestorePolicy": "only-without-active-rally",
+    "disabledSourcePolicy": "remove-effects-and-charge",
+    "respawnPolicy": "designated-friendly-zone-only"
+},
   "augmentLevels": [5, 10, 16, 22, 28, 34, 38],
   "rankCaps": {
     "junior": {"minMerit": 0, "squads": 2, "soldiers": 40},

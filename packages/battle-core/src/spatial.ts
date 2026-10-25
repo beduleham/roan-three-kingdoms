@@ -13,7 +13,7 @@ export function distanceSquared(a: Position, b: Position): bigint {
 }
 export const within = (a: Position, b: Position, radius: number) =>
   distanceSquared(a, b) <= BigInt(radius) ** 2n;
-function ceilSqrt(n: bigint): bigint {
+export function ceilSqrt(n: bigint): bigint {
   if (n === 0n) return 0n;
   let low = 0n,
     high = n + 1n;
@@ -33,12 +33,12 @@ function integerUnits(value: number): number {
 }
 export const rangeUnits = (s: Squad, c: BattleConfig) =>
   integerUnits(c.unitTypes[s.unitType].rangeTiles * c.positionUnitsPerTile);
-export function speedUnits(s: Squad, c: BattleConfig): number {
+export function speedUnits(s: Squad, c: BattleConfig, skillBp = 10000): number {
   const perSecond = integerUnits(
     c.unitTypes[s.unitType].speedTilesPerSec * c.positionUnitsPerTile,
   );
   const base = integerUnits((perSecond * c.tickMs) / 1000);
-  return applyBp(base, c.formations[s.formation].speedBp);
+  return applyBp(applyBp(base, c.formations[s.formation].speedBp), skillBp);
 }
 export function chaseRadius(s: Squad, c: BattleConfig): number {
   const tiles =

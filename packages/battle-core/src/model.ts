@@ -39,6 +39,17 @@ export const squadSchema = z
       .default({ x: 1, y: 0 }),
     stance: stance.default("balanced"),
     order: orderSchema.nullable().default(null),
+    charge: z
+      .strictObject({
+        sourceCommanderId: id,
+        sourceCommandSeq: natural,
+        targetSquadId: id,
+        start: positionSchema,
+        destination: positionSchema,
+        expiresAt: natural,
+      })
+      .nullable()
+      .default(null),
     currentTargetId: id.nullable().default(null),
     maxSoldiers: natural.positive(),
     hpMilli: natural,
@@ -53,6 +64,7 @@ export const squadSchema = z
         "MOVE",
         "ENGAGE",
         "CHASE",
+        "CHARGE",
         "RETURN",
         "RETREAT",
         "REGROUP",
@@ -92,9 +104,16 @@ export const commanderSchema = z.strictObject({
   id,
   ownerPlayerId: id,
   assignedSquadId: id.nullable().default(null),
+  reassignTargetId: id.nullable().default(null),
+  position: positionSchema.default({ x: 0, y: 0 }),
+  classId: z.enum(["warrior", "strategist", "commander"]).default("warrior"),
+  respawnZoneIndex: natural.nullable().default(null),
+  respawnRemainingTicks: natural.default(0),
   hpMilli: natural,
   maxHpMilli: natural.positive(),
-  status: z.enum(["ACTIVE", "WOUNDED"]).default("ACTIVE"),
+  status: z
+    .enum(["ACTIVE", "REASSIGNING", "EXPOSED", "WOUNDED"])
+    .default("ACTIVE"),
   cooldownTicks: z
     .strictObject({ Q: natural, W: natural, R: natural })
     .default({ Q: 0, W: 0, R: 0 }),
@@ -124,6 +143,17 @@ export type Commander = z.infer<typeof commanderSchema>;
 export type Squad = z.infer<typeof squadSchema>;
 export type Contact = z.infer<typeof contactSchema>;
 export type BattleScenario = z.input<typeof scenarioSchema>;
+export const skillEffectSchema = z.strictObject({
+  id,
+  sourceCommanderId: id,
+  sourceCommandSeq: natural,
+  skill: z.enum(["W", "R"]),
+  targetSquadIds: z.array(id).min(1),
+  expiresAt: natural,
+  extensionsUsed: natural,
+});
+export type SkillEffect = z.infer<typeof skillEffectSchema>;
+export type Skill = "Q" | "W" | "R";
 export interface BattleState {
   config: BattleConfig;
   seed: number;
@@ -133,6 +163,7 @@ export interface BattleState {
   squads: Squad[];
   safeZones: z.infer<typeof scenarioSchema>["safeZones"];
   impactedContacts: string[];
+  skillEffects: SkillEffect[];
 }
 const baseCommand = {
   seq: natural,
@@ -142,6 +173,18 @@ const baseCommand = {
 export const commandSchema = z.strictObject({
   playerId: id,
   command: z.discriminatedUnion("type", [
+    z.strictObject({
+      ...baseCommand,
+      type: z.literal("CAST_SKILL"),
+      commanderId: id,
+      skill: z.enum(["Q", "W", "R"]),
+      targetSquadId: id.optional(),
+    }),
+    z.strictObject({
+      ...baseCommand,
+      type: z.literal("REASSIGN_COMMANDER"),
+      commanderId: id,
+    }),
     z.strictObject({
       ...baseCommand,
       type: z.literal("ATTACK"),
@@ -160,10 +203,26 @@ export const commandSchema = z.strictObject({
     }),
   ]),
 });
+export type BasicCommand = Exclude<
+  z.infer<typeof commandSchema>["command"],
+  { type: "CAST_SKILL" | "REASSIGN_COMMANDER" }
+>;
 export type BattleInput = z.infer<typeof commandSchema>;
 export interface BattleEvent {
   tick: number;
   type:
+    | "SKILL_CAST"
+    | "SKILL_EFFECT_APPLIED"
+    | "SKILL_EFFECT_EXPIRED"
+    | "SKILL_EFFECT_EXTENDED"
+    | "CHARGE_STARTED"
+    | "CHARGE_IMPACT"
+    | "CHARGE_CANCELLED"
+    | "COMMANDER_REASSIGNING"
+    | "COMMANDER_ASSIGNED"
+    | "COMMANDER_WOUNDED"
+    | "COMMANDER_RESPAWNED"
+    | "COMMANDER_HIT"
     | "FSM_CHANGED"
     | "TARGET_ACQUIRED"
     | "FORMATION_COMPLETED"
@@ -181,6 +240,10 @@ export interface BattleEvent {
   sourceCommandSeq?: number;
   delta?: number;
   reason?: string;
+  sourceCommanderId?: string;
+  skill?: Skill;
+  effectId?: string;
+  moraleDelta?: number;
 }
 export interface StepResult {
   state: BattleState;

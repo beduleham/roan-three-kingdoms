@@ -113,6 +113,27 @@ export const battleConfigSchema = z
         maxRoutExtensions: integer,
       }),
     }),
+    warriorAssumptions: z.strictObject({
+      designStatus: z.literal("provisional-not-balance-validated"),
+      commanderMoveUnitsPerTick: positive,
+      protectedSoldiersPercent: integer.max(100),
+      weakenedSoldiersPercent: integer.max(100),
+      protectedCohesionMin: integer.max(100),
+      protectedDamageShareBp: integer.max(10000),
+      weakenedDamageShareBp: integer.max(10000),
+      exposedDamageShareBp: integer.max(10000),
+      chargePreparationUnits: positive,
+      chargeCollisionRadiusUnits: positive,
+      chargeMaxTravelUnits: positive,
+      chargePathToleranceUnits: integer,
+      chargeMaxDurationTicks: positive,
+      chargeObstructionPolicy: z.literal("cancel-on-other-enemy"),
+      reassignmentPolicy: z.literal("retarget-from-current-position"),
+      effectStacking: z.literal("refresh-source-max-across-sources"),
+      rallyRestorePolicy: z.literal("only-without-active-rally"),
+      disabledSourcePolicy: z.literal("remove-effects-and-charge"),
+      respawnPolicy: z.literal("designated-friendly-zone-only"),
+    }),
     augmentLevels: z.array(positive.max(40)).min(1),
     rankCaps: z.strictObject({
       junior: rank,
@@ -127,6 +148,19 @@ export const battleConfigSchema = z
     }),
   })
   .superRefine((config, ctx) => {
+    const rules = config.warriorAssumptions;
+    if (
+      rules.chargeMaxTravelUnits <=
+        rules.chargePreparationUnits + rules.chargeCollisionRadiusUnits ||
+      rules.protectedSoldiersPercent <= rules.weakenedSoldiersPercent ||
+      rules.protectedDamageShareBp > rules.weakenedDamageShareBp ||
+      rules.weakenedDamageShareBp > rules.exposedDamageShareBp
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["warriorAssumptions"],
+        message: "Invalid provisional threshold ordering",
+      });
     for (const key of [
       "baseEngagementBp",
       "globalDamageReductionCapBp",
