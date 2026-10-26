@@ -1,3 +1,4 @@
+import { cohesionDamageBp, reduceCohesionDamage } from "./augments.js";
 import {
   offerAugments,
   selectAugment,
@@ -309,6 +310,7 @@ export function step(
     }
     if (cmd.type === "CAST_SKILL" || cmd.type === "REASSIGN_COMMANDER") {
       acceptWarriorCommand(state, cmd, emit);
+      expireAugments(state, emit);
       continue;
     }
     for (const s of owned) {
@@ -322,12 +324,16 @@ export function step(
       });
     }
   }
+  expireAugments(state, emit);
   const beforeMovement = new Map(
     state.squads.map((s) => [s.id, { ...s.position }]),
   );
   advanceOrders(state);
   synchronizeCommanders(state, emit);
   const { deltas, moraleSources } = resolveCharges(state, beforeMovement, emit);
+  const cohesionBp = new Map(
+    state.squads.map((s) => [s.id, cohesionDamageBp(state, s)]),
+  );
   // Q resolves before basic attacks. All Q impacts use the same movement snapshot.
   const combat = new Map(
     state.squads.map((s) => {
@@ -335,7 +341,10 @@ export function step(
       const copy = {
         ...s,
         morale: clamp(s.morale - (q?.morale ?? 0)),
-        cohesion: clamp(s.cohesion - (q?.cohesion ?? 0)),
+        cohesion: clamp(
+          s.cohesion -
+            reduceCohesionDamage(q?.cohesion ?? 0, cohesionBp.get(s.id)!),
+        ),
       };
       if (
         copy.morale === 0 ||
@@ -412,7 +421,10 @@ export function step(
       const morale = s.morale,
         cohesion = s.cohesion;
       s.morale = clamp(s.morale - delta.morale);
-      s.cohesion = clamp(s.cohesion - delta.cohesion);
+      s.cohesion = clamp(
+        s.cohesion -
+          reduceCohesionDamage(delta.cohesion, cohesionBp.get(s.id)!),
+      );
       if (s.morale !== morale)
         emit({
           type: "MORALE_CHANGED",
@@ -542,6 +554,7 @@ export function step(
       });
   }
   finishWarriorTick(state, commanderDamage, routed, moraleSources, emit);
+  expireAugments(state, emit);
   processAugmentEvents(state, [...events], emit);
   offerAugments(state, emit);
   state.tick = safeInteger(BigInt(state.tick) + 1n);

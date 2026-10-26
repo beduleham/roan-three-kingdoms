@@ -1,0 +1,157 @@
+{
+  "version": "experimental-v0.1",
+  "designStatus": "experimental-not-balance-validated",
+  "scope": "Deterministic headless comparison; NOT actual play balance validation; Phase 3 incomplete",
+  "seed": 17,
+  "ticks": 1000,
+  "cases": [
+    {
+      "augment": null,
+      "stateHash": "81d4c69d34735c01",
+      "eventHash": "3fa90258c22f0fec",
+      "replayMatches": true,
+      "applied": 0,
+      "attackDamageByA": 26610,
+      "cohesionLostByD": 14,
+      "dBroken": 1,
+      "sampleTick": 30,
+      "sampleSquads": [
+        {
+          "id": "a",
+          "hpMilli": 1950585,
+          "cohesion": 100,
+          "position": { "x": 7100, "y": -2210 }
+        },
+        {
+          "id": "b",
+          "hpMilli": 1973390,
+          "cohesion": 85,
+          "position": { "x": 5000, "y": 0 }
+        },
+        {
+          "id": "d",
+          "hpMilli": 1895168,
+          "cohesion": 0,
+          "position": { "x": 5000, "y": 5000 }
+        },
+        {
+          "id": "e",
+          "hpMilli": 1993680,
+          "cohesion": 100,
+          "position": { "x": 4800, "y": 5000 }
+        }
+      ]
+    },
+    {
+      "augment": "draft-shock-breakthrough",
+      "stateHash": "483ef76a840a6762",
+      "eventHash": "5c1a34a4cebc0a8e",
+      "replayMatches": true,
+      "applied": 1,
+      "attackDamageByA": 30240,
+      "cohesionLostByD": 14,
+      "dBroken": 1,
+      "sampleTick": 30,
+      "sampleSquads": [
+        {
+          "id": "a",
+          "hpMilli": 1950585,
+          "cohesion": 100,
+          "position": { "x": 7100, "y": -2210 }
+        },
+        {
+          "id": "b",
+          "hpMilli": 1969760,
+          "cohesion": 85,
+          "position": { "x": 5000, "y": 0 }
+        },
+        {
+          "id": "d",
+          "hpMilli": 1895168,
+          "cohesion": 0,
+          "position": { "x": 5000, "y": 5000 }
+        },
+        {
+          "id": "e",
+          "hpMilli": 1993680,
+          "cohesion": 100,
+          "position": { "x": 4800, "y": 5000 }
+        }
+      ]
+    },
+    {
+      "augment": "draft-gale-maneuver",
+      "stateHash": "c613189736ec8678",
+      "eventHash": "7d3b505921b164d8",
+      "replayMatches": true,
+      "applied": 1,
+      "attackDamageByA": 26610,
+      "cohesionLostByD": 14,
+      "dBroken": 1,
+      "sampleTick": 30,
+      "sampleSquads": [
+        {
+          "id": "a",
+          "hpMilli": 1950585,
+          "cohesion": 100,
+          "position": { "x": 7330, "y": -2432 }
+        },
+        {
+          "id": "b",
+          "hpMilli": 1973390,
+          "cohesion": 85,
+          "position": { "x": 5000, "y": 0 }
+        },
+        {
+          "id": "d",
+          "hpMilli": 1895168,
+          "cohesion": 0,
+          "position": { "x": 5000, "y": 5000 }
+        },
+        {
+          "id": "e",
+          "hpMilli": 1993680,
+          "cohesion": 100,
+          "position": { "x": 4800, "y": 5000 }
+        }
+      ]
+    },
+    {
+      "augment": "draft-legion-discipline",
+      "stateHash": "ca42af56b76b7743",
+      "eventHash": "57ac19319e1be384",
+      "replayMatches": true,
+      "applied": 2,
+      "attackDamageByA": 26610,
+      "cohesionLostByD": 12,
+      "dBroken": 0,
+      "sampleTick": 30,
+      "sampleSquads": [
+        {
+          "id": "a",
+          "hpMilli": 1950585,
+          "cohesion": 100,
+          "position": { "x": 7100, "y": -2210 }
+        },
+        {
+          "id": "b",
+          "hpMilli": 1973390,
+          "cohesion": 85,
+          "position": { "x": 5000, "y": 0 }
+        },
+        {
+          "id": "d",
+          "hpMilli": 1895168,
+          "cohesion": 2,
+          "position": { "x": 5000, "y": 5000 }
+        },
+        {
+          "id": "e",
+          "hpMilli": 1905200,
+          "cohesion": 100,
+          "position": { "x": 4800, "y": 5000 }
+        }
+      ]
+    }
+  ]
+}

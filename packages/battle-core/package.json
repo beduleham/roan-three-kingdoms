@@ -11,6 +11,10 @@
     "./node": {
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"
+    },
+    "./experimental-v0.1": {
+      "types": "./dist/data/experimental-v0.1.d.ts",
+      "import": "./dist/data/experimental-v0.1.js"
     }
   },
   "types": "./dist/index.d.ts",

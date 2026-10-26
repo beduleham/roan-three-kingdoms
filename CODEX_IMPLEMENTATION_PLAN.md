@@ -36,6 +36,7 @@
 - [x] Q 돌격, W 함성, R 파죽지세; 쿨다운/범위/레벨 제한.
 - [x] `onChargeImpact`, `onSkillCast`, `onCohesionBroken` 등 효과 이벤트.
 - [x] 합성 테스트 정의 3종으로 증강 선택·trigger/effect/stacking 파이프라인 검증.
+- [x] experimental-v0.1: 명시적 시나리오 주입으로만 활성화되는 3종 실험 구현 및 비교 CLI. 수치 미검증.
 - [ ] 운영용 최초 증강 3종의 효과·수치 확정 및 콘텐츠 구현.
 - [ ] 다음으로 무장 증강 9종 구현.
 
