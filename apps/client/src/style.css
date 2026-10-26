@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, "Noto Sans KR", sans-serif;
+  font-family: "Noto Sans KR", system-ui, sans-serif;
   color: #e8ddc4;
   background: #211b18;
   font-synthesis: none;
@@ -144,7 +144,8 @@ article strong {
 pre {
   white-space: pre-wrap;
   font:
-    12px/1.7 ui-monospace,
+    12px/1.7 "Noto Sans KR",
+    ui-monospace,
     monospace;
   color: #d4c7ab;
 }
