@@ -1,7 +1,7 @@
 :root {
   font-family: system-ui, "Noto Sans KR", sans-serif;
-  color: #e7eee8;
-  background: #0c171d;
+  color: #e8ddc4;
+  background: #211b18;
   font-synthesis: none;
 }
 * {
@@ -17,11 +17,11 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #40524f;
+  border-bottom: 1px solid #89734a;
   padding-bottom: 20px;
 }
 small {
-  color: #9aaea8;
+  color: #bcae91;
   font-size: 12px;
   letter-spacing: 1px;
 }
@@ -49,8 +49,8 @@ h2 {
 }
 button,
 select {
-  background: #22383f;
-  border: 1px solid #4b6869;
+  background: #30221f;
+  border: 1px solid #89734a;
   color: #edf1e8;
   border-radius: 5px;
   padding: 9px;
@@ -61,7 +61,7 @@ button {
   cursor: pointer;
 }
 button:hover {
-  background: #39575c;
+  background: #594034;
 }
 button:focus-visible,
 select:focus-visible {
@@ -76,15 +76,15 @@ main {
   gap: 22px;
 }
 aside {
-  background: #14242b;
-  border: 1px solid #31474d;
+  background: #302722;
+  border: 1px solid #89734a;
   padding: 18px;
   border-radius: 8px;
 }
 aside p {
   font-size: 13px;
   line-height: 1.7;
-  color: #b7c7c7;
+  color: #d4c7ab;
 }
 .toolbar {
   display: flex;
@@ -99,8 +99,8 @@ aside p {
 #arena {
   width: 100%;
   aspect-ratio: 12/7;
-  background: #14272e;
-  border: 1px solid #3e5556;
+  background: #30221f;
+  border: 1px solid #89734a;
 }
 canvas {
   display: block;
@@ -122,21 +122,21 @@ canvas {
 }
 article {
   padding: 12px;
-  border: 1px solid #374e56;
+  border: 1px solid #89734a;
   border-left: 3px solid #58b6e9;
   border-radius: 5px;
-  background: #14242b;
+  background: #302722;
 }
 article.red {
   border-left-color: #e47d71;
 }
 article.selected {
-  background: #233a40;
+  background: #49392b;
 }
 article p {
   font-size: 12px;
   margin: 5px 0;
-  color: #bacecc;
+  color: #d4c7ab;
 }
 article strong {
   font-size: 14px;
@@ -146,10 +146,10 @@ pre {
   font:
     12px/1.7 ui-monospace,
     monospace;
-  color: #bacecc;
+  color: #d4c7ab;
 }
 #notice {
-  background: #293936;
+  background: #49392b;
   padding: 10px;
   color: #ffe0a2;
   min-height: 56px;
@@ -161,7 +161,7 @@ pre {
 }
 .log {
   margin-top: 22px;
-  border-top: 1px solid #31474d;
+  border-top: 1px solid #89734a;
 }
 .log pre {
   height: 170px;
@@ -170,7 +170,7 @@ pre {
 footer {
   color: #91a59e;
   font-size: 12px;
-  border-top: 1px solid #31474d;
+  border-top: 1px solid #89734a;
   padding-top: 16px;
   margin-top: 16px;
   line-height: 1.8;
