@@ -442,3 +442,57 @@ test("infantry and archers animate in four directions with event driven arrows, 
     .poll(() => visual("human-2:0"))
     .toMatchObject({ texture: "archer-walk", mode: "idle" });
 });
+
+test("retired art is not requested, actual damage flashes and reset restores normal tint", async ({
+  page,
+}) => {
+  const requests = [];
+  page.on("request", (r) => requests.push(r.url()));
+  await page.reload();
+  await page.waitForFunction(
+    () =>
+      window.battleDemo?.view()?.loadedFootMotion &&
+      window.battleDemo.view().visibleImages > 0,
+  );
+  expect(
+    await page.evaluate(() => window.battleDemo.view().retiredTexturesPresent),
+  ).toBe(false);
+  expect(
+    requests.some(
+      (url) => url.includes("unit-art") || url.includes("foot-units.svg"),
+    ),
+  ).toBe(false);
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  const damaged = () =>
+    page.evaluate(() =>
+      window.battleDemo
+        .view()
+        .unitVisuals.filter((o) => o.name.startsWith("enemy-1:"))
+        .some((o) => o.tint !== 0xffffff),
+    );
+  await expect.poll(damaged, { timeout: 15000, intervals: [100] }).toBe(true);
+  await page.locator("#pause").click();
+  const frozen = await page.evaluate(
+    () => window.battleDemo.view().unitVisuals,
+  );
+  await page.waitForTimeout(200);
+  expect(
+    await page.evaluate(() => window.battleDemo.view().unitVisuals),
+  ).toEqual(frozen);
+  const log = await page.evaluate(() => window.battleDemo.log());
+  const result = replay(log.initial, log.frames);
+  expect(result.stateHash).toBe(log.stateHash);
+  expect(result.eventHash).toBe(log.eventHash);
+  await page.locator("#restart").click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.battleDemo
+          .view()
+          .unitVisuals.filter((o) => o.name.startsWith("enemy-1:"))
+          .every((o) => o.tint === 0xffffff),
+      ),
+    )
+    .toBe(true);
+});
