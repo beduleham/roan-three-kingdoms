@@ -257,3 +257,59 @@ test("command desk shows selected gauges, explicit target step, cooldown and res
     fullPage: true,
   });
 });
+
+test("spear direction and tick animation freeze on pause, attack follows real hits, all infantry types render", async ({
+  page,
+}) => {
+  await page.locator("#human1").selectOption("spears");
+  await page.locator("#human2").selectOption("infantry");
+  await page.locator("#enemy1").selectOption("spears");
+  await page.locator("#enemy2").selectOption("archers");
+  await page.locator("#reset").click();
+  const visual = () =>
+    page.evaluate(() =>
+      window.battleDemo.view().unitVisuals.find((o) => o.name === "human-1:0"),
+    );
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().loadedMotion))
+    .toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          window.battleDemo
+            .view()
+            .unitVisuals.filter((o) => o.texture === "foot-units").length,
+      ),
+    )
+    .toBe(16);
+  await clickGround(page, 6000, 11000);
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 3);
+  await page.locator("#pause").click();
+  expect(await visual()).toMatchObject({ texture: "spear-walk", mode: "walk" });
+  expect(Number((await visual()).frame)).toBeGreaterThanOrEqual(4);
+  expect(Number((await visual()).frame)).toBeLessThan(8);
+  const frozen = await visual();
+  await page.waitForTimeout(250);
+  expect(await visual()).toEqual(frozen);
+  await page.locator("#restart").click();
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  await expect
+    .poll(() => visual(), { timeout: 15000, intervals: [100] })
+    .toMatchObject({ texture: "spear-attack", mode: "attack" });
+  await page.locator("#pause").click();
+  const log = await page.evaluate(() => window.battleDemo.log());
+  const result = replay(log.initial, log.frames);
+  expect(result.stateHash).toBe(log.stateHash);
+  expect(result.eventHash).toBe(log.eventHash);
+  await page.screenshot({
+    path: test.info().outputPath("unit-motion.png"),
+    fullPage: true,
+  });
+  await page.locator("#restart").click();
+  await expect
+    .poll(() => visual())
+    .toMatchObject({ texture: "spear-walk", mode: "idle", frame: "0" });
+});
