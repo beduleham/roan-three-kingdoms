@@ -3,21 +3,26 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p apps/client/tsconfig.json --noEmit",
     "test": "vitest run",
-    "sim:smoke": "npm run build && node packages/battle-core/dist/smoke.js",
-    "build": "tsc -p packages/battle-core/tsconfig.build.json",
-    "format": "prettier --write packages package.json tsconfig.json vitest.config.ts",
-    "format:check": "prettier --check packages package.json tsconfig.json vitest.config.ts",
-    "sim:experimental": "npm run build && node packages/battle-core/dist/experimental-cli.js"
+    "sim:smoke": "npm run build:core && node packages/battle-core/dist/smoke.js",
+    "build": "npm run build:core && npm run build --workspace @roan/client",
+    "format": "prettier --write packages apps package.json tsconfig.json vitest.config.ts",
+    "format:check": "prettier --check packages apps package.json tsconfig.json vitest.config.ts",
+    "sim:experimental": "npm run build:core && node packages/battle-core/dist/experimental-cli.js",
+    "dev": "npm run dev --workspace @roan/client",
+    "build:core": "tsc -p packages/battle-core/tsconfig.build.json",
+    "test:browser": "npm run build:core && playwright test --config apps/client/playwright.config.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "26.6.5",
     "prettier": "3.9.10",
     "typescript": "7.0.2",
