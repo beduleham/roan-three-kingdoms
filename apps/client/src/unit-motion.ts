@@ -11,13 +11,25 @@ export function spearPose(
   moving: boolean,
   lastHitTick?: number,
 ) {
-  const row = directionRow(facing);
+  return footPose("spears", facing, tick, moving, lastHitTick);
+}
+export function footPose(
+  kind: "spears" | "infantry" | "archers",
+  facing: Facing,
+  tick: number,
+  moving: boolean,
+  lastHitTick?: number,
+) {
+  const prefix =
+    kind === "spears" ? "spear" : kind === "archers" ? "archer" : "infantry";
   const attack =
     lastHitTick !== undefined && lastHitTick <= tick && tick - lastHitTick < 4;
   const mode = attack ? "attack" : moving ? "walk" : "idle";
   return {
-    texture: attack ? "spear-attack" : "spear-walk",
-    frame: row * 4 + (mode === "idle" ? 0 : Math.floor(tick / 2) % 4),
+    texture: `${prefix}-${attack ? "attack" : "walk"}`,
+    frame:
+      directionRow(facing) * 4 +
+      (mode === "idle" ? 0 : Math.floor(tick / 2) % 4),
     mode,
   };
 }
