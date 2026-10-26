@@ -85,3 +85,31 @@ describe("mounted presentation", () => {
     });
   });
 });
+
+import { footPose } from "../src/unit-motion.js";
+for (const kind of ["infantry", "archers"] as const) {
+  describe(`${kind} directional animation`, () => {
+    it.each([
+      [1, 0, 0],
+      [0, 1, 1],
+      [-1, 0, 2],
+      [0, -1, 3],
+    ])("facing %i,%i uses row %i", (x, y, row) =>
+      expect(footPose(kind, { x, y }, 0, false).frame).toBe(row * 4),
+    );
+    it("selects walk, idle, and actual recent attack without changing heading", () => {
+      const prefix = kind === "archers" ? "archer" : "infantry";
+      expect(footPose(kind, { x: 0, y: 1 }, 2, true)).toMatchObject({
+        texture: `${prefix}-walk`,
+        mode: "walk",
+        frame: 5,
+      });
+      expect(footPose(kind, { x: 0, y: 1 }, 2, false, 2)).toMatchObject({
+        texture: `${prefix}-attack`,
+        mode: "attack",
+        frame: 5,
+      });
+      expect(footPose(kind, { x: 0, y: 1 }, 2, false, 3).mode).toBe("idle");
+    });
+  });
+}
