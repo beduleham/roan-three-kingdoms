@@ -1,3 +1,8 @@
+import walkUrl from "./spear-walk.svg?url";
+import attackUrl from "./spear-attack.svg?url";
+import footUrl from "./foot-units.svg?url";
+import motionAtlas from "./motion-atlas.json";
+import { spearPose } from "./unit-motion.js";
 import terrainUrl from "./terrain.svg?url";
 import { project, unproject, groundRing } from "./projection.js";
 import { unitArt } from "./unit-art.js";
@@ -32,7 +37,7 @@ const options = (entries: Record<string, string>) =>
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <header><div><small>STRATELIER / 채색 병서 전투 실험실</small><h1>로언 베이의 삼국지</h1></div><div class="badge">로컬 데모 · demo-order-v0.1<br>각 2부대 · 40명 / 시작 Lv.${DEMO.startLevel} (R 검증용)</div></header>
 <section class="setup"><label>아군 1 <select id="human1">${options(unitNames)}</select></label><label>아군 2 <select id="human2">${options(unitNames)}</select></label><label>적군 1 <select id="enemy1">${options(unitNames)}</select></label><label>적군 2 <select id="enemy2">${options(unitNames)}</select></label><label><input id="experimental" type="checkbox"> 실험용 증강 (수치 미검증)</label><button id="reset">편성 적용 · 초기화</button></section>
-<main><section class="battle"><div class="toolbar"><strong id="clock"></strong><button id="pause">시작</button><button id="download">전체 로그 JSON</button></div><div id="arena"></div><p class="legend">군기: 아군 파랑 / 적군 빨강 · 백마: 장수 · 기병·창병 정적 샘플 / 그 외 병종은 도형 · 방향별 동작 미적용</p><div id="cards"></div></section>
+<main><section class="battle"><div class="toolbar"><strong id="clock"></strong><button id="pause">시작</button><button id="download">전체 로그 JSON</button></div><div id="arena"></div><p class="legend">군기: 아군 파랑 / 적군 빨강 · 백마: 장수 · 창병 4방향 이동·공격 초안 · 다른 병종은 정적 샘플</p><div id="cards"></div></section>
 <aside><h2>전술 명령</h2><p>클릭 / 1·2: 선택 · Shift: 복수 선택<br>우클릭: 이동 / 적 공격 · 방향키: 화면 이동</p><div class="buttons"><button id="move">이동</button><button id="attackMove">공격 이동 (A)</button><button id="retreat">후퇴 (T)</button></div><label>태세 <select id="stance">${options({ defensive: "방어", balanced: "균형", aggressive: "공격" })}</select></label><button id="applyStance">태세 적용</button><label>진형 <select id="formation">${options({ normal: "기본진", defense: "방어진", offense: "공격진" })}</select></label><button id="applyFormation">진형 적용</button>
 <h2>무장 스킬</h2><div class="buttons"><button id="Q">Q 돌격</button><button id="W">W 함성</button><button id="R">R 파죽지세</button></div><p id="aim"></p><div class="buttons"><button id="confirm">시전 확인 (Enter)</button><button id="cancel">취소 (Esc)</button></div><button id="reassign">선택 부대로 장수 재배속</button><pre id="commander"></pre><p role="status" id="notice"></p><section id="augments"></section></aside></main>
 <section class="log"><h2>전투 사건 <small>최근 주요 사건 · 전체 사건은 JSON에 기록</small></h2><pre id="events"></pre></section><footer>브라우저 내 battle-core 실행 · 실제 서버 권위 / 멀티플레이 아님 · 자동 AI는 기본 교전·추격·복귀만 수행합니다. 성장·거점 승리 규칙 없음. Phase 3·4 전체 미완료.</footer>`;
@@ -391,7 +396,16 @@ class BattleScene extends Phaser.Scene {
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private arrows!: Phaser.Types.Input.Keyboard.CursorKeys;
   private sprites = new Map<string, Phaser.GameObjects.Image>();
+  private previousPositions = new Map<
+    string,
+    { x: number; y: number; tick: number; moving: boolean }
+  >();
+  private lastHits = new Map<string, number>();
+  private seenEvents = 0;
   preload() {
+    this.load.image("spear-walk", walkUrl);
+    this.load.image("spear-attack", attackUrl);
+    this.load.image("foot-units", footUrl);
     this.load.image("unit-strip", unitArt);
     this.load.image("battle-ground", terrainUrl);
   }
@@ -412,6 +426,12 @@ class BattleScene extends Phaser.Scene {
         .image(480, 280, "battle-ground")
         .setDisplaySize(1200, 700)
         .setDepth(-100);
+    for (const [key, atlas] of Object.entries(motionAtlas)) {
+      if (this.textures.exists(key))
+        atlas.frames.forEach((f, i) =>
+          this.textures.get(key).add(String(i), 0, f.x, f.y, f.width, f.height),
+        );
+    }
     this.ink = this.add.graphics();
     this.arrows = this.input.keyboard!.createCursorKeys();
     this.input.mouse!.disableContextMenu();
@@ -450,6 +470,9 @@ class BattleScene extends Phaser.Scene {
     const cam = this.cameras.main;
     if (this.seenReset !== viewReset) {
       cam.setScroll(0, 0);
+      this.previousPositions.clear();
+      this.lastHits.clear();
+      this.seenEvents = 0;
       this.seenReset = viewReset;
     }
     const speed = delta * 0.5;
@@ -457,6 +480,10 @@ class BattleScene extends Phaser.Scene {
     if (this.arrows.right.isDown) cam.scrollX += speed;
     if (this.arrows.up.isDown) cam.scrollY -= speed;
     if (this.arrows.down.isDown) cam.scrollY += speed;
+    for (const event of session.events.slice(this.seenEvents))
+      if (event.type === "ATTACK_HIT")
+        this.lastHits.set(event.actorId, event.tick);
+    this.seenEvents = session.events.length;
     if (!this.fontReady) return;
     const g = this.ink;
     g.clear();
@@ -479,19 +506,33 @@ class BattleScene extends Phaser.Scene {
       size: number,
       depth: number,
       alpha = 1,
+      texture = "unit-strip",
+      flip = false,
+      mode = "static",
     ) => {
-      if (!this.textures.exists("unit-strip")) return;
+      if (!this.textures.exists(texture)) return;
       visible.add(key);
       let sprite = this.sprites.get(key);
       if (!sprite) {
-        sprite = this.add.image(0, 0, "unit-strip", String(frame));
+        sprite = this.add.image(0, 0, texture, String(frame)).setName(key);
         this.sprites.set(key, sprite);
       }
+      const atlas =
+        texture in motionAtlas
+          ? motionAtlas[texture as keyof typeof motionAtlas]
+          : null;
+      const rect = atlas?.frames[frame];
+      const displayHeight = size * (atlas?.displayScale ?? 1);
       sprite
-        .setFrame(String(frame))
+        .setTexture(texture, String(frame))
         .setPosition(p.x, p.y)
-        .setOrigin(0.5, 0.94)
-        .setDisplaySize(size, size)
+        .setOrigin(rect?.originX ?? 0.5, rect?.originY ?? 0.94)
+        .setFlipX(flip)
+        .setData("mode", mode)
+        .setDisplaySize(
+          displayHeight * (rect ? rect.width / rect.height : 1),
+          displayHeight,
+        )
         .setDepth(depth)
         .setAlpha(alpha)
         .setVisible(true);
@@ -506,17 +547,58 @@ class BattleScene extends Phaser.Scene {
         session.pending?.targetSquadId === s.id
       )
         ring(s.position, 800, 0xb5955d);
-      const art =
-        s.unitType === "cavalry" ? 1 : s.unitType === "spears" ? 2 : null;
-      if (s.hpMilli > 0 && art !== null && this.textures.exists("unit-strip")) {
+      const previous = this.previousPositions.get(s.id);
+      if (!previous || previous.tick > session.state.tick)
+        this.previousPositions.set(s.id, {
+          ...s.position,
+          tick: session.state.tick,
+          moving: false,
+        });
+      else if (previous.tick < session.state.tick)
+        this.previousPositions.set(s.id, {
+          ...s.position,
+          tick: session.state.tick,
+          moving: previous.x !== s.position.x || previous.y !== s.position.y,
+        });
+      const moving = this.previousPositions.get(s.id)!.moving;
+      const pose = spearPose(
+        s.facing,
+        session.state.tick,
+        moving,
+        this.lastHits.get(s.id),
+      );
+      const texture =
+        s.unitType === "spears"
+          ? pose.texture
+          : s.unitType === "cavalry"
+            ? "unit-strip"
+            : "foot-units";
+      const frame =
+        s.unitType === "spears"
+          ? pose.frame
+          : s.unitType === "cavalry"
+            ? 1
+            : s.unitType === "archers"
+              ? 1
+              : 0;
+      if (s.hpMilli > 0 && this.textures.exists(texture)) {
         const count = Math.min(8, livingSoldiers(s, config));
         for (let i = 0; i < count; i++) {
           const foot = project({
             x: s.position.x + ((i % 4) - 1.5) * 650,
             y: s.position.y + (Math.floor(i / 4) - 0.5) * 900,
           });
-          image(`${s.id}:${i}`, art, foot, art === 1 ? 52 : 42, foot.y);
-          // Colored bases preserve allegiance even when sample clothing differs.
+          image(
+            `${s.id}:${i}`,
+            frame,
+            foot,
+            s.unitType === "cavalry" ? 52 : 46,
+            foot.y,
+            1,
+            texture,
+            s.unitType !== "spears" && s.facing.x - s.facing.y < 0,
+            s.unitType === "spears" ? pose.mode : "static",
+          );
           g.fillStyle(color, 0.8);
           g.fillEllipse(foot.x, foot.y, 12, 4);
         }
@@ -604,6 +686,21 @@ Object.defineProperty(window, "battleDemo", {
         scrollY: camera.scrollY,
         loadedArt: scene.textures.exists("unit-strip"),
         loadedGround: scene.textures.exists("battle-ground"),
+        loadedMotion: ["spear-walk", "spear-attack", "foot-units"].every(
+          (key) => scene.textures.exists(key),
+        ),
+        unitVisuals: scene.children.list
+          .filter(
+            (o): o is Phaser.GameObjects.Image =>
+              o instanceof Phaser.GameObjects.Image && o.visible,
+          )
+          .map((o) => ({
+            name: o.name,
+            texture: o.texture.key,
+            frame: o.frame.name,
+            flip: o.flipX,
+            mode: o.getData("mode"),
+          })),
         visibleImages: scene.children.list.filter(
           (o) => o instanceof Phaser.GameObjects.Image && o.visible,
         ).length,
