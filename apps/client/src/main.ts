@@ -1,3 +1,4 @@
+import terrainUrl from "./terrain.svg?url";
 import { project, unproject, groundRing } from "./projection.js";
 import { unitArt } from "./unit-art.js";
 import Phaser from "phaser";
@@ -35,6 +36,64 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <aside><h2>전술 명령</h2><p>클릭 / 1·2: 선택 · Shift: 복수 선택<br>우클릭: 이동 / 적 공격 · 방향키: 화면 이동</p><div class="buttons"><button id="move">이동</button><button id="attackMove">공격 이동 (A)</button><button id="retreat">후퇴 (T)</button></div><label>태세 <select id="stance">${options({ defensive: "방어", balanced: "균형", aggressive: "공격" })}</select></label><button id="applyStance">태세 적용</button><label>진형 <select id="formation">${options({ normal: "기본진", defense: "방어진", offense: "공격진" })}</select></label><button id="applyFormation">진형 적용</button>
 <h2>무장 스킬</h2><div class="buttons"><button id="Q">Q 돌격</button><button id="W">W 함성</button><button id="R">R 파죽지세</button></div><p id="aim"></p><div class="buttons"><button id="confirm">시전 확인 (Enter)</button><button id="cancel">취소 (Esc)</button></div><button id="reassign">선택 부대로 장수 재배속</button><pre id="commander"></pre><p role="status" id="notice"></p><section id="augments"></section></aside></main>
 <section class="log"><h2>전투 사건 <small>최근 주요 사건 · 전체 사건은 JSON에 기록</small></h2><pre id="events"></pre></section><footer>브라우저 내 battle-core 실행 · 실제 서버 권위 / 멀티플레이 아님 · 자동 AI는 기본 교전·추격·복귀만 수행합니다. 성장·거점 승리 규칙 없음. Phase 3·4 전체 미완료.</footer>`;
+// Reuse existing command controls; only their presentation changes.
+const setupPanel = document.createElement("details");
+setupPanel.id = "setup-panel";
+setupPanel.innerHTML = "<summary>시험 편성 · 테스트 설정</summary>";
+const setup = document.querySelector(".setup")!;
+setup.before(setupPanel);
+setupPanel.append(setup);
+const main = document.querySelector("main")!;
+const desk = document.createElement("section");
+desk.className = "command-desk";
+desk.innerHTML =
+  '<section id="selected-unit" aria-label="선택 부대 상태"></section><section class="command-panel"><div class="desk-heading"><span class="seal" aria-hidden="true">令</span><h2>군령을 내리다</h2></div><p id="order-step" aria-live="polite"></p></section>';
+main.after(desk);
+const aside = document.querySelector("aside")!;
+desk.querySelector(".command-panel")!.append(aside);
+for (const selector of ["#cards", ".log", "#commander"]) {
+  const node = document.querySelector(selector)!;
+  const panel = document.createElement("details");
+  panel.className = "debug-panel";
+  const summary = document.createElement("summary");
+  summary.textContent =
+    selector === "#cards"
+      ? "전체 부대 상태"
+      : selector === ".log"
+        ? "전투 사건 · 개발 로그"
+        : "장수 상세 · 검증 수치";
+  node.before(panel);
+  panel.append(summary, node);
+}
+const tactics = document.createElement("details");
+tactics.className = "tactics";
+tactics.innerHTML = "<summary>전술 · 진형 · 조작 도움말</summary>";
+const tips = aside.querySelector("p");
+if (tips) tactics.append(tips);
+tactics.append(elNode("move").parentElement!);
+for (const id of ["stance", "formation"])
+  tactics.append(elNode(id).parentElement!);
+for (const id of ["applyStance", "applyFormation", "reassign"])
+  tactics.append(elNode(id));
+aside.append(tactics);
+const augmentPanel = document.createElement("details");
+augmentPanel.id = "augment-panel";
+augmentPanel.innerHTML = "<summary>증강 선택 · 실험용</summary>";
+augmentPanel.append(elNode("augments"));
+aside.append(augmentPanel);
+const cardsPanel = elNode("cards").parentElement!;
+desk.after(cardsPanel);
+function elNode(id: string) {
+  return document.getElementById(id)!;
+}
+const restart = document.createElement("button");
+restart.id = "restart";
+restart.textContent = "테스트 다시 시작";
+document.querySelector(".toolbar")!.append(restart);
+const allGone = document.createElement("p");
+allGone.id = "defeat";
+allGone.setAttribute("role", "status");
+document.querySelector("#arena")!.after(allGone);
 function el<T extends HTMLElement = HTMLElement>(id: string) {
   return document.getElementById(id) as T;
 }
@@ -66,6 +125,7 @@ action("reset", () => {
   offerKey = "";
   viewReset++;
 });
+action("restart", () => el("reset").click());
 action("pause", () => session.togglePause());
 action("move", () => {
   session.cancel();
@@ -130,9 +190,10 @@ document.addEventListener("keydown", (e) => {
   if (["1", "2", "q", "w", "r", "enter", "escape", " ", "a", "t"].includes(key))
     e.preventDefault();
   if (key === "1" || key === "2") session.select(`human-${key}`, e.shiftKey);
-  else if (["q", "w", "r"].includes(key))
-    session.beginSkill(key.toUpperCase() as Skill);
-  else if (key === "enter") session.confirmSkill();
+  else if (["q", "w", "r"].includes(key)) {
+    const skill = key.toUpperCase() as Skill;
+    if (!el<HTMLButtonElement>(skill).disabled) session.beginSkill(skill);
+  } else if (key === "enter") session.confirmSkill();
   else if (key === "escape") session.cancel();
   else if (key === " ") {
     e.preventDefault();
@@ -181,6 +242,72 @@ const rejection: Record<string, string> = {
   LEVEL_REQUIRED: "레벨 부족",
 };
 function hud() {
+  const selected = session.state.squads.filter((s) =>
+    session.selected.includes(s.id),
+  );
+  const commander = session.state.commanders.find(
+    (c) => c.ownerPlayerId === HUMAN,
+  );
+  const gauge = (name: string, value: number, max: number, kind: string) =>
+    `<label class="gauge ${kind}"><span>${name}</span><meter min="0" max="${max}" value="${value}">${value}/${max}</meter><b>${Math.round((value / max) * 100)}%</b></label>`;
+  el("selected-unit").innerHTML = selected.length
+    ? selected
+        .map(
+          (s) =>
+            `<div class="unit-summary"><small>선택 부대 · ${names[s.fsmState]}</small><h2>아군 ${s.id.split("-").at(-1)}부대 · ${unitNames[s.unitType]}</h2><p>병력 ${livingSoldiers(s, config)} / ${s.maxSoldiers}명 · ${names[s.formation]}</p>${gauge("체력", s.hpMilli, s.maxSoldiers * config.soldierHp * config.hpMilliPerHp, "hp")}${gauge("사기", s.morale, 100, "morale")}${gauge("응집도", s.cohesion, 100, "cohesion")}</div>`,
+        )
+        .join("")
+    : "<h2>부대를 선택하세요</h2><p>전장 클릭 또는 숫자 1·2</p>";
+  const charging = session.state.squads.some(
+    (s) => s.ownerPlayerId === HUMAN && s.charge,
+  );
+  const result = [...session.events]
+    .reverse()
+    .find(
+      (e) =>
+        (e.type === "CHARGE_IMPACT" || e.type === "CHARGE_CANCELLED") &&
+        session.state.squads.some(
+          (s) => s.id === e.actorId && s.ownerPlayerId === HUMAN,
+        ),
+    );
+  el("order-step").textContent = session.pending
+    ? session.pending.skill === "Q"
+      ? session.pending.targetSquadId
+        ? "③ 돌격 실행 · 아래 군령패로 확인하세요"
+        : "② 목표 지정 · 적 부대를 클릭하세요"
+      : `${session.pending.skill} 대상 지정 · 아군을 선택하고 실행하세요`
+    : charging
+      ? "④ 돌격 진행 중"
+      : result && session.state.tick - result.tick < 40
+        ? result.type === "CHARGE_IMPACT"
+          ? "⑤ 돌격 적중 · 전투 결과를 확인하세요"
+          : "⑤ 돌격 종료 · 사건 로그에서 이유를 확인하세요"
+        : "① 부대 선택 → Q 군령패 → 적 지정 → 돌격 실행";
+  el<HTMLButtonElement>("confirm").disabled =
+    !session.pending ||
+    !session.pending.squadIds.length ||
+    (session.pending.skill === "Q" && !session.pending.targetSquadId);
+  el("confirm").textContent =
+    session.pending?.skill === "Q" ? "돌격 실행 (Enter)" : "군령 실행 (Enter)";
+  for (const skill of ["Q", "W", "R"] as const) {
+    const button = el<HTMLButtonElement>(skill);
+    const remaining =
+      ((commander?.cooldownTicks[skill] ?? 0) * config.tickMs) / 1000;
+    button.disabled =
+      !commander || commander.status !== "ACTIVE" || remaining > 0;
+    button.textContent = `${skill} ${skill === "Q" ? "돌격" : skill === "W" ? "함성" : "파죽지세"} · ${remaining > 0 ? remaining.toFixed(1) + "초" : "준비"}`;
+    button.title =
+      remaining > 0
+        ? "재사용 대기 중"
+        : commander?.status !== "ACTIVE"
+          ? "장수가 활동 가능한 상태여야 합니다"
+          : "군령 선택 후 전장에서 대상을 지정하세요";
+  }
+  el("defeat").textContent = session.state.squads
+    .filter((s) => s.ownerPlayerId === HUMAN)
+    .every((s) => s.hpMilli === 0)
+    ? "아군 전멸 · 테스트 다시 시작으로 편성을 초기화하세요"
+    : "";
   el("clock").textContent =
     `${((session.state.tick * config.tickMs) / 1000).toFixed(1)}초 · ${session.state.tick}tick${session.state.tick >= 900 ? " · 90초 이상 실행" : ""}`;
   el("pause").textContent = session.paused ? "시작 / 계속" : "일시정지";
@@ -189,8 +316,8 @@ function hud() {
     ? `코어 거부: ${rejection[code]} (${code})`
     : session.notice;
   el("aim").textContent = session.pending
-    ? `${session.pending.skill} 지정 중 · 실행/대상 부대: ${session.pending.squadIds.join(", ") || "없음"} · 적: ${session.pending.targetSquadId ?? "없음"}`
-    : `선택: ${session.selected.join(", ") || "없음"} · ${session.mode}`;
+    ? `${session.pending.skill} 지정 중 · 실행/대상 부대: ${session.pending.squadIds.map((id) => "아군 " + id.split("-").at(-1) + "부대").join(", ") || "없음"} · 적: ${session.pending.targetSquadId ? "적 " + session.pending.targetSquadId.split("-").at(-1) + "부대" : "미지정"}`
+    : `선택 ${session.selected.length}개 부대 · ${session.mode === "normal" ? "이동 / 공격" : session.mode === "ATTACK_MOVE" ? "공격 이동" : "후퇴"}`;
   el("cards").innerHTML = session.state.squads
     .map(
       (s) =>
@@ -266,6 +393,7 @@ class BattleScene extends Phaser.Scene {
   private sprites = new Map<string, Phaser.GameObjects.Image>();
   preload() {
     this.load.image("unit-strip", unitArt);
+    this.load.image("battle-ground", terrainUrl);
   }
   private fontReady = false;
   create() {
@@ -279,6 +407,11 @@ class BattleScene extends Phaser.Scene {
       for (let i = 0; i < 3; i++)
         texture.add(String(i), 0, i * 724, 0, 724, 724);
     }
+    if (this.textures.exists("battle-ground"))
+      this.add
+        .image(480, 280, "battle-ground")
+        .setDisplaySize(1200, 700)
+        .setDepth(-100);
     this.ink = this.add.graphics();
     this.arrows = this.input.keyboard!.createCursorKeys();
     this.input.mouse!.disableContextMenu();
@@ -328,17 +461,6 @@ class BattleScene extends Phaser.Scene {
     const g = this.ink;
     g.clear();
     g.setDepth(-10);
-    g.lineStyle(1, 0x89734a, 0.16);
-    for (let n = 0; n <= 24000; n += 1000) {
-      const a = project({ x: n, y: 0 }),
-        b = project({ x: n, y: 14000 });
-      g.lineBetween(a.x, a.y, b.x, b.y);
-    }
-    for (let n = 0; n <= 14000; n += 1000) {
-      const a = project({ x: 0, y: n }),
-        b = project({ x: 24000, y: n });
-      g.lineBetween(a.x, a.y, b.x, b.y);
-    }
     const ring = (p: { x: number; y: number }, r: number, color: number) => {
       g.lineStyle(2, color, 0.8);
       g.strokePoints(groundRing(p, r), true);
@@ -481,6 +603,7 @@ Object.defineProperty(window, "battleDemo", {
         scrollX: camera.scrollX,
         scrollY: camera.scrollY,
         loadedArt: scene.textures.exists("unit-strip"),
+        loadedGround: scene.textures.exists("battle-ground"),
         visibleImages: scene.children.list.filter(
           (o) => o instanceof Phaser.GameObjects.Image && o.visible,
         ).length,
