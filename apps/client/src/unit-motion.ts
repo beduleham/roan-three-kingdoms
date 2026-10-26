@@ -21,3 +21,42 @@ export function spearPose(
     mode,
   };
 }
+
+export interface MotionSample {
+  x: number;
+  y: number;
+  tick: number;
+  moving: boolean;
+  dx: number;
+  dy: number;
+}
+export function observeMotion(
+  previous: MotionSample | undefined,
+  position: Facing,
+  tick: number,
+): MotionSample {
+  if (!previous || tick < previous.tick)
+    return { ...position, tick, moving: false, dx: 0, dy: 0 };
+  if (tick === previous.tick) return previous;
+  const dx = position.x - previous.x,
+    dy = position.y - previous.y;
+  return { ...position, tick, moving: dx !== 0 || dy !== 0, dx, dy };
+}
+export function mountedPose(
+  facing: Facing,
+  tick: number,
+  moving: boolean,
+  charging: boolean,
+  kind: "cavalry" | "commander",
+) {
+  const mode = !moving ? "idle" : charging ? "charge" : "canter";
+  return {
+    texture: `${kind}-canter`,
+    frame:
+      directionRow(facing) * 4 +
+      (mode === "idle"
+        ? 0
+        : Math.floor(tick / (mode === "charge" ? 1 : 2)) % 4),
+    mode,
+  };
+}
