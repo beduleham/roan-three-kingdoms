@@ -6,17 +6,25 @@ async function state(page) {
 async function clickSquad(page, id, button = "left") {
   const s = (await state(page)).squads.find((s) => s.id === id);
   const box = await page.locator("canvas").boundingBox();
+  const camera = await page.evaluate(() => window.battleDemo.view());
   await page.mouse.click(
-    box.x + ((340 + (s.position.x - s.position.y) * 0.032) * box.width) / 960,
-    box.y + ((20 + (s.position.x + s.position.y) * 0.016) * box.height) / 560,
+    box.x +
+      ((340 + (s.position.x - s.position.y) * 0.032 - camera.scrollX) *
+        box.width) /
+        960,
+    box.y +
+      ((20 + (s.position.x + s.position.y) * 0.016 - camera.scrollY) *
+        box.height) /
+        560,
     { button },
   );
 }
 async function clickGround(page, x, y, button = "right") {
   const box = await page.locator("canvas").boundingBox();
+  const camera = await page.evaluate(() => window.battleDemo.view());
   await page.mouse.click(
-    box.x + ((340 + (x - y) * 0.032) * box.width) / 960,
-    box.y + ((20 + (x + y) * 0.016) * box.height) / 560,
+    box.x + ((340 + (x - y) * 0.032 - camera.scrollX) * box.width) / 960,
+    box.y + ((20 + (x + y) * 0.016 - camera.scrollY) * box.height) / 560,
     { button },
   );
 }
@@ -33,7 +41,8 @@ async function tickAtLeast(page, n) {
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(
-    () => window.battleDemo && document.querySelector("canvas"),
+    () =>
+      window.battleDemo?.view()?.loadedArt && document.querySelector("canvas"),
   );
 });
 test("Phaser Q/W/R targeting, actual collision, HUD and headless replay", async ({
@@ -95,8 +104,9 @@ test("move, attack, formation, ownership, reset and experimental shortage throug
     (await state(page)).squads.find((s) => s.id === "human-2").formation,
   ).toBe("defense");
   await clickSquad(page, "enemy-2", "right");
+  const attackTick = (await state(page)).tick + 2;
   await page.locator("#pause").click();
-  await tickAtLeast(page, 24);
+  await tickAtLeast(page, attackTick);
   await page.locator("#pause").click();
   expect(
     (await page.evaluate(() => window.battleDemo.log())).frames
@@ -161,6 +171,49 @@ test("90 seconds on the real browser clock preserves UI/headless state and event
   expect(log.frames.flat().every((i) => i.playerId === "human")).toBe(true);
   await page.screenshot({
     path: test.info().outputPath("90s.png"),
+    fullPage: true,
+  });
+});
+
+test("static artwork, resized canvas and panned camera retain command coordinates", async ({
+  page,
+}) => {
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().visibleImages))
+    .toBeGreaterThan(0);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(200);
+  await page.keyboard.up("ArrowRight");
+  expect(
+    (await page.evaluate(() => window.battleDemo.view())).scrollX,
+  ).toBeGreaterThan(0);
+  await clickSquad(page, "human-2");
+  await clickGround(page, 8000, 11000);
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 2);
+  await page.locator("#pause").click();
+  const inputs = (
+    await page.evaluate(() => window.battleDemo.log())
+  ).frames.flat();
+  const move = inputs.find((i) => i.command.type === "MOVE");
+  expect(move.command.squadIds).toEqual(["human-2"]);
+  // Pointer coordinates quantize to CSS pixels on a scaled canvas.
+  // Bound the error in visible pixels rather than assuming a core-unit precision.
+  const box = await page.locator("canvas").boundingBox();
+  const dx = move.command.destination.x - 8000;
+  const dy = move.command.destination.y - 11000;
+  expect(Math.abs(((dx - dy) * 0.032 * box.width) / 960)).toBeLessThan(1.5);
+  expect(Math.abs(((dx + dy) * 0.016 * box.height) / 560)).toBeLessThan(1.5);
+  await page.locator("#reset").click();
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().scrollX))
+    .toBe(0);
+  await page.locator("#human1").selectOption("cavalry");
+  await page.locator("#enemy1").selectOption("spears");
+  await page.locator("#reset").click();
+  await page.screenshot({
+    path: test.info().outputPath("quarter-view.png"),
     fullPage: true,
   });
 });
