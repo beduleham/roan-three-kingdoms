@@ -44,7 +44,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(
     () =>
-      window.battleDemo?.view()?.loadedArt && document.querySelector("canvas"),
+      window.battleDemo?.view()?.loadedFootMotion &&
+      window.battleDemo.view().visibleImages > 0 &&
+      document.querySelector("canvas"),
   );
   await page.locator("#setup-panel > summary").click();
   await page.locator(".tactics > summary").click();
@@ -279,7 +281,10 @@ test("spear direction and tick animation freeze on pause, attack follows real hi
         () =>
           window.battleDemo
             .view()
-            .unitVisuals.filter((o) => o.texture === "foot-units").length,
+            .unitVisuals.filter(
+              (o) =>
+                o.texture === "infantry-walk" || o.texture === "archer-walk",
+            ).length,
       ),
     )
     .toBe(16);
@@ -369,4 +374,71 @@ test("mounted commander follows direction, canter freezes, and actual Q accelera
   await expect
     .poll(() => visual("human-commander"))
     .toMatchObject({ frame: "0", mode: "idle" });
+});
+
+test("infantry and archers animate in four directions with event driven arrows, pause and reset", async ({
+  page,
+}) => {
+  await page.locator("#human1").selectOption("infantry");
+  await page.locator("#human2").selectOption("archers");
+  await page.locator("#enemy1").selectOption("infantry");
+  await page.locator("#enemy2").selectOption("archers");
+  await page.locator("#reset").click();
+  const visual = (name) =>
+    page.evaluate(
+      (n) => window.battleDemo.view().unitVisuals.find((o) => o.name === n),
+      name,
+    );
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().visibleArrows))
+    .toBe(0);
+  await clickGround(page, 6000, 11000);
+  await page.keyboard.press("2");
+  await clickGround(page, 8000, 9000);
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 3);
+  await page.locator("#pause").click();
+  expect(await visual("human-1:0")).toMatchObject({
+    texture: "infantry-walk",
+    mode: "walk",
+  });
+  expect(Number((await visual("human-1:0")).frame)).toBeGreaterThanOrEqual(4);
+  expect(Number((await visual("human-1:0")).frame)).toBeLessThan(8);
+  expect(await visual("human-2:0")).toMatchObject({
+    texture: "archer-walk",
+    mode: "walk",
+  });
+  const frozen = [await visual("human-1:0"), await visual("human-2:0")];
+  await page.waitForTimeout(200);
+  expect([await visual("human-1:0"), await visual("human-2:0")]).toEqual(
+    frozen,
+  );
+  await page.locator("#restart").click();
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  await expect
+    .poll(() => visual("human-1:0"), { timeout: 15000, intervals: [100] })
+    .toMatchObject({ texture: "infantry-attack", mode: "attack" });
+  await expect
+    .poll(() => visual("human-2:0"))
+    .toMatchObject({ texture: "archer-attack", mode: "attack" });
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().visibleArrows))
+    .toBeGreaterThan(0);
+  await page.locator("#pause").click();
+  const log = await page.evaluate(() => window.battleDemo.log());
+  const result = replay(log.initial, log.frames);
+  expect(result.stateHash).toBe(log.stateHash);
+  expect(result.eventHash).toBe(log.eventHash);
+  await page.screenshot({
+    path: test.info().outputPath("foot-combat.png"),
+    fullPage: true,
+  });
+  await page.locator("#restart").click();
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().visibleArrows))
+    .toBe(0);
+  await expect
+    .poll(() => visual("human-2:0"))
+    .toMatchObject({ texture: "archer-walk", mode: "idle" });
 });
