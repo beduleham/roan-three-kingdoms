@@ -687,8 +687,17 @@ class BattleScene extends Phaser.Scene {
         });
         this.labels.set(s.id, label);
       }
-      label
-        .setStyle({
+      const labelStyleKey =
+        s.hpMilli === 0
+          ? "dead"
+          : s.fsmState === "ROUTED"
+            ? "routed"
+            : s.fsmState === "BROKEN"
+              ? "broken"
+              : "normal";
+      if (label.getData("styleKey") !== labelStyleKey) {
+        label.setData("styleKey", labelStyleKey);
+        label.setStyle({
           backgroundColor:
             s.hpMilli === 0
               ? "#595348"
@@ -703,7 +712,9 @@ class BattleScene extends Phaser.Scene {
             s.fsmState === "BROKEN"
               ? "#fff0d2"
               : "#252b29",
-        })
+        });
+      }
+      label
         .setDepth(100000)
         .setPosition(p.x - 48, p.y - 90)
         .setText(
