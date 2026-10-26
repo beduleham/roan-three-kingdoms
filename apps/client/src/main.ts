@@ -1,3 +1,5 @@
+import { project, unproject, groundRing } from "./projection.js";
+import { unitArt } from "./unit-art.js";
 import Phaser from "phaser";
 import rawConfig from "../../../battle_config.v1.json";
 import {
@@ -26,9 +28,9 @@ const options = (entries: Record<string, string>) =>
     .map(([v, n]) => `<option value="${v}">${n}</option>`)
     .join("");
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
-<header><div><small>쌈국지 / 전술 실험실</small><h1>전선의 지휘관</h1></div><div class="badge">로컬 데모 · demo-order-v0.1<br>각 2부대 · 40명 / 시작 Lv.${DEMO.startLevel} (R 검증용)</div></header>
+<header><div><small>STRATELIER / 채색 병서 전투 실험실</small><h1>로언 베이의 삼국지</h1></div><div class="badge">로컬 데모 · demo-order-v0.1<br>각 2부대 · 40명 / 시작 Lv.${DEMO.startLevel} (R 검증용)</div></header>
 <section class="setup"><label>아군 1 <select id="human1">${options(unitNames)}</select></label><label>아군 2 <select id="human2">${options(unitNames)}</select></label><label>적군 1 <select id="enemy1">${options(unitNames)}</select></label><label>적군 2 <select id="enemy2">${options(unitNames)}</select></label><label><input id="experimental" type="checkbox"> 실험용 증강 (수치 미검증)</label><button id="reset">편성 적용 · 초기화</button></section>
-<main><section class="battle"><div class="toolbar"><strong id="clock"></strong><button id="pause">시작</button><button id="download">전체 로그 JSON</button></div><div id="arena"></div><p class="legend">파랑: 아군 · 빨강: 적군 · 흰 원: 장수 · 청록 선: 실제 Q 경로 · 금빛 원: 충돌</p><div id="cards"></div></section>
+<main><section class="battle"><div class="toolbar"><strong id="clock"></strong><button id="pause">시작</button><button id="download">전체 로그 JSON</button></div><div id="arena"></div><p class="legend">군기: 아군 파랑 / 적군 빨강 · 백마: 장수 · 기병·창병 정적 샘플 / 그 외 병종은 도형 · 방향별 동작 미적용</p><div id="cards"></div></section>
 <aside><h2>전술 명령</h2><p>클릭 / 1·2: 선택 · Shift: 복수 선택<br>우클릭: 이동 / 적 공격 · 방향키: 화면 이동</p><div class="buttons"><button id="move">이동</button><button id="attackMove">공격 이동 (A)</button><button id="retreat">후퇴 (T)</button></div><label>태세 <select id="stance">${options({ defensive: "방어", balanced: "균형", aggressive: "공격" })}</select></label><button id="applyStance">태세 적용</button><label>진형 <select id="formation">${options({ normal: "기본진", defense: "방어진", offense: "공격진" })}</select></label><button id="applyFormation">진형 적용</button>
 <h2>무장 스킬</h2><div class="buttons"><button id="Q">Q 돌격</button><button id="W">W 함성</button><button id="R">R 파죽지세</button></div><p id="aim"></p><div class="buttons"><button id="confirm">시전 확인 (Enter)</button><button id="cancel">취소 (Esc)</button></div><button id="reassign">선택 부대로 장수 재배속</button><pre id="commander"></pre><p role="status" id="notice"></p><section id="augments"></section></aside></main>
 <section class="log"><h2>전투 사건 <small>최근 주요 사건 · 전체 사건은 JSON에 기록</small></h2><pre id="events"></pre></section><footer>브라우저 내 battle-core 실행 · 실제 서버 권위 / 멀티플레이 아님 · 자동 AI는 기본 교전·추격·복귀만 수행합니다. 성장·거점 승리 규칙 없음. Phase 3·4 전체 미완료.</footer>`;
@@ -254,31 +256,40 @@ function hud() {
     }
   }
 }
-const scale = 40 / config.positionUnitsPerTile;
+
 class BattleScene extends Phaser.Scene {
   private seenReset = 0;
   private ink!: Phaser.GameObjects.Graphics;
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private arrows!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private sprites = new Map<string, Phaser.GameObjects.Image>();
+  preload() {
+    this.load.image("unit-strip", unitArt);
+  }
   create() {
+    if (this.textures.exists("unit-strip")) {
+      const texture = this.textures.get("unit-strip");
+      for (let i = 0; i < 3; i++)
+        texture.add(String(i), 0, i * 724, 0, 724, 724);
+    }
     this.ink = this.add.graphics();
     this.arrows = this.input.keyboard!.createCursorKeys();
     this.input.mouse!.disableContextMenu();
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      const pos = {
-        x: Math.round(p.worldX / scale),
-        y: Math.round(p.worldY / scale),
+      // Camera transform first, then inverse isometric projection.
+      const world = this.cameras.main.getWorldPoint(p.x, p.y);
+      const pos = unproject(world);
+      // Screen-space hit area covers the visible formation and its tall sprites.
+      const score = (s: Squad) => {
+        const foot = project(s.position);
+        return Math.hypot(
+          (world.x - foot.x) / 65,
+          (world.y - (foot.y - 25)) / 65,
+        );
       };
       const candidates = [...session.state.squads]
-        .filter((s) => s.hpMilli > 0)
-        .sort(
-          (a, b) =>
-            Math.hypot(a.position.x - pos.x, a.position.y - pos.y) -
-            Math.hypot(b.position.x - pos.x, b.position.y - pos.y),
-        )
-        .filter(
-          (s) => Math.hypot(s.position.x - pos.x, s.position.y - pos.y) < 550,
-        );
+        .filter((s) => s.hpMilli > 0 && score(s) <= 1)
+        .sort((a, b) => score(a) - score(b));
       const wantEnemy = p.rightButtonDown() || session.pending?.skill === "Q";
       const hit =
         candidates.find((s) => (s.ownerPlayerId !== HUMAN) === wantEnemy) ??
@@ -308,89 +319,134 @@ class BattleScene extends Phaser.Scene {
     if (this.arrows.down.isDown) cam.scrollY += speed;
     const g = this.ink;
     g.clear();
-    g.lineStyle(1, 0x263c42, 0.5);
-    for (let x = 0; x <= 960; x += 40) g.lineBetween(x, 0, x, 560);
-    for (let y = 0; y <= 560; y += 40) g.lineBetween(0, y, 960, y);
-    for (const z of session.state.safeZones) {
-      g.lineStyle(2, z.nationId === "blue" ? 0x418dca : 0xc76b63, 0.5);
-      g.strokeCircle(
-        z.position.x * scale,
-        z.position.y * scale,
-        z.radiusUnits * scale,
-      );
+    g.setDepth(-10);
+    g.lineStyle(1, 0x89734a, 0.16);
+    for (let n = 0; n <= 24000; n += 1000) {
+      const a = project({ x: n, y: 0 }),
+        b = project({ x: n, y: 14000 });
+      g.lineBetween(a.x, a.y, b.x, b.y);
     }
-    for (const s of session.state.squads) {
-      const x = s.position.x * scale,
-        y = s.position.y * scale;
-      g.fillStyle(
-        s.hpMilli === 0
-          ? 0x485358
-          : s.ownerPlayerId === HUMAN
-            ? 0x58b6e9
-            : 0xe47d71,
+    for (let n = 0; n <= 14000; n += 1000) {
+      const a = project({ x: 0, y: n }),
+        b = project({ x: 24000, y: n });
+      g.lineBetween(a.x, a.y, b.x, b.y);
+    }
+    const ring = (p: { x: number; y: number }, r: number, color: number) => {
+      g.lineStyle(2, color, 0.8);
+      g.strokePoints(groundRing(p, r), true);
+    };
+    for (const z of session.state.safeZones)
+      ring(
+        z.position,
+        z.radiusUnits,
+        z.nationId === "blue" ? 0x355e83 : 0xb34736,
       );
-      g.fillRect(x - 16, y - 12, 32, 24);
-      if (session.selected.includes(s.id)) {
-        g.lineStyle(2, 0xeae6b7);
-        g.strokeRect(x - 20, y - 16, 40, 32);
+    const visible = new Set<string>();
+    const image = (
+      key: string,
+      frame: number,
+      p: { x: number; y: number },
+      size: number,
+      depth: number,
+      alpha = 1,
+    ) => {
+      if (!this.textures.exists("unit-strip")) return;
+      visible.add(key);
+      let sprite = this.sprites.get(key);
+      if (!sprite) {
+        sprite = this.add.image(0, 0, "unit-strip", String(frame));
+        this.sprites.set(key, sprite);
       }
+      sprite
+        .setFrame(String(frame))
+        .setPosition(p.x, p.y)
+        .setOrigin(0.5, 0.94)
+        .setDisplaySize(size, size)
+        .setDepth(depth)
+        .setAlpha(alpha)
+        .setVisible(true);
+    };
+    for (const s of session.state.squads) {
+      const p = project(s.position),
+        friendly = s.ownerPlayerId === HUMAN;
+      const color = friendly ? 0x355e83 : 0xb34736;
+      if (session.selected.includes(s.id)) ring(s.position, 650, 0x55b6aa);
       if (
         session.pending?.squadIds.includes(s.id) ||
         session.pending?.targetSquadId === s.id
-      ) {
-        g.lineStyle(3, 0xf4a5f5);
-        g.strokeCircle(x, y, 25);
+      )
+        ring(s.position, 800, 0xb5955d);
+      const art =
+        s.unitType === "cavalry" ? 1 : s.unitType === "spears" ? 2 : null;
+      if (s.hpMilli > 0 && art !== null && this.textures.exists("unit-strip")) {
+        const count = Math.min(8, livingSoldiers(s, config));
+        for (let i = 0; i < count; i++) {
+          const foot = project({
+            x: s.position.x + ((i % 4) - 1.5) * 340,
+            y: s.position.y + (Math.floor(i / 4) - 0.5) * 480,
+          });
+          image(`${s.id}:${i}`, art, foot, art === 1 ? 52 : 42, foot.y);
+          // Colored bases preserve allegiance even when sample clothing differs.
+          g.fillStyle(color, 0.8);
+          g.fillEllipse(foot.x, foot.y, 12, 4);
+        }
+      } else {
+        g.fillStyle(s.hpMilli === 0 ? 0x767467 : color);
+        g.fillRect(p.x - 14, p.y - 10, 28, 20);
       }
-      const len = Math.hypot(s.facing.x, s.facing.y);
-      g.lineStyle(2, 0xffffff, 0.6);
-      g.lineBetween(
-        x,
-        y,
-        x + (s.facing.x / len) * 24,
-        y + (s.facing.y / len) * 24,
-      );
+      // Grounded military standard, no provisional surnames.
+      g.lineStyle(2, 0x30221f);
+      g.lineBetween(p.x - 22, p.y, p.x - 22, p.y - 54);
+      g.fillStyle(color);
+      g.fillRect(p.x - 22, p.y - 54, 20, 24);
+      const face = project({
+        x: s.position.x + s.facing.x * 500,
+        y: s.position.y + s.facing.y * 500,
+      });
+      g.lineStyle(2, color);
+      g.lineBetween(p.x, p.y, face.x, face.y);
       if (s.charge) {
-        g.lineStyle(3, 0x75edc5);
-        g.lineBetween(
-          s.charge.start.x * scale,
-          s.charge.start.y * scale,
-          s.charge.destination.x * scale,
-          s.charge.destination.y * scale,
-        );
+        const a = project(s.charge.start),
+          b = project(s.charge.destination);
+        g.lineStyle(3, 0xb5955d);
+        g.lineBetween(a.x, a.y, b.x, b.y);
       }
       let label = this.labels.get(s.id);
       if (!label) {
-        label = this.add.text(x, y, "", {
+        label = this.add.text(0, 0, "", {
           fontSize: "12px",
-          color: "#e8f1ed",
-          backgroundColor: "#101e24",
+          color: "#252b29",
+          backgroundColor: "#e8ddc4",
         });
         this.labels.set(s.id, label);
       }
       label
-        .setPosition(x - 28, y + (s.ownerPlayerId === HUMAN ? 22 : -48))
+        .setDepth(100000)
+        .setPosition(p.x - 48, p.y - 90)
         .setText(
-          `${s.id}\n${unitNames[s.unitType]} ${livingSoldiers(s, config)}명`,
+          `${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명`,
         );
     }
     for (const c of session.state.commanders) {
-      g.lineStyle(2, c.status === "WOUNDED" ? 0xefab5f : 0xffffff);
-      g.strokeCircle(c.position.x * scale, c.position.y * scale - 18, 7);
+      const p = project(c.position);
+      if (c.status !== "WOUNDED")
+        image(c.id, 0, p, 64, p.y + 1, c.ownerPlayerId === HUMAN ? 1 : 0.65);
+      else ring(c.position, 200, 0xb5955d);
     }
+    for (const [key, sprite] of this.sprites)
+      if (!visible.has(key)) sprite.setVisible(false);
     for (const e of session.events
       .slice(-100)
       .filter(
         (e) => e.type === "CHARGE_IMPACT" && session.state.tick - e.tick < 10,
       )) {
       const target = session.state.squads.find((s) => s.id === e.targetId);
-      if (target) {
-        g.lineStyle(4, 0xffce70);
-        g.strokeCircle(
-          target.position.x * scale,
-          target.position.y * scale,
-          30 + (session.state.tick - e.tick) * 2,
+      if (target)
+        ring(
+          target.position,
+          700 + (session.state.tick - e.tick) * 40,
+          0xb5955d,
         );
-      }
     }
   }
 }
@@ -399,7 +455,7 @@ new Phaser.Game({
   parent: "arena",
   width: 960,
   height: 560,
-  backgroundColor: "#14272e",
+  backgroundColor: "#d7cfb3",
   scene: BattleScene,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 });
