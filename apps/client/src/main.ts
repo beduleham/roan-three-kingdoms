@@ -9,6 +9,7 @@ import {
 import type { Squad, Skill } from "../../../packages/battle-core/src/index.js";
 import { LocalSession, HUMAN, DEMO, defaults } from "./session.js";
 import type { Options, Unit } from "./session.js";
+import "@fontsource/noto-sans-kr/400.css";
 import "./style.css";
 const config = parseBattleConfig(rawConfig);
 const session = new LocalSession(config);
@@ -266,7 +267,13 @@ class BattleScene extends Phaser.Scene {
   preload() {
     this.load.image("unit-strip", unitArt);
   }
+  private fontReady = false;
   create() {
+    void document.fonts
+      .load('12px "Noto Sans KR"', "아군 기병 창병 로언 베이의 삼국지")
+      .then(() => {
+        this.fontReady = true;
+      });
     if (this.textures.exists("unit-strip")) {
       const texture = this.textures.get("unit-strip");
       for (let i = 0; i < 3; i++)
@@ -283,8 +290,8 @@ class BattleScene extends Phaser.Scene {
       const score = (s: Squad) => {
         const foot = project(s.position);
         return Math.hypot(
-          (world.x - foot.x) / 65,
-          (world.y - (foot.y - 25)) / 65,
+          (world.x - foot.x) / 85,
+          (world.y - (foot.y - 25)) / 70,
         );
       };
       const candidates = [...session.state.squads]
@@ -317,6 +324,7 @@ class BattleScene extends Phaser.Scene {
     if (this.arrows.right.isDown) cam.scrollX += speed;
     if (this.arrows.up.isDown) cam.scrollY -= speed;
     if (this.arrows.down.isDown) cam.scrollY += speed;
+    if (!this.fontReady) return;
     const g = this.ink;
     g.clear();
     g.setDepth(-10);
@@ -382,8 +390,8 @@ class BattleScene extends Phaser.Scene {
         const count = Math.min(8, livingSoldiers(s, config));
         for (let i = 0; i < count; i++) {
           const foot = project({
-            x: s.position.x + ((i % 4) - 1.5) * 340,
-            y: s.position.y + (Math.floor(i / 4) - 0.5) * 480,
+            x: s.position.x + ((i % 4) - 1.5) * 650,
+            y: s.position.y + (Math.floor(i / 4) - 0.5) * 900,
           });
           image(`${s.id}:${i}`, art, foot, art === 1 ? 52 : 42, foot.y);
           // Colored bases preserve allegiance even when sample clothing differs.
@@ -399,9 +407,10 @@ class BattleScene extends Phaser.Scene {
       g.lineBetween(p.x - 22, p.y, p.x - 22, p.y - 54);
       g.fillStyle(color);
       g.fillRect(p.x - 22, p.y - 54, 20, 24);
+      const facingLength = Math.hypot(s.facing.x, s.facing.y) || 1;
       const face = project({
-        x: s.position.x + s.facing.x * 500,
-        y: s.position.y + s.facing.y * 500,
+        x: s.position.x + (s.facing.x / facingLength) * 500,
+        y: s.position.y + (s.facing.y / facingLength) * 500,
       });
       g.lineStyle(2, color);
       g.lineBetween(p.x, p.y, face.x, face.y);
@@ -415,6 +424,7 @@ class BattleScene extends Phaser.Scene {
       if (!label) {
         label = this.add.text(0, 0, "", {
           fontSize: "12px",
+          fontFamily: "Noto Sans KR, sans-serif",
           color: "#252b29",
           backgroundColor: "#e8ddc4",
         });
@@ -450,7 +460,7 @@ class BattleScene extends Phaser.Scene {
     }
   }
 }
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: "arena",
   width: 960,
@@ -463,6 +473,19 @@ new Phaser.Game({
 Object.defineProperty(window, "battleDemo", {
   value: {
     snapshot: () => structuredClone(session.state),
+    view: () => {
+      const scene = game.scene.getScenes(true)[0];
+      if (!scene) return null;
+      const camera = scene.cameras.main;
+      return {
+        scrollX: camera.scrollX,
+        scrollY: camera.scrollY,
+        loadedArt: scene.textures.exists("unit-strip"),
+        visibleImages: scene.children.list.filter(
+          (o) => o instanceof Phaser.GameObjects.Image && o.visible,
+        ).length,
+      };
+    },
     log: () => structuredClone(session.exportLog()),
   },
 });
