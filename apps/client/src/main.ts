@@ -1,3 +1,4 @@
+import { squadFeedback } from "./squad-feedback.js";
 import infantryWalkUrl from "./infantry-walk.svg?url";
 import infantryAttackUrl from "./infantry-attack.svg?url";
 import archerWalkUrl from "./archer-walk.svg?url";
@@ -8,13 +9,11 @@ import cavalryUrl from "./cavalry-canter.svg?url";
 import commanderUrl from "./commander-canter.svg?url";
 import walkUrl from "./spear-walk.svg?url";
 import attackUrl from "./spear-attack.svg?url";
-import footUrl from "./foot-units.svg?url";
 import motionAtlas from "./motion-atlas.json";
 import { footPose, mountedPose, observeMotion } from "./unit-motion.js";
 import type { MotionSample } from "./unit-motion.js";
 import terrainUrl from "./terrain.svg?url";
 import { project, unproject, groundRing } from "./projection.js";
-import { unitArt } from "./unit-art.js";
 import Phaser from "phaser";
 import rawConfig from "../../../battle_config.v1.json";
 import {
@@ -410,6 +409,7 @@ class BattleScene extends Phaser.Scene {
   private sprites = new Map<string, Phaser.GameObjects.Image>();
   private previousPositions = new Map<string, MotionSample>();
   private lastHits = new Map<string, number>();
+  private lastDamage = new Map<string, number>();
   private seenEvents = 0;
   preload() {
     this.load.image("infantry-walk", infantryWalkUrl);
@@ -420,8 +420,6 @@ class BattleScene extends Phaser.Scene {
     this.load.image("commander-canter", commanderUrl);
     this.load.image("spear-walk", walkUrl);
     this.load.image("spear-attack", attackUrl);
-    this.load.image("foot-units", footUrl);
-    this.load.image("unit-strip", unitArt);
     this.load.image("battle-ground", terrainUrl);
   }
   private fontReady = false;
@@ -431,11 +429,6 @@ class BattleScene extends Phaser.Scene {
       .then(() => {
         this.fontReady = true;
       });
-    if (this.textures.exists("unit-strip")) {
-      const texture = this.textures.get("unit-strip");
-      for (let i = 0; i < 3; i++)
-        texture.add(String(i), 0, i * 724, 0, 724, 724);
-    }
     if (this.textures.exists("battle-ground"))
       this.add
         .image(480, 280, "battle-ground")
@@ -490,6 +483,7 @@ class BattleScene extends Phaser.Scene {
       this.visibleArrowCount = 0;
       this.previousPositions.clear();
       this.lastHits.clear();
+      this.lastDamage.clear();
       this.seenEvents = 0;
       this.seenReset = viewReset;
     }
@@ -501,6 +495,8 @@ class BattleScene extends Phaser.Scene {
     for (const event of session.events.slice(this.seenEvents)) {
       if (event.type !== "ATTACK_HIT") continue;
       this.lastHits.set(event.actorId, event.tick);
+      if (event.targetId && (event.delta ?? 0) < 0)
+        this.lastDamage.set(event.targetId, event.tick);
       const actor = session.state.squads.find((s) => s.id === event.actorId),
         target = session.state.squads.find((s) => s.id === event.targetId);
       if (actor?.unitType === "archers" && target)
@@ -536,9 +532,10 @@ class BattleScene extends Phaser.Scene {
       size: number,
       depth: number,
       alpha = 1,
-      texture = "unit-strip",
+      texture = "commander-canter",
       flip = false,
       mode = "static",
+      tint = 0xffffff,
     ) => {
       if (!this.textures.exists(texture)) return;
       visible.add(key);
@@ -562,6 +559,7 @@ class BattleScene extends Phaser.Scene {
         .setOrigin(rect?.originX ?? 0.5, rect?.originY ?? 0.94)
         .setFlipX(flip)
         .setData("mode", mode)
+        .setTint(tint)
         .setDisplaySize(
           displayHeight * (rect ? rect.width / rect.height : 1),
           displayHeight,
@@ -587,6 +585,13 @@ class BattleScene extends Phaser.Scene {
       );
       this.previousPositions.set(s.id, observation);
       const moving = observation.moving;
+      const feedback = squadFeedback(
+        s,
+        session.state.tick,
+        this.lastDamage.get(s.id),
+      );
+      if (feedback.label && s.hpMilli > 0)
+        ring(s.position, 780, s.fsmState === "ROUTED" ? 0xb34736 : 0xb5955d);
       const pose =
         s.unitType === "cavalry"
           ? mountedPose(
@@ -601,7 +606,7 @@ class BattleScene extends Phaser.Scene {
               s.facing,
               session.state.tick,
               moving,
-              this.lastHits.get(s.id),
+              feedback.attackAllowed ? this.lastHits.get(s.id) : undefined,
             );
       const texture = pose.texture,
         frame = pose.frame;
@@ -618,11 +623,13 @@ class BattleScene extends Phaser.Scene {
             foot,
             s.unitType === "cavalry" ? 52 : 46,
             foot.y,
-            1,
+            feedback.alpha,
             texture,
             false,
             pose.mode,
+            feedback.tint,
           );
+          this.sprites.get(`${s.id}:${i}`)?.setData("status", feedback.state);
           g.fillStyle(color, 0.8);
           g.fillEllipse(foot.x, foot.y, 12, 4);
         }
@@ -648,11 +655,15 @@ class BattleScene extends Phaser.Scene {
           );
         }
       }
-      // Grounded military standard, no provisional surnames.
-      g.lineStyle(2, 0x30221f);
-      g.lineBetween(p.x - 22, p.y, p.x - 22, p.y - 54);
-      g.fillStyle(color);
-      g.fillRect(p.x - 22, p.y - 54, 20, 24);
+      // A leaning flag marks rout; defeated squads no longer fly a live standard.
+      if (s.hpMilli > 0) {
+        const topX = p.x - 22 + (s.fsmState === "ROUTED" ? -14 : 0),
+          topY = p.y - 54;
+        g.lineStyle(2, 0x30221f, feedback.alpha);
+        g.lineBetween(p.x - 22, p.y, topX, topY);
+        g.fillStyle(color, feedback.alpha);
+        g.fillRect(topX, topY, 20, 24);
+      }
       const facingLength = Math.hypot(s.facing.x, s.facing.y) || 1;
       const face = project({
         x: s.position.x + (s.facing.x / facingLength) * 500,
@@ -677,10 +688,26 @@ class BattleScene extends Phaser.Scene {
         this.labels.set(s.id, label);
       }
       label
+        .setStyle({
+          backgroundColor:
+            s.hpMilli === 0
+              ? "#595348"
+              : s.fsmState === "ROUTED"
+                ? "#8e3c30"
+                : s.fsmState === "BROKEN"
+                  ? "#7f633b"
+                  : "#e8ddc4",
+          color:
+            s.hpMilli === 0 ||
+            s.fsmState === "ROUTED" ||
+            s.fsmState === "BROKEN"
+              ? "#fff0d2"
+              : "#252b29",
+        })
         .setDepth(100000)
         .setPosition(p.x - 48, p.y - 90)
         .setText(
-          `${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명`,
+          `${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명${feedback.label ? " · " + feedback.label : ""}`,
         );
     }
     for (const c of session.state.commanders) {
@@ -716,10 +743,11 @@ class BattleScene extends Phaser.Scene {
           64,
           p.y + 1,
           c.ownerPlayerId === HUMAN ? 1 : 0.65,
-          available ? pose.texture : "unit-strip",
+          pose.texture,
           false,
           available ? pose.mode : "static",
         );
+        if (!available) ring(c.position, 220, 0xe8ddc4);
       } else ring(c.position, 200, 0xb5955d);
     }
     for (const flight of this.arrowFlights) {
@@ -779,7 +807,10 @@ Object.defineProperty(window, "battleDemo", {
       return {
         scrollX: camera.scrollX,
         scrollY: camera.scrollY,
-        loadedArt: scene.textures.exists("unit-strip"),
+        loadedArt: scene.textures.exists("commander-canter"),
+        retiredTexturesPresent:
+          scene.textures.exists("unit-strip") ||
+          scene.textures.exists("foot-units"),
         loadedGround: scene.textures.exists("battle-ground"),
         loadedFootMotion: [
           "infantry-walk",
@@ -791,8 +822,8 @@ Object.defineProperty(window, "battleDemo", {
         loadedMounted: ["cavalry-canter", "commander-canter"].every((key) =>
           scene.textures.exists(key),
         ),
-        loadedMotion: ["spear-walk", "spear-attack", "foot-units"].every(
-          (key) => scene.textures.exists(key),
+        loadedMotion: ["spear-walk", "spear-attack"].every((key) =>
+          scene.textures.exists(key),
         ),
         unitVisuals: scene.children.list
           .filter(
@@ -805,6 +836,9 @@ Object.defineProperty(window, "battleDemo", {
             frame: o.frame.name,
             flip: o.flipX,
             mode: o.getData("mode"),
+            tint: o.tintTopLeft,
+            alpha: o.alpha,
+            status: o.getData("status"),
           })),
         visibleImages: scene.children.list.filter(
           (o) => o instanceof Phaser.GameObjects.Image && o.visible,
