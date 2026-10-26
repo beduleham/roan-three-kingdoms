@@ -5,6 +5,7 @@ async function state(page) {
 }
 async function clickSquad(page, id, button = "left") {
   const s = (await state(page)).squads.find((s) => s.id === id);
+  await page.locator("canvas").scrollIntoViewIfNeeded();
   const box = await page.locator("canvas").boundingBox();
   const camera = await page.evaluate(() => window.battleDemo.view());
   await page.mouse.click(
@@ -20,6 +21,7 @@ async function clickSquad(page, id, button = "left") {
   );
 }
 async function clickGround(page, x, y, button = "right") {
+  await page.locator("canvas").scrollIntoViewIfNeeded();
   const box = await page.locator("canvas").boundingBox();
   const camera = await page.evaluate(() => window.battleDemo.view());
   await page.mouse.click(
@@ -44,6 +46,9 @@ test.beforeEach(async ({ page }) => {
     () =>
       window.battleDemo?.view()?.loadedArt && document.querySelector("canvas"),
   );
+  await page.locator("#setup-panel > summary").click();
+  await page.locator(".tactics > summary").click();
+  await page.locator("#augment-panel > summary").click();
 });
 test("Phaser Q/W/R targeting, actual collision, HUD and headless replay", async ({
   page,
@@ -200,6 +205,7 @@ test("static artwork, resized canvas and panned camera retain command coordinate
   expect(move.command.squadIds).toEqual(["human-2"]);
   // Pointer coordinates quantize to CSS pixels on a scaled canvas.
   // Bound the error in visible pixels rather than assuming a core-unit precision.
+  await page.locator("canvas").scrollIntoViewIfNeeded();
   const box = await page.locator("canvas").boundingBox();
   const dx = move.command.destination.x - 8000;
   const dy = move.command.destination.y - 11000;
@@ -214,6 +220,40 @@ test("static artwork, resized canvas and panned camera retain command coordinate
   await page.locator("#reset").click();
   await page.screenshot({
     path: test.info().outputPath("quarter-view.png"),
+    fullPage: true,
+  });
+});
+
+test("command desk shows selected gauges, explicit target step, cooldown and restart", async ({
+  page,
+}) => {
+  await page.locator("#setup-panel > summary").click();
+  await expect(page.locator("#setup-panel")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#selected-unit meter")).toHaveCount(3);
+  await expect(page.locator("#confirm")).toBeDisabled();
+  await page.locator("#Q").click();
+  await expect(page.locator("#order-step")).toContainText("목표 지정");
+  await expect(page.locator("#confirm")).toBeDisabled();
+  await clickSquad(page, "enemy-1");
+  await expect(page.locator("#order-step")).toContainText("돌격 실행");
+  await expect(page.locator("#confirm")).toBeEnabled();
+  await page.locator("#confirm").click();
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 2);
+  await page.locator("#pause").click();
+  await expect(page.locator("#Q")).toBeDisabled();
+  await expect(page.locator("#Q")).toContainText("초");
+  await page.locator("#restart").click();
+  expect((await state(page)).tick).toBe(0);
+  await expect(page.locator("#Q")).toBeEnabled();
+  await expect(page.locator("#confirm")).toBeDisabled();
+  await page.locator(".tactics > summary").click();
+  await page.locator("#augment-panel > summary").click();
+  expect(await page.evaluate(() => window.battleDemo.view().loadedGround)).toBe(
+    true,
+  );
+  await page.screenshot({
+    path: test.info().outputPath("command-desk.png"),
     fullPage: true,
   });
 });
