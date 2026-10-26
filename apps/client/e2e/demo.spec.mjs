@@ -7,16 +7,16 @@ async function clickSquad(page, id, button = "left") {
   const s = (await state(page)).squads.find((s) => s.id === id);
   const box = await page.locator("canvas").boundingBox();
   await page.mouse.click(
-    box.x + ((s.position.x / 1000) * 40 * box.width) / 960,
-    box.y + ((s.position.y / 1000) * 40 * box.height) / 560,
+    box.x + ((340 + (s.position.x - s.position.y) * 0.032) * box.width) / 960,
+    box.y + ((20 + (s.position.x + s.position.y) * 0.016) * box.height) / 560,
     { button },
   );
 }
 async function clickGround(page, x, y, button = "right") {
   const box = await page.locator("canvas").boundingBox();
   await page.mouse.click(
-    box.x + ((x / 1000) * 40 * box.width) / 960,
-    box.y + ((y / 1000) * 40 * box.height) / 560,
+    box.x + ((340 + (x - y) * 0.032) * box.width) / 960,
+    box.y + ((20 + (x + y) * 0.016) * box.height) / 560,
     { button },
   );
 }
