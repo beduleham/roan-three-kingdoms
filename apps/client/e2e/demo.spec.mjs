@@ -313,3 +313,60 @@ test("spear direction and tick animation freeze on pause, attack follows real hi
     .poll(() => visual())
     .toMatchObject({ texture: "spear-walk", mode: "idle", frame: "0" });
 });
+
+test("mounted commander follows direction, canter freezes, and actual Q accelerates animation", async ({
+  page,
+}) => {
+  await expect
+    .poll(() => page.evaluate(() => window.battleDemo.view().loadedMounted))
+    .toBe(true);
+  const visual = (name) =>
+    page.evaluate(
+      (n) => window.battleDemo.view().unitVisuals.find((o) => o.name === n),
+      name,
+    );
+  await expect
+    .poll(() => visual("human-1:0"))
+    .toMatchObject({ texture: "cavalry-canter", mode: "idle" });
+  await expect
+    .poll(() => visual("human-commander"))
+    .toMatchObject({ texture: "commander-canter", mode: "idle" });
+  await clickGround(page, 6000, 11000);
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 3);
+  await page.locator("#pause").click();
+  for (const name of ["human-1:0", "human-commander"]) {
+    const v = await visual(name);
+    expect(v.mode).toBe("canter");
+    expect(Number(v.frame)).toBeGreaterThanOrEqual(4);
+    expect(Number(v.frame)).toBeLessThan(8);
+  }
+  const frozen = [await visual("human-1:0"), await visual("human-commander")];
+  await page.waitForTimeout(250);
+  expect([await visual("human-1:0"), await visual("human-commander")]).toEqual(
+    frozen,
+  );
+  await page.locator("#restart").click();
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  await expect
+    .poll(() => visual("human-1:0"), { intervals: [50], timeout: 4000 })
+    .toMatchObject({ mode: "charge" });
+  await page.locator("#pause").click();
+  expect(await visual("human-commander")).toMatchObject({ mode: "charge" });
+  const log = await page.evaluate(() => window.battleDemo.log());
+  const result = replay(log.initial, log.frames);
+  expect(result.stateHash).toBe(log.stateHash);
+  expect(result.eventHash).toBe(log.eventHash);
+  await page.screenshot({
+    path: test.info().outputPath("mounted-charge.png"),
+    fullPage: true,
+  });
+  await page.locator("#restart").click();
+  await expect
+    .poll(() => visual("human-1:0"))
+    .toMatchObject({ frame: "0", mode: "idle" });
+  await expect
+    .poll(() => visual("human-commander"))
+    .toMatchObject({ frame: "0", mode: "idle" });
+});
