@@ -496,3 +496,44 @@ test("retired art is not requested, actual damage flashes and reset restores nor
     )
     .toBe(true);
 });
+
+test("nameplates remain separate during combat and camera movement", async ({
+  page,
+}) => {
+  const checkLabels = async () => {
+    const view = await page.evaluate(() => window.battleDemo.view());
+    expect(view.labels.length).toBeGreaterThanOrEqual(2);
+    for (const [i, a] of view.labels.entries()) {
+      expect(a.x).toBeGreaterThanOrEqual(7.9);
+      expect(a.y).toBeGreaterThanOrEqual(7.9);
+      expect(a.x + a.width).toBeLessThanOrEqual(952.1);
+      expect(a.y + a.height).toBeLessThanOrEqual(552.1);
+      for (const b of view.labels.slice(i + 1))
+        expect(
+          a.x + a.width <= b.x ||
+            b.x + b.width <= a.x ||
+            a.y + a.height <= b.y ||
+            b.y + b.height <= a.y,
+        ).toBe(true);
+    }
+  };
+  await checkLabels();
+  const hp = (await state(page)).squads.find((s) => s.id === "enemy-1").hpMilli;
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  await expect
+    .poll(
+      async () =>
+        (await state(page)).squads.find((s) => s.id === "enemy-1").hpMilli,
+      { timeout: 15000 },
+    )
+    .toBeLessThan(hp);
+  await page.locator("#pause").click();
+  await checkLabels();
+  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(180);
+  await page.keyboard.up("ArrowRight");
+  await checkLabels();
+  await page.screenshot({ path: "apps/client/test-results/nameplates.png" });
+});

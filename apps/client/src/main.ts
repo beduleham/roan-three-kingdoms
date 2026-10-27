@@ -1,3 +1,5 @@
+import { layoutLabels } from "./label-layout.js";
+import type { LabelAnchor } from "./label-layout.js";
 import { squadFeedback } from "./squad-feedback.js";
 import infantryWalkUrl from "./infantry-walk.svg?url";
 import infantryAttackUrl from "./infantry-attack.svg?url";
@@ -568,6 +570,7 @@ class BattleScene extends Phaser.Scene {
         .setAlpha(alpha)
         .setVisible(true);
     };
+    const labelAnchors: LabelAnchor[] = [];
     for (const s of session.state.squads) {
       const p = project(s.position),
         friendly = s.ownerPlayerId === HUMAN;
@@ -685,6 +688,7 @@ class BattleScene extends Phaser.Scene {
           color: "#252b29",
           backgroundColor: "#e8ddc4",
         });
+        label.setName(`label:${s.id}`).setPadding(5, 3);
         this.labels.set(s.id, label);
       }
       const labelStyleKey =
@@ -716,10 +720,37 @@ class BattleScene extends Phaser.Scene {
       }
       label
         .setDepth(100000)
-        .setPosition(p.x - 48, p.y - 90)
+        .setVisible(false)
         .setText(
           `${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명${feedback.label ? " · " + feedback.label : ""}`,
         );
+      labelAnchors.push({
+        id: s.id,
+        x: p.x,
+        y: p.y,
+        width: label.width,
+        height: label.height,
+        selected: session.selected.includes(s.id),
+      });
+    }
+    const placements = layoutLabels(labelAnchors, {
+      x: cam.scrollX,
+      y: cam.scrollY,
+      width: cam.width,
+      height: cam.height,
+    });
+    for (const rect of placements) {
+      const label = this.labels.get(rect.id)!;
+      label.setPosition(rect.x, rect.y).setVisible(true);
+      const anchor = labelAnchors.find((a) => a.id === rect.id)!;
+      // Leader lines identify the owning squad when nearby nameplates are displaced.
+      g.lineStyle(1, anchor.selected ? 0x355e83 : 0x655640, 0.65);
+      g.lineBetween(
+        rect.x + rect.width / 2,
+        rect.y + rect.height,
+        anchor.x,
+        anchor.y - 54,
+      );
     }
     for (const c of session.state.commanders) {
       const p = project(c.position);
@@ -836,6 +867,21 @@ Object.defineProperty(window, "battleDemo", {
         loadedMotion: ["spear-walk", "spear-attack"].every((key) =>
           scene.textures.exists(key),
         ),
+        labels: scene.children.list
+          .filter(
+            (o): o is Phaser.GameObjects.Text =>
+              o instanceof Phaser.GameObjects.Text &&
+              o.visible &&
+              o.name.startsWith("label:"),
+          )
+          .map((o) => ({
+            id: o.name,
+            x: o.x - camera.scrollX,
+            y: o.y - camera.scrollY,
+            width: o.width,
+            height: o.height,
+            text: o.text,
+          })),
         unitVisuals: scene.children.list
           .filter(
             (o): o is Phaser.GameObjects.Image =>
