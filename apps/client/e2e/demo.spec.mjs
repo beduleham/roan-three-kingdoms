@@ -518,8 +518,16 @@ test("nameplates remain separate during combat and camera movement", async ({
     }
   };
   await checkLabels();
+  const hp = (await state(page)).squads.find((s) => s.id === "enemy-1").hpMilli;
+  await cast(page, "Q", ["enemy-1"]);
   await page.locator("#pause").click();
-  await tickAtLeast(page, 60);
+  await expect
+    .poll(
+      async () =>
+        (await state(page)).squads.find((s) => s.id === "enemy-1").hpMilli,
+      { timeout: 15000 },
+    )
+    .toBeLessThan(hp);
   await page.locator("#pause").click();
   await checkLabels();
   await page.locator("canvas").scrollIntoViewIfNeeded();
