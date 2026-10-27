@@ -1,3 +1,4 @@
+import { formationView, soldierFoot } from "./formation-view.js";
 import { layoutLabels } from "./label-layout.js";
 import type { LabelAnchor } from "./label-layout.js";
 import { squadFeedback } from "./squad-feedback.js";
@@ -404,6 +405,7 @@ class BattleScene extends Phaser.Scene {
   private seenReset = 0;
   private ink!: Phaser.GameObjects.Graphics;
   private arrowInk!: Phaser.GameObjects.Graphics;
+  private selectionInk!: Phaser.GameObjects.Graphics;
   private arrowFlights: ArrowFlight[] = [];
   visibleArrowCount = 0;
   private labels = new Map<string, Phaser.GameObjects.Text>();
@@ -444,6 +446,7 @@ class BattleScene extends Phaser.Scene {
     }
     this.ink = this.add.graphics();
     this.arrowInk = this.add.graphics().setDepth(50000);
+    this.selectionInk = this.add.graphics().setDepth(90000);
     this.arrows = this.input.keyboard!.createCursorKeys();
     this.input.mouse!.disableContextMenu();
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -514,6 +517,7 @@ class BattleScene extends Phaser.Scene {
     const g = this.ink;
     g.clear();
     this.arrowInk.clear();
+    this.selectionInk.clear();
     this.visibleArrowCount = 0;
     g.setDepth(-10);
     const ring = (p: { x: number; y: number }, r: number, color: number) => {
@@ -575,6 +579,34 @@ class BattleScene extends Phaser.Scene {
       const p = project(s.position),
         friendly = s.ownerPlayerId === HUMAN;
       const color = friendly ? 0x355e83 : 0xb34736;
+      const selected = session.selected.includes(s.id) && s.hpMilli > 0;
+      if (selected) {
+        const fx = this.selectionInk;
+        const left = p.x - formationView.halfWidth,
+          right = p.x + formationView.halfWidth;
+        const top = p.y + formationView.top,
+          bottom = p.y + formationView.bottom;
+        // Four corners remain visible above sprites without covering their bodies.
+        for (const [x, dx] of [
+          [left, 1],
+          [right, -1],
+        ] as const) {
+          for (const [y, dy] of [
+            [top, 1],
+            [bottom, -1],
+          ] as const) {
+            const points = [
+              { x: x + dx * 12, y },
+              { x, y },
+              { x, y: y + dy * 12 },
+            ];
+            fx.lineStyle(5, 0x252b29, 0.9);
+            fx.strokePoints(points);
+            fx.lineStyle(2, 0x81dbcc, 1);
+            fx.strokePoints(points);
+          }
+        }
+      }
       if (session.selected.includes(s.id)) ring(s.position, 650, 0x55b6aa);
       if (
         session.pending?.squadIds.includes(s.id) ||
@@ -616,10 +648,7 @@ class BattleScene extends Phaser.Scene {
       if (s.hpMilli > 0 && this.textures.exists(texture)) {
         const count = Math.min(8, livingSoldiers(s, config));
         for (let i = 0; i < count; i++) {
-          const foot = project({
-            x: s.position.x + ((i % 4) - 1.5) * 650,
-            y: s.position.y + (Math.floor(i / 4) - 0.5) * 900,
-          });
+          const foot = soldierFoot(p, i);
           image(
             `${s.id}:${i}`,
             frame,
@@ -722,7 +751,7 @@ class BattleScene extends Phaser.Scene {
         .setDepth(100000)
         .setVisible(false)
         .setText(
-          `${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명${feedback.label ? " · " + feedback.label : ""}`,
+          `${selected ? "◆ 선택 · " : ""}${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명${feedback.label ? " · " + feedback.label : ""}`,
         );
       labelAnchors.push({
         id: s.id,
@@ -790,6 +819,21 @@ class BattleScene extends Phaser.Scene {
           available ? pose.mode : "static",
         );
         if (!available) ring(c.position, 220, 0xe8ddc4);
+        // Bronze diamond identifies the commander even inside a melee cluster.
+        const badgeY = p.y + formationView.commanderBadgeY;
+        const fx = this.selectionInk;
+        fx.fillStyle(c.ownerPlayerId === HUMAN ? 0x355e83 : 0xb34736, 1);
+        fx.lineStyle(2, 0xe8cc8a, 1);
+        const diamond = [
+          { x: p.x, y: badgeY - 7 },
+          { x: p.x + 7, y: badgeY },
+          { x: p.x, y: badgeY + 7 },
+          { x: p.x - 7, y: badgeY },
+        ];
+        fx.fillPoints(diamond, true);
+        fx.strokePoints(diamond, true);
+        fx.lineBetween(p.x, badgeY + 7, p.x, p.y - 56);
+        this.sprites.get(c.id)?.setData("commanderBadge", true);
       } else ring(c.position, 200, 0xb5955d);
     }
     for (const flight of this.arrowFlights) {
@@ -896,6 +940,10 @@ Object.defineProperty(window, "battleDemo", {
             tint: o.tintTopLeft,
             alpha: o.alpha,
             status: o.getData("status"),
+            x: o.x,
+            y: o.y,
+            depth: o.depth,
+            commanderBadge: o.getData("commanderBadge") === true,
           })),
         visibleImages: scene.children.list.filter(
           (o) => o instanceof Phaser.GameObjects.Image && o.visible,

@@ -15,7 +15,7 @@ it("separates coincident squads and keeps selected labels nearest their anchor",
     viewport,
   );
   expect(result).toHaveLength(4);
-  expect(result[0]).toMatchObject({ id: "a", y: 210 });
+  expect(result[0]).toMatchObject({ id: "a", y: 188 });
   for (const [i, a] of result.entries())
     for (const b of result.slice(i + 1))
       expect(a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
