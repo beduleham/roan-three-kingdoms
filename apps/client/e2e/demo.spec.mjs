@@ -552,6 +552,20 @@ test("selection markers follow single and multiple selection while commander lan
   expect(
     view.unitVisuals.find((v) => v.name === "human-commander").commanderBadge,
   ).toBe(true);
+  const commander = view.unitVisuals.find((v) => v.name === "human-commander");
+  const badge = {
+    x: commander.x - view.scrollX,
+    y: commander.y - view.scrollY - 72,
+  };
+  expect(
+    view.labels.every(
+      (l) =>
+        badge.x + 7 <= l.x ||
+        l.x + l.width <= badge.x - 7 ||
+        badge.y + 7 <= l.y ||
+        l.y + l.height <= badge.y - 7,
+    ),
+  ).toBe(true);
   await page.keyboard.press("2");
   await expect
     .poll(async () =>
