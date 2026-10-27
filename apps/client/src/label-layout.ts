@@ -14,7 +14,7 @@ export interface LabelRect {
   width: number;
   height: number;
 }
-export const labelPolicy = { margin: 8, gap: 5, lift: 90 } as const;
+export const labelPolicy = { margin: 8, gap: 5, lift: 112 } as const;
 export function layoutLabels(
   anchors: readonly LabelAnchor[],
   viewport: { x: number; y: number; width: number; height: number },
