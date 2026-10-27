@@ -537,3 +537,46 @@ test("nameplates remain separate during combat and camera movement", async ({
   await checkLabels();
   await page.screenshot({ path: "apps/client/test-results/nameplates.png" });
 });
+
+test("selection markers follow single and multiple selection while commander lane stays clear", async ({
+  page,
+}) => {
+  const view = await page.evaluate(() => window.battleDemo.view());
+  const s = (await state(page)).squads.find((s) => s.id === "human-1");
+  const centerX = 340 + (s.position.x - s.position.y) * 0.032;
+  const soldiers = view.unitVisuals.filter((v) =>
+    v.name.startsWith("human-1:"),
+  );
+  expect(soldiers).toHaveLength(8);
+  expect(soldiers.every((v) => Math.abs(v.x - centerX) >= 40)).toBe(true);
+  expect(
+    view.unitVisuals.find((v) => v.name === "human-commander").commanderBadge,
+  ).toBe(true);
+  await page.keyboard.press("2");
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        window.battleDemo
+          .view()
+          .labels.filter((l) => l.text.startsWith("◆ 선택"))
+          .map((l) => l.id),
+      ),
+    )
+    .toEqual(["label:human-2"]);
+  await page.keyboard.press("Shift+1");
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        window.battleDemo
+          .view()
+          .labels.filter((l) => l.text.startsWith("◆ 선택"))
+          .map((l) => l.id)
+          .sort(),
+      ),
+    )
+    .toEqual(["label:human-1", "label:human-2"]);
+  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "apps/client/test-results/formation-selection.png",
+  });
+});
