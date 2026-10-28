@@ -132,3 +132,44 @@ export function observeAttack(
     facing: { ...(active?.facing ?? facing) },
   };
 }
+
+export interface CommandSample {
+  startTick: number;
+  facing: Facing;
+}
+export const commanderAnimation = { frames: 4, ticksPerFrame: 2 } as const;
+export function commanderPose(
+  facing: Facing,
+  tick: number,
+  moving: boolean,
+  charging: boolean,
+  status: "ACTIVE" | "REASSIGNING" | "EXPOSED" | "WOUNDED",
+  command?: CommandSample,
+) {
+  const canMove = moving && (status === "ACTIVE" || status === "REASSIGNING");
+  if (
+    status === "ACTIVE" &&
+    !canMove &&
+    command &&
+    command.startTick <= tick &&
+    tick - command.startTick <
+      commanderAnimation.frames * commanderAnimation.ticksPerFrame
+  ) {
+    return {
+      texture: "commander-command",
+      frame:
+        directionRow(command.facing) * 4 +
+        Math.floor(
+          (tick - command.startTick) / commanderAnimation.ticksPerFrame,
+        ),
+      mode: "command",
+    };
+  }
+  return mountedPose(
+    facing,
+    tick,
+    canMove,
+    status === "ACTIVE" && charging,
+    "commander",
+  );
+}
