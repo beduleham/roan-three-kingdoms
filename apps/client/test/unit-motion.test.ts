@@ -231,3 +231,61 @@ describe("cavalry melee attack", () => {
     ).toBe("idle");
   });
 });
+
+import { commanderPose } from "../src/unit-motion.js";
+describe("commander order gesture", () => {
+  it.each([
+    [1, 0, 0],
+    [0, 1, 1],
+    [-1, 0, 2],
+    [0, -1, 3],
+  ])("uses a locked facing %i,%i and four gesture frames", (x, y, row) => {
+    const command = { startTick: 10, facing: { x, y } };
+    expect(
+      Array.from(
+        { length: 8 },
+        (_, age) =>
+          commanderPose(
+            { x: 1, y: 1 },
+            10 + age,
+            false,
+            false,
+            "ACTIVE",
+            command,
+          ).frame,
+      ),
+    ).toEqual([0, 0, 1, 1, 2, 2, 3, 3].map((f) => row * 4 + f));
+    expect(
+      commanderPose({ x, y }, 10, false, false, "ACTIVE", command),
+    ).toMatchObject({ texture: "commander-command", mode: "command" });
+  });
+  it("gives movement and charging priority over a planted gesture", () => {
+    const command = { startTick: 10, facing: { x: 1, y: 0 } };
+    expect(
+      commanderPose(command.facing, 11, true, true, "ACTIVE", command).mode,
+    ).toBe("charge");
+    expect(
+      commanderPose(command.facing, 11, true, false, "ACTIVE", command).mode,
+    ).toBe("canter");
+  });
+  it.each(["WOUNDED", "EXPOSED", "REASSIGNING"] as const)(
+    "does not command while %s",
+    (status) => {
+      const command = { startTick: 10, facing: { x: 1, y: 0 } };
+      expect(
+        commanderPose(command.facing, 11, false, false, status, command).mode,
+      ).toBe("idle");
+    },
+  );
+  it("does not command without an accepted event, before its start, or after expiry", () => {
+    const facing = { x: 1, y: 0 },
+      command = { startTick: 10, facing };
+    expect(commanderPose(facing, 10, false, false, "ACTIVE").mode).toBe("idle");
+    expect(commanderPose(facing, 0, false, false, "ACTIVE", command).mode).toBe(
+      "idle",
+    );
+    expect(
+      commanderPose(facing, 18, false, false, "ACTIVE", command).mode,
+    ).toBe("idle");
+  });
+});
