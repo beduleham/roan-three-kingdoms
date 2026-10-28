@@ -1077,13 +1077,11 @@ test("replay verification cancels and replaces long jobs without stale output", 
   const long = { ...small, frames: Array.from({ length: 15000 }, () => []) };
   await page.locator("#verify-log").click();
   const upload = async (data) =>
-    page
-      .locator("#replay-file")
-      .setInputFiles({
-        name: "battle-replay.json",
-        mimeType: "application/json",
-        buffer: Buffer.from(JSON.stringify(data)),
-      });
+    page.locator("#replay-file").setInputFiles({
+      name: "battle-replay.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(data)),
+    });
   await upload(long);
   await expect(page.locator("#replay-cancel")).toBeEnabled();
   await page.locator("#replay-cancel").click();
