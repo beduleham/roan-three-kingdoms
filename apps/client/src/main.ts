@@ -1,3 +1,6 @@
+import commanderCommandUrl from "./commander-command.svg?url";
+import { commanderPose } from "./unit-motion.js";
+import type { CommandSample } from "./unit-motion.js";
 import cavalryAttackUrl from "./cavalry-attack.svg?url";
 import { observeAttack, footAnimation } from "./unit-motion.js";
 import type { AttackSample } from "./unit-motion.js";
@@ -428,6 +431,7 @@ class BattleScene extends Phaser.Scene {
   private arrows!: Phaser.Types.Input.Keyboard.CursorKeys;
   private sprites = new Map<string, Phaser.GameObjects.Image>();
   private previousPositions = new Map<string, MotionSample>();
+  private lastCommands = new Map<string, CommandSample>();
   private lastHits = new Map<string, AttackSample>();
   private lastDamage = new Map<string, number>();
   private seenEvents = 0;
@@ -439,6 +443,7 @@ class BattleScene extends Phaser.Scene {
     this.load.image("cavalry-canter", cavalryUrl);
     this.load.image("cavalry-attack", cavalryAttackUrl);
     this.load.image("commander-canter", commanderUrl);
+    this.load.image("commander-command", commanderCommandUrl);
     this.load.image("spear-walk", walkUrl);
     this.load.image("spear-attack", attackUrl);
     this.load.image("battle-ground", terrainUrl);
@@ -505,6 +510,7 @@ class BattleScene extends Phaser.Scene {
       this.visibleArrowCount = 0;
       this.previousPositions.clear();
       this.lastHits.clear();
+      this.lastCommands.clear();
       this.lastDamage.clear();
       this.seenEvents = 0;
       this.seenReset = viewReset;
@@ -515,6 +521,19 @@ class BattleScene extends Phaser.Scene {
     if (this.arrows.up.isDown) cam.scrollY -= speed;
     if (this.arrows.down.isDown) cam.scrollY += speed;
     for (const event of session.events.slice(this.seenEvents)) {
+      if (event.type === "SKILL_CAST") {
+        const commander = session.state.commanders.find(
+          (c) => c.id === event.actorId,
+        );
+        const squad = session.state.squads.find(
+          (s) => s.id === commander?.assignedSquadId,
+        );
+        if (commander)
+          this.lastCommands.set(commander.id, {
+            startTick: session.state.tick,
+            facing: { ...(squad?.facing ?? { x: 1, y: 0 }) },
+          });
+      }
       if (event.type !== "ATTACK_HIT") continue;
       const attacking = session.state.squads.find(
         (s) => s.id === event.actorId,
@@ -875,12 +894,13 @@ class BattleScene extends Phaser.Scene {
       const facing = moving
         ? { x: observation.dx, y: observation.dy }
         : (squad?.facing ?? { x: 1, y: 0 });
-      const pose = mountedPose(
+      const pose = commanderPose(
         facing,
         session.state.tick,
         moving,
         c.status === "ACTIVE" && !!squad?.charge,
-        "commander",
+        c.status,
+        this.lastCommands.get(c.id),
       );
       if (c.status !== "WOUNDED") {
         const available = this.textures.exists(pose.texture);
@@ -971,6 +991,7 @@ Object.defineProperty(window, "battleDemo", {
         scrollX: camera.scrollX,
         scrollY: camera.scrollY,
         loadedArt: scene.textures.exists("commander-canter"),
+        loadedCommand: scene.textures.exists("commander-command"),
         retiredTexturesPresent:
           scene.textures.exists("unit-strip") ||
           scene.textures.exists("foot-units"),
