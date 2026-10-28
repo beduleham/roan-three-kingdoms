@@ -88,6 +88,7 @@ export class LocalSession {
   frames: BattleInput[][] = [];
   events: BattleEvent[] = [];
   selected: string[] = ["human-1"];
+  inspectedEnemyId: string | null = null;
   pending: { skill: Skill; squadIds: string[]; targetSquadId?: string } | null =
     null;
   mode: "normal" | "ATTACK_MOVE" | "RETREAT" = "normal";
@@ -120,6 +121,7 @@ export class LocalSession {
     this.accumulator = 0;
     this.fingerprints.clear();
     this.selected = ["human-1"];
+    this.inspectedEnemyId = null;
     this.cancel();
     this.paused = true;
     this.notice = "초기화 완료 · 일시정지";
@@ -140,6 +142,17 @@ export class LocalSession {
         ? this.selected.filter((x) => x !== id)
         : [...this.selected, id]
       : [id];
+    return true;
+  }
+  // Observation only: never grants ownership, cancels targeting, or queues an input.
+  inspectEnemy(id: string | null): boolean {
+    if (id === null) {
+      this.inspectedEnemyId = null;
+      return true;
+    }
+    const squad = this.state.squads.find((s) => s.id === id);
+    if (!squad || squad.ownerPlayerId === HUMAN) return false;
+    this.inspectedEnemyId = id;
     return true;
   }
   beginSkill(skill: Skill) {
