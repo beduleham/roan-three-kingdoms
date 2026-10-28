@@ -23,12 +23,12 @@ describe("sprite motion policy", () => {
     expect(spearPose({ x: 1, y: 0 }, 2, true).frame).toBe(1);
     expect(spearPose({ x: 1, y: 0 }, 4, true).frame).toBe(2);
   });
-  it("uses real recent hit for attack and does not reset phase on repeated hits", () => {
+  it("starts each actual attack from its first frame", () => {
     expect(spearPose({ x: 0, y: 1 }, 4, false, 4)).toMatchObject({
       texture: "spear-attack",
-      frame: 6,
+      frame: 4,
     });
-    expect(spearPose({ x: 0, y: 1 }, 6, false, 6).frame).toBe(7);
+    expect(spearPose({ x: 0, y: 1 }, 6, false, 6).frame).toBe(4);
   });
   it("ignores future or expired hits", () => {
     expect(spearPose({ x: 1, y: 0 }, 4, false, 5).mode).toBe("idle");
@@ -107,9 +107,87 @@ for (const kind of ["infantry", "archers"] as const) {
       expect(footPose(kind, { x: 0, y: 1 }, 2, false, 2)).toMatchObject({
         texture: `${prefix}-attack`,
         mode: "attack",
-        frame: 5,
+        frame: 4,
       });
       expect(footPose(kind, { x: 0, y: 1 }, 2, false, 3).mode).toBe("idle");
     });
   });
 }
+
+for (const kind of ["spears", "infantry", "archers"] as const) {
+  describe(`${kind} complete attack sequence`, () => {
+    it.each([0, 1, 2, 3, 4, 5, 6, 7])(
+      "plays frames 0..3 after a hit at global phase %i",
+      (phase) => {
+        const hit = 32 + phase;
+        for (const facing of [
+          { x: 1, y: 0 },
+          { x: 0, y: 1 },
+          { x: -1, y: 0 },
+          { x: 0, y: -1 },
+        ]) {
+          const row = directionRow(facing);
+          expect(
+            Array.from(
+              { length: 4 },
+              (_, age) => footPose(kind, facing, hit + age, true, hit).frame,
+            ),
+          ).toEqual([0, 1, 2, 3].map((frame) => row * 4 + frame));
+          expect(footPose(kind, facing, hit + 4, true, hit).mode).toBe("walk");
+          expect(footPose(kind, facing, hit + 4, false, hit).mode).toBe("idle");
+        }
+      },
+    );
+    it("keeps the current attack phase and ignores old hits after reset", () => {
+      const facing = { x: 1, y: 0 };
+      expect(footPose(kind, facing, 42, false, 40)).toMatchObject({
+        frame: 2,
+        mode: "attack",
+      });
+      expect(footPose(kind, facing, 0, false, 40).mode).toBe("idle");
+      expect(footPose(kind, facing, 43, false, 43).frame).toBe(0);
+    });
+  });
+}
+
+import { observeAttack } from "../src/unit-motion.js";
+describe("per-tick attack event grouping", () => {
+  it("starts on the observed simulation tick rather than the preceding event tick", () => {
+    expect(observeAttack(undefined, 9, 10, { x: 1, y: 0 })).toEqual({
+      startTick: 10,
+      lastEventTick: 9,
+      facing: { x: 1, y: 0 },
+    });
+  });
+  it("finishes the clip during continuous damage and locks the heading", () => {
+    let sample = observeAttack(undefined, 9, 10, { x: 1, y: 0 });
+    const frames = [];
+    for (let tick = 10; tick <= 17; tick++) {
+      sample = observeAttack(sample, tick - 1, tick, { x: 0, y: 1 });
+      frames.push(
+        footPose("infantry", sample!.facing, tick, false, sample!.startTick)
+          .frame,
+      );
+    }
+    expect(frames).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+  it("does not repeat a consumed event or loop after attacks stop", () => {
+    const sample = observeAttack(undefined, 9, 10, { x: 1, y: 0 });
+    const after = observeAttack(sample, 9, 20, { x: 0, y: 1 });
+    expect(after).toEqual(sample);
+    expect(
+      footPose("infantry", after!.facing, 20, false, after!.startTick).mode,
+    ).toBe("idle");
+    expect(observeAttack(sample, 30, 11, { x: 1, y: 0 })).toEqual(sample);
+  });
+  it("resets on a lower tick and copies the supplied facing", () => {
+    const facing = { x: 1, y: 0 };
+    const sample = observeAttack(undefined, 9, 10, facing);
+    facing.x = -1;
+    expect(sample!.facing.x).toBe(1);
+    expect(observeAttack(sample, 0, 1, facing)).toMatchObject({
+      startTick: 1,
+      lastEventTick: 0,
+    });
+  });
+});
