@@ -263,6 +263,49 @@ export class LocalSession {
     else this.send({ type: "MOVE", squadIds: ids, destination: position });
     this.mode = "normal";
   }
+  get canStartEngagement(): boolean {
+    return (
+      !this.result &&
+      this.paused &&
+      this.state.tick === 0 &&
+      !this.pending &&
+      this.mode === "normal" &&
+      this.queue.length === 0 &&
+      this.state.squads.some(
+        (s) => s.ownerPlayerId === HUMAN && s.hpMilli > 0,
+      ) &&
+      this.initial.squads.some(
+        (s) => s.ownerPlayerId !== HUMAN && s.hpMilli > 0,
+      )
+    );
+  }
+  // Explicit one-time player order shortcut, not an autonomous AI decision.
+  startEngagement(): boolean {
+    if (!this.canStartEngagement) return false;
+    const ids = this.state.squads
+      .filter((s) => s.ownerPlayerId === HUMAN && s.hpMilli > 0)
+      .map((s) => s.id)
+      .sort();
+    const enemies = this.initial.squads.filter(
+      (s) => s.ownerPlayerId !== HUMAN && s.hpMilli > 0,
+    );
+    const destination = {
+      x: Math.round(
+        enemies.reduce((sum, s) => sum + s.position.x, 0) / enemies.length,
+      ),
+      y: Math.round(
+        enemies.reduce((sum, s) => sum + s.position.y, 0) / enemies.length,
+      ),
+    };
+    const accepted =
+      this.send({ type: "SET_STANCE", squadIds: ids, stance: "aggressive" }) &&
+      this.send({ type: "ATTACK_MOVE", squadIds: ids, destination });
+    if (!accepted) return false;
+    this.selected = ids;
+    this.togglePause();
+    this.notice = "아군 전체 전진 명령 · Q/W/R은 직접 사용하세요.";
+    return true;
+  }
   togglePause() {
     if (this.result) {
       this.notice = "전멸 테스트 종료 · 다시 시작하세요.";
