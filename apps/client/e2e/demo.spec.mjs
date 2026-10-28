@@ -656,3 +656,66 @@ test("accepted movement and actual combat targets drive selection guides", async
     .poll(async () => page.evaluate(() => window.battleDemo.view().orderCues))
     .toEqual([]);
 });
+
+test("a real infantry hit plays all four attack frames in order", async ({
+  page,
+}) => {
+  await page.locator("#human1").selectOption("infantry");
+  await page.locator("#reset").click();
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  const sequence = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const samples = [];
+        const start = performance.now();
+        let lastTick = -1;
+        const sample = () => {
+          const tick = window.battleDemo.snapshot().tick;
+          const sprite = window.battleDemo
+            .view()
+            .unitVisuals.find((v) => v.name === "human-1:0");
+          if (tick !== lastTick) {
+            lastTick = tick;
+            if (sprite?.mode === "attack")
+              samples.push({ tick, frame: Number(sprite.frame) % 4 });
+            else samples.length = 0;
+            const tail = samples.slice(-4);
+            if (
+              tail.length === 4 &&
+              tail.every((s, i) => s.frame === i && s.tick === tail[0].tick + i)
+            ) {
+              resolve(tail);
+              return;
+            }
+          }
+          if (performance.now() - start > 12000) {
+            resolve(samples);
+            return;
+          }
+          requestAnimationFrame(sample);
+        };
+        sample();
+      }),
+  );
+  expect(sequence.map((s) => s.frame)).toEqual([0, 1, 2, 3]);
+  await page.locator("#pause").click();
+  const frozen = await page.evaluate(
+    () => window.battleDemo.view().unitVisuals,
+  );
+  await page.waitForTimeout(250);
+  expect(
+    await page.evaluate(() => window.battleDemo.view().unitVisuals),
+  ).toEqual(frozen);
+  await page.locator("#reset").click();
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        window.battleDemo
+          .view()
+          .unitVisuals.filter((v) => v.name.startsWith("human-1:"))
+          .every((v) => v.mode === "idle"),
+      ),
+    )
+    .toBe(true);
+});
