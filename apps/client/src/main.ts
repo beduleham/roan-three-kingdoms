@@ -56,7 +56,7 @@ const options = (entries: Record<string, string>) =>
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <header><div><small>STRATELIER / 채색 병서 전투 실험실</small><h1>로언 베이의 삼국지</h1></div><div class="badge">로컬 데모 · demo-order-v0.1<br>각 2부대 · 40명 / 시작 Lv.${DEMO.startLevel} (R 검증용)</div></header>
 <section class="setup"><label>아군 1 <select id="human1">${options(unitNames)}</select></label><label>아군 2 <select id="human2">${options(unitNames)}</select></label><label>적군 1 <select id="enemy1">${options(unitNames)}</select></label><label>적군 2 <select id="enemy2">${options(unitNames)}</select></label><label><input id="experimental" type="checkbox"> 실험용 증강 (수치 미검증)</label><button id="reset">편성 적용 · 초기화</button></section>
-<main><section class="battle"><div class="toolbar"><strong id="clock"></strong><button id="pause">시작</button><button id="download">전체 로그 JSON</button></div><div id="arena"></div><p class="legend">군기: 아군 파랑 / 적군 빨강 · 백마: 장수 · 보·창·궁 4방향 이동·공격 · 기병·무장 4방향 이동 초안</p><div id="cards"></div></section>
+<main><section class="battle"><div class="toolbar"><strong id="clock"></strong><button id="pause">시작</button><button id="download">전체 로그 JSON</button></div><div id="arena"></div><p class="legend">군기: 아군 파랑 / 적군 빨강 · 백마: 장수 · 보·창·궁 4방향 이동·공격 · 기병 4방향 이동·공격 · 장수 이동·군령</p><div id="cards"></div></section>
 <aside><h2>전술 명령</h2><p>클릭 / 1·2: 선택 · Shift: 복수 선택<br>우클릭: 이동 / 적 공격 · 방향키: 화면 이동</p><div class="buttons"><button id="move">이동</button><button id="attackMove">공격 이동 (A)</button><button id="retreat">후퇴 (T)</button></div><label>태세 <select id="stance">${options({ defensive: "방어", balanced: "균형", aggressive: "공격" })}</select></label><button id="applyStance">태세 적용</button><label>진형 <select id="formation">${options({ normal: "기본진", defense: "방어진", offense: "공격진" })}</select></label><button id="applyFormation">진형 적용</button>
 <h2>무장 스킬</h2><div class="buttons"><button id="Q">Q 돌격</button><button id="W">W 함성</button><button id="R">R 파죽지세</button></div><p id="aim"></p><div class="buttons"><button id="confirm">시전 확인 (Enter)</button><button id="cancel">취소 (Esc)</button></div><button id="reassign">선택 부대로 장수 재배속</button><pre id="commander"></pre><p role="status" id="notice"></p><section id="augments"></section></aside></main>
 <section class="log"><h2>전투 사건 <small>최근 주요 사건 · 전체 사건은 JSON에 기록</small></h2><pre id="events"></pre></section><footer>브라우저 내 battle-core 실행 · 실제 서버 권위 / 멀티플레이 아님 · 자동 AI는 기본 교전·추격·복귀만 수행합니다. 성장·거점 승리 규칙 없음. Phase 3·4 전체 미완료.</footer>`;
@@ -118,6 +118,16 @@ const allGone = document.createElement("p");
 allGone.id = "defeat";
 allGone.setAttribute("role", "status");
 document.querySelector("#arena")!.after(allGone);
+const resultPanel = document.createElement("section");
+resultPanel.id = "test-result";
+resultPanel.className = "test-result";
+resultPanel.hidden = true;
+resultPanel.setAttribute("aria-label", "전투 테스트 결과");
+resultPanel.innerHTML =
+  '<div class="result-heading"><span class="seal" aria-hidden="true">終</span><div><small>전멸 기준 · 로컬 시험 결과</small><h2 id="result-title" role="status"></h2></div></div><div id="result-content"></div><div class="buttons"><button id="result-retry">같은 편성으로 재시험</button><button id="result-edit">편성 변경</button><button id="result-log">전투 로그 저장</button></div><p class="result-note">국가 점수·거점에 따른 정식 승리 판정과 별도의 전멸 테스트입니다.</p>';
+allGone.after(resultPanel);
+let renderedResult: typeof session.result = null;
+
 function el<T extends HTMLElement = HTMLElement>(id: string) {
   return document.getElementById(id) as T;
 }
@@ -144,11 +154,23 @@ function readOptions(): Options {
     experimental: el<HTMLInputElement>("experimental").checked,
   };
 }
-action("reset", () => {
-  session.reset(readOptions());
+function resetSession(options: Options) {
+  session.reset(options);
+  for (const side of ["human", "enemy"] as const)
+    session.options[side].forEach((unit, i) => {
+      el<HTMLSelectElement>(`${side}${i + 1}`).value = unit;
+    });
+  el<HTMLInputElement>("experimental").checked = session.options.experimental;
   offerKey = "";
   viewReset++;
+}
+action("reset", () => resetSession(readOptions()));
+action("result-retry", () => resetSession(session.options));
+action("result-edit", () => {
+  setupPanel.open = true;
+  setupPanel.scrollIntoView({ block: "start" });
 });
+action("result-log", () => el("download").click());
 action("restart", () => el("reset").click());
 action("pause", () => session.togglePause());
 action("move", () => {
@@ -211,6 +233,11 @@ document.addEventListener("keydown", (e) => {
   )
     return;
   const key = e.key.toLowerCase();
+  if (session.result && !["1", "2", "escape"].includes(key)) {
+    if (["q", "w", "r", "enter", " ", "a", "t"].includes(key))
+      e.preventDefault();
+    return;
+  }
   if (["1", "2", "q", "w", "r", "enter", "escape", " ", "a", "t"].includes(key))
     e.preventDefault();
   if (key === "1" || key === "2") session.select(`human-${key}`, e.shiftKey);
@@ -318,6 +345,7 @@ function hud() {
           : "⑤ 돌격 종료 · 사건 로그에서 이유를 확인하세요"
         : "① 부대 선택 → Q 군령패 → 적 지정 → 돌격 실행";
   el<HTMLButtonElement>("confirm").disabled =
+    !!session.result ||
     !session.pending ||
     !session.pending.squadIds.length ||
     (session.pending.skill === "Q" && !session.pending.targetSquadId);
@@ -328,7 +356,10 @@ function hud() {
     const remaining =
       ((commander?.cooldownTicks[skill] ?? 0) * config.tickMs) / 1000;
     button.disabled =
-      !commander || commander.status !== "ACTIVE" || remaining > 0;
+      !!session.result ||
+      !commander ||
+      commander.status !== "ACTIVE" ||
+      remaining > 0;
     button.textContent = `${skill} ${skill === "Q" ? "돌격" : skill === "W" ? "함성" : "파죽지세"} · ${remaining > 0 ? remaining.toFixed(1) + "초" : "준비"}`;
     button.title =
       remaining > 0
@@ -344,7 +375,36 @@ function hud() {
     : "";
   el("clock").textContent =
     `${((session.state.tick * config.tickMs) / 1000).toFixed(1)}초 · ${session.state.tick}tick${session.state.tick >= 900 ? " · 90초 이상 실행" : ""}`;
-  el("pause").textContent = session.paused ? "시작 / 계속" : "일시정지";
+  el("pause").textContent = session.result
+    ? "테스트 종료"
+    : session.paused
+      ? "시작 / 계속"
+      : "일시정지";
+  el<HTMLButtonElement>("pause").disabled = !!session.result;
+  for (const id of [
+    "move",
+    "attackMove",
+    "retreat",
+    "applyStance",
+    "applyFormation",
+    "reassign",
+    "stance",
+    "formation",
+  ])
+    el<HTMLButtonElement | HTMLSelectElement>(id).disabled = !!session.result;
+  resultPanel.hidden = !session.result;
+  if (session.result && renderedResult !== session.result) {
+    const r = session.result;
+    el("result-title").textContent =
+      r.outcome === "mutual-elimination"
+        ? "양군 동시 전멸"
+        : r.outcome === "enemy-eliminated"
+          ? "적군 전멸 · 아군 생존"
+          : "아군 전멸";
+    el("result-content").innerHTML =
+      `<p>종료 ${(r.elapsedMs / 1000).toFixed(1)}초 · ${r.tick}tick</p><div class="result-table-wrap"><table><thead><tr><th>진영</th><th>잔존 / 시작 병력</th><th>전멸 부대</th><th>Q · W · R 승인</th><th>돌격 적중</th></tr></thead><tbody>${r.sides.map((side) => `<tr><th>${side.playerId === HUMAN ? "아군" : "적군"}</th><td>${side.remainingSoldiers} / ${side.initialSoldiers}명</td><td>${side.defeatedSquads}개</td><td>${side.skills.Q} · ${side.skills.W} · ${side.skills.R}회</td><td>${side.chargeImpacts}회</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  renderedResult = session.result;
   const code = session.notice.replace("코어 거부: ", "");
   el("notice").textContent = rejection[code]
     ? `코어 거부: ${rejection[code]} (${code})`
@@ -990,6 +1050,7 @@ Object.defineProperty(window, "battleDemo", {
       return {
         scrollX: camera.scrollX,
         scrollY: camera.scrollY,
+        testResult: structuredClone(session.result),
         loadedArt: scene.textures.exists("commander-canter"),
         loadedCommand: scene.textures.exists("commander-command"),
         retiredTexturesPresent:
