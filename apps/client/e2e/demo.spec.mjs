@@ -729,3 +729,82 @@ for (const unit of ["infantry", "cavalry"]) {
       .toBe(true);
   });
 }
+
+test("accepted W and R animate the commander while pending input and reset do not", async ({
+  page,
+}) => {
+  const visual = () =>
+    page.evaluate(() =>
+      window.battleDemo
+        .view()
+        .unitVisuals.find((v) => v.name === "human-commander"),
+    );
+  expect(
+    await page.evaluate(() => window.battleDemo.view().loadedCommand),
+  ).toBe(true);
+  await cast(page, "W", ["human-1", "human-2"]);
+  expect(await visual()).toMatchObject({
+    texture: "commander-canter",
+    mode: "idle",
+  });
+  await page.locator("#pause").click();
+  const sequence = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const samples = [],
+          start = performance.now();
+        let lastFrame = -1;
+        const sample = () => {
+          const v = window.battleDemo
+            .view()
+            .unitVisuals.find((v) => v.name === "human-commander");
+          const tick = window.battleDemo.snapshot().tick;
+          if (v?.mode === "command" && Number(v.frame) % 4 !== lastFrame) {
+            lastFrame = Number(v.frame) % 4;
+            samples.push({ tick, frame: lastFrame, texture: v.texture });
+          }
+          if (samples.length === 4 || performance.now() - start > 4000) {
+            resolve(samples);
+            return;
+          }
+          requestAnimationFrame(sample);
+        };
+        sample();
+      }),
+  );
+  expect(sequence.map((s) => s.frame)).toEqual([0, 1, 2, 3]);
+  expect(sequence.every((s) => s.texture === "commander-command")).toBe(true);
+  await page.locator("#pause").click();
+  const frozen = await visual();
+  await page.waitForTimeout(250);
+  expect(await visual()).toEqual(frozen);
+  await page.locator("#pause").click();
+  await expect
+    .poll(visual, { intervals: [30] })
+    .toMatchObject({ mode: "idle" });
+  await page.locator("#pause").click();
+  await cast(page, "R", ["human-1", "human-2"]);
+  await page.locator("#pause").click();
+  await expect
+    .poll(
+      async () => {
+        const v = await visual();
+        return { mode: v.mode, phase: Number(v.frame) % 4 };
+      },
+      { intervals: [20] },
+    )
+    .toEqual({ mode: "command", phase: 2 });
+  await page.locator("#pause").click();
+  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: test.info().outputPath("commander-command.png"),
+  });
+  const log = await page.evaluate(() => window.battleDemo.log());
+  const result = replay(log.initial, log.frames);
+  expect(result.stateHash).toBe(log.stateHash);
+  expect(result.eventHash).toBe(log.eventHash);
+  await page.locator("#reset").click();
+  await expect
+    .poll(visual)
+    .toMatchObject({ texture: "commander-canter", mode: "idle" });
+});
