@@ -222,3 +222,53 @@ it("normalizes multi-target order when rejecting same-tick duplicate commands", 
   tick(s);
   expect(s.frames[0]).toHaveLength(1);
 });
+
+import { createBattle } from "../../../packages/battle-core/src/index.js";
+import { scenario } from "../src/session.js";
+it("stops after a complete simultaneous elimination tick and preserves replay", () => {
+  const s = start();
+  const fixture = scenario(config, defaults);
+  fixture.squads = fixture.squads!.map((s) => ({
+    ...s,
+    position: { x: 6000, y: 4000 },
+    hpMilli: 1,
+  }));
+  s.initial = createBattle(config, DEMO.seed, fixture);
+  s.state = s.initial;
+  s.paused = false;
+  s.advance(1000);
+  expect(s.result?.outcome).toBe("mutual-elimination");
+  expect(s.paused).toBe(true);
+  expect(s.state.tick).toBeLessThan(10);
+  expect(s.frames).toHaveLength(s.state.tick);
+  const tick = s.state.tick;
+  const before = s.exportLog();
+  s.togglePause();
+  s.paused = false; // Even a caller toggling the public pause flag cannot advance an ended test.
+  s.advance(1000);
+  expect(s.state.tick).toBe(tick);
+  expect(
+    s.send({
+      type: "MOVE",
+      squadIds: ["human-1"],
+      destination: { x: 0, y: 0 },
+    }),
+  ).toBe(false);
+  s.beginSkill("W");
+  expect(s.pending).toBeNull();
+  const result = replay(before.initial, before.frames);
+  expect(result.stateHash).toBe(before.stateHash);
+  expect(result.eventHash).toBe(before.eventHash);
+  s.reset();
+  expect(s.result).toBeNull();
+  expect(s.state.tick).toBe(0);
+  expect(s.paused).toBe(true);
+  expect(s.frames).toEqual([]);
+  expect(
+    s.send({
+      type: "MOVE",
+      squadIds: ["human-1"],
+      destination: { x: 0, y: 0 },
+    }),
+  ).toBe(true);
+});

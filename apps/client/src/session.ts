@@ -1,3 +1,5 @@
+import { testResult } from "./test-result.js";
+import type { TestResult } from "./test-result.js";
 import {
   createBattle,
   step,
@@ -80,6 +82,7 @@ export function scenario(
   };
 }
 export class LocalSession {
+  result: TestResult | null = null;
   state: BattleState;
   initial: BattleState;
   frames: BattleInput[][] = [];
@@ -109,6 +112,7 @@ export class LocalSession {
       scenario(this.config, options),
     );
     this.state = this.initial;
+    this.result = null;
     this.frames = [];
     this.events = [];
     this.queue = [];
@@ -140,6 +144,10 @@ export class LocalSession {
   }
   beginSkill(skill: Skill) {
     this.cancel();
+    if (this.result) {
+      this.notice = "전멸 테스트 종료 · 다시 시작하세요.";
+      return;
+    }
     if (skill === "Q" && this.selected.length !== 1) {
       this.notice = "Q 실행 부대를 하나 선택하세요.";
       return;
@@ -182,6 +190,10 @@ export class LocalSession {
   }
   // Local trusted identity boundary. No playerId, seq or tick is taken from UI callers.
   send(intent: Intent): boolean {
+    if (this.result) {
+      this.notice = "전멸 테스트 종료 · 다시 시작하세요.";
+      return false;
+    }
     if (
       intent.type !== "SELECT_AUGMENT" &&
       (!intent.squadIds.length ||
@@ -239,11 +251,16 @@ export class LocalSession {
     this.mode = "normal";
   }
   togglePause() {
+    if (this.result) {
+      this.notice = "전멸 테스트 종료 · 다시 시작하세요.";
+      return;
+    }
     this.paused = !this.paused;
     this.accumulator = 0;
   }
   advance(deltaMs: number) {
-    if (this.paused || !Number.isFinite(deltaMs) || deltaMs < 0) return;
+    if (this.result || this.paused || !Number.isFinite(deltaMs) || deltaMs < 0)
+      return;
     // Process a bounded number per render frame, retaining debt instead of changing tick duration.
     this.accumulator += deltaMs;
     let count = 0;
@@ -262,6 +279,16 @@ export class LocalSession {
       if (rejected) this.notice = `코어 거부: ${rejected.reason}`;
       else if (commands.length)
         this.notice = "명령 처리 완료 · 결과는 HUD와 사건 로그에서 확인";
+      this.result = testResult(this.initial, this.state, this.events);
+      if (this.result) {
+        this.paused = true;
+        this.accumulator = 0;
+        this.queue = [];
+        this.fingerprints.clear();
+        this.cancel();
+        this.notice = "전멸 테스트 종료 · 결과를 확인하고 다시 시작하세요.";
+        break;
+      }
     }
   }
   exportLog() {
