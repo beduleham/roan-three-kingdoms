@@ -191,3 +191,43 @@ describe("per-tick attack event grouping", () => {
     });
   });
 });
+
+describe("cavalry melee attack", () => {
+  it.each([
+    [1, 0, 0],
+    [0, 1, 1],
+    [-1, 0, 2],
+    [0, -1, 3],
+  ])("plays four attack frames facing %i,%i", (x, y, row) => {
+    expect(
+      Array.from({ length: 4 }, (_, age) =>
+        mountedPose({ x, y }, 11 + age, false, false, "cavalry", 11),
+      ),
+    ).toEqual(
+      [0, 1, 2, 3].map((frame) => ({
+        texture: "cavalry-attack",
+        frame: row * 4 + frame,
+        mode: "attack",
+      })),
+    );
+  });
+  it("keeps actual charge movement and does not give commanders an unavailable attack texture", () => {
+    expect(
+      mountedPose({ x: 1, y: 0 }, 11, true, true, "cavalry", 11),
+    ).toMatchObject({ texture: "cavalry-canter", mode: "charge" });
+    expect(
+      mountedPose({ x: 1, y: 0 }, 11, false, false, "commander", 11),
+    ).toMatchObject({ texture: "commander-canter", mode: "idle" });
+  });
+  it("returns to canter or idle after the clip and ignores a future start", () => {
+    expect(
+      mountedPose({ x: 1, y: 0 }, 15, true, false, "cavalry", 11).mode,
+    ).toBe("canter");
+    expect(
+      mountedPose({ x: 1, y: 0 }, 15, false, false, "cavalry", 11).mode,
+    ).toBe("idle");
+    expect(
+      mountedPose({ x: 1, y: 0 }, 10, false, false, "cavalry", 11).mode,
+    ).toBe("idle");
+  });
+});

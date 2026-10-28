@@ -74,15 +74,33 @@ export function mountedPose(
   moving: boolean,
   charging: boolean,
   kind: "cavalry" | "commander",
+  attackStartTick?: number,
 ) {
-  const mode = !moving ? "idle" : charging ? "charge" : "canter";
+  const attacking =
+    kind === "cavalry" &&
+    !charging &&
+    attackStartTick !== undefined &&
+    attackStartTick <= tick &&
+    tick - attackStartTick <
+      footAnimation.attackFrames * footAnimation.attackTicksPerFrame;
+  const mode = attacking
+    ? "attack"
+    : !moving
+      ? "idle"
+      : charging
+        ? "charge"
+        : "canter";
   return {
-    texture: `${kind}-canter`,
+    texture: `${kind}-${attacking ? "attack" : "canter"}`,
     frame:
       directionRow(facing) * 4 +
-      (mode === "idle"
-        ? 0
-        : Math.floor(tick / (mode === "charge" ? 1 : 2)) % 4),
+      (attacking
+        ? Math.floor(
+            (tick - attackStartTick!) / footAnimation.attackTicksPerFrame,
+          )
+        : mode === "idle"
+          ? 0
+          : Math.floor(tick / (mode === "charge" ? 1 : 2)) % 4),
     mode,
   };
 }
