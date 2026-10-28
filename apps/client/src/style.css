@@ -565,3 +565,54 @@ details {
   font-size: 12px;
   color: #d9cead;
 }
+
+.replay-check {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid #89734a;
+  background: #30261e;
+}
+.replay-check > p,
+.replay-check label {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.replay-check input {
+  margin: 8px;
+  max-width: 100%;
+}
+#replay-file-name {
+  overflow-wrap: anywhere;
+  color: #bcae91;
+}
+#replay-status {
+  font-weight: 600;
+}
+#replay-status[data-verdict="match"] {
+  color: #81dbcc;
+}
+#replay-status[data-verdict="mismatch"],
+#replay-status[data-verdict="invalid"] {
+  color: #f2ab89;
+}
+.replay-table-wrap {
+  overflow-x: auto;
+}
+.replay-check table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.replay-check caption {
+  text-align: left;
+  padding: 8px 0;
+}
+.replay-check th,
+.replay-check td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #89734a;
+}
+.replay-check code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
