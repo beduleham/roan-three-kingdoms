@@ -544,3 +544,24 @@ details {
   font-size: 11px;
   line-height: 1.7;
 }
+
+.engagement-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid #628f82;
+  background: #2d3027;
+}
+.engagement-start button {
+  background: #ded1ac;
+  color: #26382e;
+  border-color: #a99866;
+}
+.engagement-start p {
+  margin: 0;
+  font-size: 12px;
+  color: #d9cead;
+}

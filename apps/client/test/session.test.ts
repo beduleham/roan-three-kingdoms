@@ -302,3 +302,75 @@ it("keeps defeated enemies inspectable and clears observation on retry", () => {
   s.reset();
   expect(s.inspectedEnemyId).toBeNull();
 });
+
+it("starts an explicit all-friendly advance using ordinary replayable orders without automatic skills", () => {
+  const s = start(),
+    before = hashReplayValue(s.state);
+  s.inspectEnemy("enemy-1");
+  expect(s.canStartEngagement).toBe(true);
+  expect(s.startEngagement()).toBe(true);
+  expect(s.paused).toBe(false);
+  expect(s.selected).toEqual(["human-1", "human-2"]);
+  expect(hashReplayValue(s.state)).toBe(before);
+  s.advance(100);
+  expect(s.frames[0]!.map((i) => i.command.type)).toEqual([
+    "SET_STANCE",
+    "ATTACK_MOVE",
+  ]);
+  expect(
+    s.frames[0]!.every(
+      (i) =>
+        i.playerId === HUMAN &&
+        i.command.squadIds.join(",") === "human-1,human-2",
+    ),
+  ).toBe(true);
+  expect(s.frames[0]![1]!.command).toMatchObject({
+    type: "ATTACK_MOVE",
+    destination: { x: 14000, y: 6500 },
+  });
+  expect(
+    s.state.squads
+      .filter((s) => s.ownerPlayerId === HUMAN)
+      .every((s) => s.stance === "aggressive"),
+  ).toBe(true);
+  expect(s.events.some((e) => e.type === "SKILL_CAST")).toBe(false);
+  const log = s.exportLog(),
+    replayed = replay(log.initial, log.frames);
+  expect(replayed.stateHash).toBe(log.stateHash);
+  expect(replayed.eventHash).toBe(log.eventHash);
+});
+it("does not repeat the shortcut during a running or paused battle, and resets its availability", () => {
+  const s = start();
+  s.startEngagement();
+  expect(s.startEngagement()).toBe(false);
+  s.advance(100);
+  s.togglePause();
+  expect(s.canStartEngagement).toBe(false);
+  expect(s.startEngagement()).toBe(false);
+  expect(s.frames.flat()).toHaveLength(2);
+  s.reset();
+  expect(s.canStartEngagement).toBe(true);
+});
+it("preserves pending skill targets and queued manual commands instead of overwriting them", () => {
+  const s = start();
+  s.beginSkill("Q");
+  s.target("enemy-1");
+  const pending = structuredClone(s.pending);
+  expect(s.startEngagement()).toBe(false);
+  expect(s.pending).toEqual(pending);
+  expect(s.paused).toBe(true);
+  s.cancel();
+  expect(s.canStartEngagement).toBe(true);
+  s.rightClick({ x: 7000, y: 4000 });
+  expect(s.startEngagement()).toBe(false);
+  tick(s);
+  expect(s.frames[0]!.map((i) => i.command.type)).toEqual(["MOVE"]);
+});
+it("does not replace an unconfirmed tactical mode", () => {
+  const s = start();
+  s.mode = "RETREAT";
+  expect(s.startEngagement()).toBe(false);
+  expect(s.mode).toBe("RETREAT");
+  s.cancel();
+  expect(s.canStartEngagement).toBe(true);
+});

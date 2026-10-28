@@ -114,6 +114,12 @@ const restart = document.createElement("button");
 restart.id = "restart";
 restart.textContent = "테스트 다시 시작";
 document.querySelector(".toolbar")!.append(restart);
+const engagementStart = document.createElement("section");
+engagementStart.className = "engagement-start";
+engagementStart.innerHTML =
+  '<button id="engage" aria-describedby="engage-help">아군 전체 전진 · 교전 시작</button><p id="engage-help"></p>';
+document.querySelector("#arena")!.before(engagementStart);
+
 const allGone = document.createElement("p");
 allGone.id = "defeat";
 allGone.setAttribute("role", "status");
@@ -154,6 +160,17 @@ function readOptions(): Options {
     experimental: el<HTMLInputElement>("experimental").checked,
   };
 }
+function setupChanged(): boolean {
+  const configured = readOptions();
+  return (
+    configured.experimental !== session.options.experimental ||
+    (["human", "enemy"] as const).some((side) =>
+      configured[side].some((unit, i) => unit !== session.options[side][i]),
+    )
+  );
+}
+for (const id of ["human1", "human2", "enemy1", "enemy2", "experimental"])
+  el(id).addEventListener("change", () => hud());
 function resetSession(options: Options) {
   session.reset(options);
   for (const side of ["human", "enemy"] as const)
@@ -173,6 +190,9 @@ action("result-edit", () => {
 action("result-log", () => el("download").click());
 action("restart", () => el("reset").click());
 action("pause", () => session.togglePause());
+action("engage", () => {
+  if (!setupChanged()) session.startEngagement();
+});
 action("inspect-close", () => session.inspectEnemy(null));
 action("move", () => {
   session.cancel();
@@ -390,6 +410,18 @@ function hud() {
       ? "시작 / 계속"
       : "일시정지";
   el<HTMLButtonElement>("pause").disabled = !!session.result;
+  el<HTMLButtonElement>("engage").disabled =
+    !session.canStartEngagement || setupChanged();
+  el("engage-help").textContent = setupChanged()
+    ? "편성이 변경되었습니다. 편성 적용 · 초기화 후 교전을 시작하세요."
+    : session.canStartEngagement
+      ? "아군 전체를 공격 태세로 전진시킵니다. Q·W·R은 직접 사용하세요."
+      : session.result
+        ? "시험 종료 · 같은 편성 재시험 또는 편성 변경으로 다시 시작하세요."
+        : session.state.tick > 0
+          ? "교전 진행 중 · 이동·태세·군령은 아래 지휘판에서 조작하세요."
+          : "준비 중인 대상 지정·명령이 있습니다. 위 시작/계속으로 실행하거나 취소·초기화하세요.";
+
   for (const id of [
     "move",
     "attackMove",
