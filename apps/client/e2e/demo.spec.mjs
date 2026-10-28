@@ -1017,3 +1017,97 @@ test("quick engagement respects prepared commands and keeps skills manual", asyn
   await page.locator("#Q").click();
   await expect(page.locator("#order-step")).toContainText("적 부대를 클릭");
 });
+
+test("downloaded replay verifies in a worker and reports mismatches without changing the battle", async ({
+  page,
+}) => {
+  await page.locator("#engage").click();
+  await tickAtLeast(page, 4);
+  await page.locator("#pause").click();
+  const before = await page.evaluate(() => window.battleDemo.log());
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator("#download").click();
+  const download = await downloadPromise;
+  const bytes = await readFile(await download.path());
+  const saved = JSON.parse(bytes.toString("utf8"));
+  await page.locator("#verify-log").click();
+  const upload = async (name, buffer) =>
+    page
+      .locator("#replay-file")
+      .setInputFiles({ name, mimeType: "application/json", buffer });
+  await upload("battle-replay.json", bytes);
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-verdict",
+    "match",
+    { timeout: 15000 },
+  );
+  await expect(page.locator("#replay-report")).toContainText(saved.stateHash);
+  await expect(page.locator("#replay-report")).toContainText(saved.eventHash);
+  expect(await page.evaluate(() => window.battleDemo.log())).toEqual(before);
+  await page.screenshot({
+    path: test.info().outputPath("replay-verification.png"),
+  });
+  await upload(
+    "changed-state.json",
+    Buffer.from(JSON.stringify({ ...saved, stateHash: "0000000000000000" })),
+  );
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-verdict",
+    "mismatch",
+  );
+  await expect(page.locator("#replay-report tbody tr").nth(0)).toContainText(
+    "불일치",
+  );
+  await expect(page.locator("#replay-report tbody tr").nth(1)).toContainText(
+    "일치",
+  );
+  await upload("broken.json", Buffer.from("{ broken"));
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-code",
+    "JSON",
+  );
+  await expect(page.locator("#replay-report")).toBeEmpty();
+  expect(await page.evaluate(() => window.battleDemo.log())).toEqual(before);
+});
+
+test("replay verification cancels and replaces long jobs without stale output", async ({
+  page,
+}) => {
+  const small = await page.evaluate(() => window.battleDemo.log());
+  const long = { ...small, frames: Array.from({ length: 15000 }, () => []) };
+  await page.locator("#verify-log").click();
+  const upload = async (data) =>
+    page
+      .locator("#replay-file")
+      .setInputFiles({
+        name: "battle-replay.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(JSON.stringify(data)),
+      });
+  await upload(long);
+  await expect(page.locator("#replay-cancel")).toBeEnabled();
+  await page.locator("#replay-cancel").click();
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-verdict",
+    "cancelled",
+  );
+  await page.waitForTimeout(250);
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-verdict",
+    "cancelled",
+  );
+  await upload(long);
+  await expect(page.locator("#replay-cancel")).toBeEnabled();
+  await upload(small);
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-verdict",
+    "match",
+    { timeout: 15000 },
+  );
+  await page.waitForTimeout(250);
+  await expect(page.locator("#replay-status")).toHaveAttribute(
+    "data-verdict",
+    "match",
+  );
+  expect(await page.evaluate(() => window.battleDemo.log())).toEqual(small);
+});
