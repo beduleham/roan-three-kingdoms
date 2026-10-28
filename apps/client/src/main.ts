@@ -1,3 +1,5 @@
+import { observeAttack, footAnimation } from "./unit-motion.js";
+import type { AttackSample } from "./unit-motion.js";
 import { orderCues, orderViewColors } from "./order-view.js";
 import type { OrderCue } from "./order-view.js";
 import { formationView, soldierFoot } from "./formation-view.js";
@@ -425,7 +427,7 @@ class BattleScene extends Phaser.Scene {
   private arrows!: Phaser.Types.Input.Keyboard.CursorKeys;
   private sprites = new Map<string, Phaser.GameObjects.Image>();
   private previousPositions = new Map<string, MotionSample>();
-  private lastHits = new Map<string, number>();
+  private lastHits = new Map<string, AttackSample>();
   private lastDamage = new Map<string, number>();
   private seenEvents = 0;
   preload() {
@@ -512,7 +514,18 @@ class BattleScene extends Phaser.Scene {
     if (this.arrows.down.isDown) cam.scrollY += speed;
     for (const event of session.events.slice(this.seenEvents)) {
       if (event.type !== "ATTACK_HIT") continue;
-      this.lastHits.set(event.actorId, event.tick);
+      const attacking = session.state.squads.find(
+        (s) => s.id === event.actorId,
+      );
+      if (attacking) {
+        const sample = observeAttack(
+          this.lastHits.get(event.actorId),
+          event.tick,
+          session.state.tick,
+          attacking.facing,
+        );
+        if (sample) this.lastHits.set(event.actorId, sample);
+      }
       if (event.targetId && (event.delta ?? 0) < 0)
         this.lastDamage.set(event.targetId, event.tick);
       const actor = session.state.squads.find((s) => s.id === event.actorId),
@@ -680,6 +693,14 @@ class BattleScene extends Phaser.Scene {
       );
       if (feedback.label && s.hpMilli > 0)
         ring(s.position, 780, s.fsmState === "ROUTED" ? 0xb34736 : 0xb5955d);
+      const attackSample = this.lastHits.get(s.id);
+      const attackFacing =
+        feedback.attackAllowed &&
+        attackSample &&
+        session.state.tick - attackSample.startTick <
+          footAnimation.attackFrames * footAnimation.attackTicksPerFrame
+          ? attackSample.facing
+          : s.facing;
       const pose =
         s.unitType === "cavalry"
           ? mountedPose(
@@ -691,10 +712,10 @@ class BattleScene extends Phaser.Scene {
             )
           : footPose(
               s.unitType,
-              s.facing,
+              attackFacing,
               session.state.tick,
               moving,
-              feedback.attackAllowed ? this.lastHits.get(s.id) : undefined,
+              feedback.attackAllowed ? attackSample?.startTick : undefined,
             );
       const texture = pose.texture,
         frame = pose.frame;
