@@ -272,3 +272,33 @@ it("stops after a complete simultaneous elimination tick and preserves replay", 
     }),
   ).toBe(true);
 });
+
+it("observes an enemy without changing ownership, selection, pending targeting, or replay", () => {
+  const s = start();
+  s.beginSkill("Q");
+  s.target("enemy-1");
+  const pending = structuredClone(s.pending),
+    selected = [...s.selected],
+    before = s.exportLog();
+  expect(s.inspectEnemy("enemy-2")).toBe(true);
+  expect(s.inspectedEnemyId).toBe("enemy-2");
+  expect(s.selected).toEqual(selected);
+  expect(s.pending).toEqual(pending);
+  expect(s.exportLog()).toEqual(before);
+  tick(s);
+  expect(s.frames[0]).toEqual([]);
+  expect(s.inspectEnemy("human-1")).toBe(false);
+  expect(s.inspectEnemy("missing")).toBe(false);
+  expect(s.inspectedEnemyId).toBe("enemy-2");
+  expect(s.select("enemy-2")).toBe(false);
+  s.inspectEnemy(null);
+  expect(s.inspectedEnemyId).toBeNull();
+});
+it("keeps defeated enemies inspectable and clears observation on retry", () => {
+  const s = start();
+  s.state = structuredClone(s.state);
+  s.state.squads.find((s) => s.id === "enemy-1")!.hpMilli = 0;
+  expect(s.inspectEnemy("enemy-1")).toBe(true);
+  s.reset();
+  expect(s.inspectedEnemyId).toBeNull();
+});
