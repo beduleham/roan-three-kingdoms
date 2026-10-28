@@ -1,3 +1,4 @@
+import { mountReplayVerifier } from "./replay-ui.js";
 import commanderCommandUrl from "./commander-command.svg?url";
 import { commanderPose } from "./unit-motion.js";
 import type { CommandSample } from "./unit-motion.js";
@@ -1173,3 +1174,8 @@ Object.defineProperty(window, "battleDemo", {
     log: () => structuredClone(session.exportLog()),
   },
 });
+
+mountReplayVerifier(
+  document.querySelector(".toolbar")!,
+  document.querySelector("footer")!,
+);
