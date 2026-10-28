@@ -825,17 +825,11 @@ test("natural annihilation stops the test, exports replay, and retries the actua
   await page.locator("#enemy1").selectOption("archers");
   await page.locator("#enemy2").selectOption("archers");
   await page.locator("#reset").click();
-  await page.keyboard.press("Shift+2");
-  await page.locator("#stance").selectOption("aggressive");
-  await page.locator("#applyStance").click();
-  await cast(page, "W", ["human-1", "human-2"]);
-  await cast(page, "R", ["human-1", "human-2"]);
-  await page.locator("#attackMove").click();
-  await clickGround(page, 14000, 6500);
-  await page.locator("#pause").click();
+  await page.locator("#engage").click();
   await expect(page.locator("#test-result")).toBeVisible({ timeout: 45000 });
   await expect(page.locator("#result-title")).toContainText("적군 전멸");
   await expect(page.locator("#pause")).toBeDisabled();
+  await expect(page.locator("#engage")).toBeDisabled();
   await expect(page.locator("#W")).toBeDisabled();
   const result = await page.evaluate(() => window.battleDemo.view().testResult);
   const ended = await state(page);
@@ -845,8 +839,8 @@ test("natural annihilation stops the test, exports replay, and retries the actua
   ).toBe(0);
   expect(result.sides.find((s) => s.playerId === "human").skills).toEqual({
     Q: 0,
-    W: 1,
-    R: 1,
+    W: 0,
+    R: 0,
   });
   await page.keyboard.press(" ");
   await page.waitForTimeout(400);
@@ -872,6 +866,7 @@ test("natural annihilation stops the test, exports replay, and retries the actua
   ).toBe("cavalry");
   await expect(page.locator("#human2")).toHaveValue("cavalry");
   await expect(page.locator("#pause")).toBeEnabled();
+  await expect(page.locator("#engage")).toBeEnabled();
 });
 
 async function clickLabel(page, id) {
@@ -967,4 +962,58 @@ test("enemy observation and nameplate clicks preserve friendly orders and track 
   expect(
     await page.evaluate(() => window.battleDemo.view().inspectedEnemyId),
   ).toBeNull();
+});
+
+test("quick engagement respects prepared commands and keeps skills manual", async ({
+  page,
+}) => {
+  await expect(page.locator("#engage")).toBeEnabled();
+  await page.locator("#human1").selectOption("archers");
+  await expect(page.locator("#engage")).toBeDisabled();
+  await expect(page.locator("#engage-help")).toContainText("편성 적용");
+  await page.locator("#human1").selectOption("cavalry");
+  await expect(page.locator("#engage")).toBeEnabled();
+  await page.screenshot({
+    path: test.info().outputPath("quick-engagement-ready.png"),
+  });
+  await page.locator("#Q").click();
+  await expect(page.locator("#engage")).toBeDisabled();
+  await page.locator("#cancel").click();
+  await expect(page.locator("#engage")).toBeEnabled();
+  await clickGround(page, 7000, 4000);
+  await expect(page.locator("#engage")).toBeDisabled();
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 2);
+  await page.locator("#pause").click();
+  expect(
+    (await page.evaluate(() => window.battleDemo.log())).frames
+      .flat()
+      .map((i) => i.command.type),
+  ).toEqual(["MOVE"]);
+  await expect(page.locator("#engage")).toBeDisabled();
+  await page.locator("#reset").click();
+  await expect(page.locator("#engage")).toBeEnabled();
+  await page.locator("#engage").click();
+  await tickAtLeast(page, 2);
+  await page.locator("#pause").click();
+  const commands = (
+    await page.evaluate(() => window.battleDemo.log())
+  ).frames.flat();
+  expect(commands.map((i) => i.command.type)).toEqual([
+    "SET_STANCE",
+    "ATTACK_MOVE",
+  ]);
+  expect(
+    commands.every(
+      (i) =>
+        i.playerId === "human" &&
+        i.command.squadIds.join(",") === "human-1,human-2",
+    ),
+  ).toBe(true);
+  await expect(page.locator("#selected-unit h2")).toHaveCount(2);
+  await expect(page.locator("#W")).toBeEnabled();
+  await expect(page.locator("#R")).toBeEnabled();
+  await page.keyboard.press("1");
+  await page.locator("#Q").click();
+  await expect(page.locator("#order-step")).toContainText("적 부대를 클릭");
 });
