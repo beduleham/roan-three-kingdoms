@@ -139,8 +139,15 @@ test("move, attack, formation, ownership, reset and experimental shortage throug
   expect(
     (await state(page)).squads.find((s) => s.id === "human-2").stance,
   ).toBe("aggressive");
+  const beforeObservation = await page.evaluate(() => window.battleDemo.log());
   await clickSquad(page, "enemy-1");
-  await expect(page.locator("#notice")).toContainText("자기 부대");
+  await expect(page.locator("#enemy-inspect-content h2")).toContainText(
+    "적군 1부대",
+  );
+  await expect(page.locator("#selected-unit h2")).toContainText("아군 2부대");
+  expect(await page.evaluate(() => window.battleDemo.log())).toEqual(
+    beforeObservation,
+  );
   await page.locator("#human1").selectOption("archers");
   await page.locator("#experimental").check();
   await page.locator("#reset").click();
