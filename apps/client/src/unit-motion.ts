@@ -4,32 +4,46 @@ export function directionRow(f: Facing): number {
     screenY = f.x + f.y;
   return screenY >= 0 ? (screenX >= 0 ? 0 : 1) : screenX < 0 ? 2 : 3;
 }
-// Presentation policy only: continuous hits do not restart the animation each tick.
+// Presentation only: play all four attack frames relative to the actual hit tick.
+export const footAnimation = {
+  attackFrames: 4,
+  attackTicksPerFrame: 1,
+  walkTicksPerFrame: 2,
+} as const;
 export function spearPose(
   facing: Facing,
   tick: number,
   moving: boolean,
-  lastHitTick?: number,
+  attackStartTick?: number,
 ) {
-  return footPose("spears", facing, tick, moving, lastHitTick);
+  return footPose("spears", facing, tick, moving, attackStartTick);
 }
 export function footPose(
   kind: "spears" | "infantry" | "archers",
   facing: Facing,
   tick: number,
   moving: boolean,
-  lastHitTick?: number,
+  attackStartTick?: number,
 ) {
   const prefix =
     kind === "spears" ? "spear" : kind === "archers" ? "archer" : "infantry";
   const attack =
-    lastHitTick !== undefined && lastHitTick <= tick && tick - lastHitTick < 4;
+    attackStartTick !== undefined &&
+    attackStartTick <= tick &&
+    tick - attackStartTick <
+      footAnimation.attackFrames * footAnimation.attackTicksPerFrame;
   const mode = attack ? "attack" : moving ? "walk" : "idle";
   return {
     texture: `${prefix}-${attack ? "attack" : "walk"}`,
     frame:
       directionRow(facing) * 4 +
-      (mode === "idle" ? 0 : Math.floor(tick / 2) % 4),
+      (attack
+        ? Math.floor(
+            (tick - attackStartTick!) / footAnimation.attackTicksPerFrame,
+          )
+        : mode === "idle"
+          ? 0
+          : Math.floor(tick / footAnimation.walkTicksPerFrame) % 4),
     mode,
   };
 }
@@ -70,5 +84,33 @@ export function mountedPose(
         ? 0
         : Math.floor(tick / (mode === "charge" ? 1 : 2)) % 4),
     mode,
+  };
+}
+
+export interface AttackSample {
+  startTick: number;
+  lastEventTick: number;
+  facing: Facing;
+}
+/** Group per-tick damage into complete clips. Begin on receipt, since events precede state.tick. */
+export function observeAttack(
+  previous: AttackSample | undefined,
+  eventTick: number,
+  tick: number,
+  facing: Facing,
+): AttackSample | undefined {
+  if (previous && tick < previous.startTick) previous = undefined;
+  if (eventTick > tick) return previous;
+  if (previous && eventTick <= previous.lastEventTick) return previous;
+  const active =
+    previous &&
+    tick - previous.startTick <
+      footAnimation.attackFrames * footAnimation.attackTicksPerFrame
+      ? previous
+      : undefined;
+  return {
+    startTick: active?.startTick ?? tick,
+    lastEventTick: eventTick,
+    facing: { ...(active?.facing ?? facing) },
   };
 }
