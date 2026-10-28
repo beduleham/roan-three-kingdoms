@@ -594,3 +594,65 @@ test("selection markers follow single and multiple selection while commander lan
     path: "apps/client/test-results/formation-selection.png",
   });
 });
+
+test("accepted movement and actual combat targets drive selection guides", async ({
+  page,
+}) => {
+  await clickGround(page, 2000, 12000);
+  expect(await page.evaluate(() => window.battleDemo.view().orderCues)).toEqual(
+    [],
+  );
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 2);
+  await page.locator("#pause").click();
+  const moving = await page.evaluate(() => window.battleDemo.view().orderCues);
+  expect(moving).toContainEqual(
+    expect.objectContaining({
+      sourceId: "human-1",
+      kind: "move",
+      to: { x: expect.any(Number), y: expect.any(Number) },
+    }),
+  );
+  const snapshot = await state(page);
+  expect(moving[0].to).toEqual(
+    snapshot.squads.find((s) => s.id === "human-1").order.destination,
+  );
+  await expect(page.locator(".order-summary")).toContainText("이동 목적지");
+  await page.keyboard.press("2");
+  await expect
+    .poll(async () => page.evaluate(() => window.battleDemo.view().orderCues))
+    .toEqual([]);
+  await page.locator("#reset").click();
+  await cast(page, "Q", ["enemy-1"]);
+  await page.locator("#pause").click();
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() =>
+          window.battleDemo
+            .view()
+            .orderCues.some(
+              (c) => c.kind === "target" && c.targetId === "enemy-1",
+            ),
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(true);
+  await page.locator("#pause").click();
+  const combat = await state(page);
+  const cue = await page.evaluate(() =>
+    window.battleDemo.view().orderCues.find((c) => c.kind === "target"),
+  );
+  expect(cue.targetId).toBe(
+    combat.squads.find((s) => s.id === cue.sourceId).currentTargetId,
+  );
+  expect(cue.to).toEqual(
+    combat.squads.find((s) => s.id === cue.targetId).position,
+  );
+  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "apps/client/test-results/order-guides.png" });
+  await page.locator("#reset").click();
+  await expect
+    .poll(async () => page.evaluate(() => window.battleDemo.view().orderCues))
+    .toEqual([]);
+});
