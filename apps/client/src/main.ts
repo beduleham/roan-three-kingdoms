@@ -1,3 +1,5 @@
+import { orderCues, orderViewColors } from "./order-view.js";
+import type { OrderCue } from "./order-view.js";
 import { formationView, soldierFoot } from "./formation-view.js";
 import { layoutLabels } from "./label-layout.js";
 import type { LabelAnchor } from "./label-layout.js";
@@ -270,7 +272,17 @@ function hud() {
     ? selected
         .map(
           (s) =>
-            `<div class="unit-summary"><small>선택 부대 · ${names[s.fsmState]}</small><h2>아군 ${s.id.split("-").at(-1)}부대 · ${unitNames[s.unitType]}</h2><p>병력 ${livingSoldiers(s, config)} / ${s.maxSoldiers}명 · ${names[s.formation]}</p>${gauge("체력", s.hpMilli, s.maxSoldiers * config.soldierHp * config.hpMilliPerHp, "hp")}${gauge("사기", s.morale, 100, "morale")}${gauge("응집도", s.cohesion, 100, "cohesion")}</div>`,
+            `<div class="unit-summary"><small>선택 부대 · ${names[s.fsmState]}</small><h2>아군 ${s.id.split("-").at(-1)}부대 · ${unitNames[s.unitType]}</h2><p>병력 ${livingSoldiers(s, config)} / ${s.maxSoldiers}명 · ${names[s.formation]}</p><p class="order-summary">${
+              orderCues(s, session.state.squads)
+                .map(
+                  (c) =>
+                    c.caption +
+                    (c.targetId
+                      ? " · 적군 " + c.targetId.split("-").at(-1)
+                      : ""),
+                )
+                .join(" / ") || "진행 중인 이동·공격 명령 없음"
+            }</p>${gauge("체력", s.hpMilli, s.maxSoldiers * config.soldierHp * config.hpMilliPerHp, "hp")}${gauge("사기", s.morale, 100, "morale")}${gauge("응집도", s.cohesion, 100, "cohesion")}</div>`,
         )
         .join("")
     : "<h2>부대를 선택하세요</h2><p>전장 클릭 또는 숫자 1·2</p>";
@@ -408,6 +420,7 @@ class BattleScene extends Phaser.Scene {
   private selectionInk!: Phaser.GameObjects.Graphics;
   private arrowFlights: ArrowFlight[] = [];
   visibleArrowCount = 0;
+  visibleOrderCues: OrderCue[] = [];
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private arrows!: Phaser.Types.Input.Keyboard.CursorKeys;
   private sprites = new Map<string, Phaser.GameObjects.Image>();
@@ -518,6 +531,46 @@ class BattleScene extends Phaser.Scene {
     g.clear();
     this.arrowInk.clear();
     this.selectionInk.clear();
+    this.visibleOrderCues = session.state.squads
+      .filter((s) => session.selected.includes(s.id))
+      .flatMap((s) => orderCues(s, session.state.squads));
+    for (const cue of this.visibleOrderCues) {
+      const a = project(cue.from),
+        b = project(cue.to);
+      const fx = this.selectionInk;
+      const color = orderViewColors[cue.kind];
+      const dx = b.x - a.x,
+        dy = b.y - a.y,
+        length = Math.hypot(dx, dy);
+      const ux = length > 0 ? dx / length : 0,
+        uy = length > 0 ? dy / length : -1;
+      // Fixed dashes, independent of frame time; a direct guide is not a pathfinding route.
+      fx.lineStyle(2, color, 0.8);
+      for (let d = 12; d < length - 12; d += 15)
+        fx.lineBetween(
+          a.x + ux * d,
+          a.y + uy * d,
+          a.x + ux * Math.min(d + 8, length - 12),
+          a.y + uy * Math.min(d + 8, length - 12),
+        );
+      if (cue.targetId) {
+        fx.lineStyle(3, color, 1);
+        fx.strokePoints(groundRing(cue.to, 900), true);
+        fx.lineBetween(b.x - 8, b.y, b.x + 8, b.y);
+        fx.lineBetween(b.x, b.y - 8, b.x, b.y + 8);
+      } else {
+        fx.lineStyle(2, color, 1);
+        fx.strokePoints(
+          [
+            { x: b.x, y: b.y - 8 },
+            { x: b.x + 12, y: b.y },
+            { x: b.x, y: b.y + 8 },
+            { x: b.x - 12, y: b.y },
+          ],
+          true,
+        );
+      }
+    }
     this.visibleArrowCount = 0;
     g.setDepth(-10);
     const ring = (p: { x: number; y: number }, r: number, color: number) => {
@@ -905,6 +958,7 @@ Object.defineProperty(window, "battleDemo", {
           "archer-attack",
         ].every((key) => scene.textures.exists(key)),
         visibleArrows: (scene as BattleScene).visibleArrowCount,
+        orderCues: structuredClone((scene as BattleScene).visibleOrderCues),
         loadedMounted: ["cavalry-canter", "commander-canter"].every((key) =>
           scene.textures.exists(key),
         ),
