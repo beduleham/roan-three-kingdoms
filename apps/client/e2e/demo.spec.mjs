@@ -139,8 +139,15 @@ test("move, attack, formation, ownership, reset and experimental shortage throug
   expect(
     (await state(page)).squads.find((s) => s.id === "human-2").stance,
   ).toBe("aggressive");
+  const beforeObservation = await page.evaluate(() => window.battleDemo.log());
   await clickSquad(page, "enemy-1");
-  await expect(page.locator("#notice")).toContainText("자기 부대");
+  await expect(page.locator("#enemy-inspect-content h2")).toContainText(
+    "적군 1부대",
+  );
+  await expect(page.locator("#selected-unit h2")).toContainText("아군 2부대");
+  expect(await page.evaluate(() => window.battleDemo.log())).toEqual(
+    beforeObservation,
+  );
   await page.locator("#human1").selectOption("archers");
   await page.locator("#experimental").check();
   await page.locator("#reset").click();
@@ -865,4 +872,99 @@ test("natural annihilation stops the test, exports replay, and retries the actua
   ).toBe("cavalry");
   await expect(page.locator("#human2")).toHaveValue("cavalry");
   await expect(page.locator("#pause")).toBeEnabled();
+});
+
+async function clickLabel(page, id) {
+  await page.locator("canvas").scrollIntoViewIfNeeded();
+  const label = await page.evaluate(
+    (id) => window.battleDemo.view().labels.find((l) => l.id === `label:${id}`),
+    id,
+  );
+  expect(label).toBeTruthy();
+  const box = await page.locator("canvas").boundingBox();
+  await page.mouse.click(
+    box.x + ((label.x + label.width / 2) * box.width) / 960,
+    box.y + ((label.y + label.height / 2) * box.height) / 560,
+  );
+}
+
+test("enemy observation and nameplate clicks preserve friendly orders and track real gauges", async ({
+  page,
+}) => {
+  await clickSquad(page, "enemy-1");
+  await expect(page.locator("#enemy-inspect")).toBeVisible();
+  await expect(page.locator("#enemy-inspect-content h2")).toContainText(
+    "적군 1부대",
+  );
+  await expect(page.locator("#selected-unit h2")).toContainText("아군 1부대");
+  await clickLabel(page, "enemy-2");
+  await expect(page.locator("#enemy-inspect-content h2")).toContainText(
+    "적군 2부대",
+  );
+  await clickLabel(page, "human-2");
+  await expect(page.locator("#selected-unit h2")).toContainText("아군 2부대");
+  await expect(page.locator("#enemy-inspect-content h2")).toContainText(
+    "적군 2부대",
+  );
+  await page.keyboard.press("1");
+  await page.locator("#pause").click();
+  await tickAtLeast(page, 2);
+  await page.locator("#pause").click();
+  expect(
+    (await page.evaluate(() => window.battleDemo.log())).frames.flat(),
+  ).toEqual([]);
+  await page.locator("#Q").click();
+  await expect(page.locator("#confirm")).toBeDisabled();
+  await clickLabel(page, "enemy-1");
+  await expect(page.locator("#confirm")).toBeEnabled();
+  // Pending skill targeting takes priority over inspection.
+  expect(
+    await page.evaluate(() => window.battleDemo.view().inspectedEnemyId),
+  ).toBe("enemy-2");
+  await page.locator("#confirm").click();
+  const originalHp = (await state(page)).squads.find(
+    (s) => s.id === "enemy-1",
+  ).hpMilli;
+  await page.locator("#pause").click();
+  await expect
+    .poll(
+      async () =>
+        (await state(page)).squads.find((s) => s.id === "enemy-1").hpMilli,
+      { timeout: 15000 },
+    )
+    .toBeLessThan(originalHp);
+  await page.locator("#pause").click();
+  await clickLabel(page, "enemy-1");
+  const enemy = (await state(page)).squads.find((s) => s.id === "enemy-1");
+  for (const [kind, value] of [
+    ["hp", enemy.hpMilli],
+    ["morale", enemy.morale],
+    ["cohesion", enemy.cohesion],
+  ])
+    await expect(page.locator(`#enemy-inspect .${kind} meter`)).toHaveAttribute(
+      "value",
+      String(value),
+    );
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(150);
+  await page.keyboard.up("ArrowRight");
+  await clickLabel(page, "enemy-2");
+  await expect(page.locator("#enemy-inspect-content h2")).toContainText(
+    "적군 2부대",
+  );
+  await clickLabel(page, "enemy-1");
+  await page.locator("#enemy-inspect").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: test.info().outputPath("enemy-observation.png"),
+  });
+  await page.locator("#inspect-close").click();
+  await expect(page.locator("#enemy-inspect")).toBeHidden();
+  await clickLabel(page, "enemy-1");
+  await page.locator("#reset").click();
+  await expect(page.locator("#enemy-inspect")).toBeHidden();
+  expect(
+    await page.evaluate(() => window.battleDemo.view().inspectedEnemyId),
+  ).toBeNull();
 });

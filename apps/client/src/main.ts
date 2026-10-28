@@ -71,7 +71,7 @@ const main = document.querySelector("main")!;
 const desk = document.createElement("section");
 desk.className = "command-desk";
 desk.innerHTML =
-  '<section id="selected-unit" aria-label="선택 부대 상태"></section><section class="command-panel"><div class="desk-heading"><span class="seal" aria-hidden="true">令</span><h2>군령을 내리다</h2></div><p id="order-step" aria-live="polite"></p></section>';
+  '<section class="observation-panel"><section id="selected-unit" aria-label="선택 부대 상태"></section><section id="enemy-inspect" aria-label="적군 관측 정보" hidden><div class="inspect-heading"><small>敵 · 적군 관측</small><button id="inspect-close" aria-label="적군 관측 닫기">닫기</button></div><div id="enemy-inspect-content"></div></section><p class="inspect-tip">적 부대나 이름표 클릭: 상태 관측<br>아군 선택과 군령은 유지됩니다.</p></section><section class="command-panel"><div class="desk-heading"><span class="seal" aria-hidden="true">令</span><h2>군령을 내리다</h2></div><p id="order-step" aria-live="polite"></p></section>';
 main.after(desk);
 const aside = document.querySelector("aside")!;
 desk.querySelector(".command-panel")!.append(aside);
@@ -173,6 +173,7 @@ action("result-edit", () => {
 action("result-log", () => el("download").click());
 action("restart", () => el("reset").click());
 action("pause", () => session.togglePause());
+action("inspect-close", () => session.inspectEnemy(null));
 action("move", () => {
   session.cancel();
   session.notice = "우클릭으로 목적지 또는 적을 지정하세요.";
@@ -319,6 +320,14 @@ function hud() {
         )
         .join("")
     : "<h2>부대를 선택하세요</h2><p>전장 클릭 또는 숫자 1·2</p>";
+  const observed = session.state.squads.find(
+    (s) => s.id === session.inspectedEnemyId && s.ownerPlayerId !== HUMAN,
+  );
+  el("enemy-inspect").hidden = !observed;
+  if (observed) {
+    el("enemy-inspect-content").innerHTML =
+      `<h2>적군 ${observed.id.split("-").at(-1)}부대 · ${unitNames[observed.unitType]}</h2><p>${names[observed.fsmState]} · 병력 ${livingSoldiers(observed, config)} / ${observed.maxSoldiers}명</p><p>태세 ${names[observed.stance]} · ${names[observed.formation]}</p>${gauge("체력", observed.hpMilli, observed.maxSoldiers * config.soldierHp * config.hpMilliPerHp, "hp")}${gauge("사기", observed.morale, 100, "morale")}${gauge("전열", observed.cohesion, 100, "cohesion")}`;
+  } else el("enemy-inspect-content").textContent = "";
   const charging = session.state.squads.some(
     (s) => s.ownerPlayerId === HUMAN && s.charge,
   );
@@ -547,13 +556,29 @@ class BattleScene extends Phaser.Scene {
         .filter((s) => s.hpMilli > 0 && score(s) <= 1)
         .sort((a, b) => score(a) - score(b));
       const wantEnemy = p.rightButtonDown() || session.pending?.skill === "Q";
+      // Displaced nameplates retain their own identity even when formations overlap.
+      const labelHit = !p.rightButtonDown()
+        ? session.state.squads.find((s) => {
+            const label = this.labels.get(s.id);
+            return (
+              label?.visible &&
+              world.x >= label.x &&
+              world.x <= label.x + label.width &&
+              world.y >= label.y &&
+              world.y <= label.y + label.height
+            );
+          })
+        : undefined;
       const hit =
+        labelHit ??
         candidates.find((s) => (s.ownerPlayerId !== HUMAN) === wantEnemy) ??
         candidates[0];
       if (p.rightButtonDown()) session.rightClick(pos, hit?.id);
       else if (hit) {
         if (session.pending) session.target(hit.id);
-        else session.select(hit.id, p.event.shiftKey);
+        else if (hit.ownerPlayerId === HUMAN)
+          session.select(hit.id, p.event.shiftKey);
+        else session.inspectEnemy(hit.id);
       }
       hud();
     });
@@ -907,7 +932,7 @@ class BattleScene extends Phaser.Scene {
         .setDepth(100000)
         .setVisible(false)
         .setText(
-          `${selected ? "◆ 선택 · " : ""}${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명${feedback.label ? " · " + feedback.label : ""}`,
+          `${selected ? "◆ 선택 · " : s.id === session.inspectedEnemyId ? "◇ 관측 · " : ""}${friendly ? "아군" : "적군"} ${s.id.split("-").at(-1)} · ${unitNames[s.unitType]} ${livingSoldiers(s, config)}명${feedback.label ? " · " + feedback.label : ""}`,
         );
       labelAnchors.push({
         id: s.id,
@@ -1051,6 +1076,7 @@ Object.defineProperty(window, "battleDemo", {
         scrollX: camera.scrollX,
         scrollY: camera.scrollY,
         testResult: structuredClone(session.result),
+        inspectedEnemyId: session.inspectedEnemyId,
         loadedArt: scene.textures.exists("commander-canter"),
         loadedCommand: scene.textures.exists("commander-command"),
         retiredTexturesPresent:

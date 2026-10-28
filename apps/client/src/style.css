@@ -504,3 +504,43 @@ details {
   background: #f6ead0;
   border-color: #97703b;
 }
+
+.observation-panel {
+  align-self: start;
+  min-width: 0;
+}
+#enemy-inspect[hidden] {
+  display: none;
+}
+#enemy-inspect {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 2px solid #a35a43;
+}
+.inspect-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.inspect-heading small {
+  color: #e8ac90;
+}
+.inspect-heading button {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+#enemy-inspect h2 {
+  color: #f3c2a6;
+  font-size: 17px;
+  margin: 8px 0;
+}
+#enemy-inspect p {
+  font-size: 12px;
+  margin: 6px 0;
+}
+.inspect-tip {
+  color: #bcae91;
+  font-size: 11px;
+  line-height: 1.7;
+}
