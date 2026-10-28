@@ -1,3 +1,4 @@
+import cavalryAttackUrl from "./cavalry-attack.svg?url";
 import { observeAttack, footAnimation } from "./unit-motion.js";
 import type { AttackSample } from "./unit-motion.js";
 import { orderCues, orderViewColors } from "./order-view.js";
@@ -436,6 +437,7 @@ class BattleScene extends Phaser.Scene {
     this.load.image("archer-walk", archerWalkUrl);
     this.load.image("archer-attack", archerAttackUrl);
     this.load.image("cavalry-canter", cavalryUrl);
+    this.load.image("cavalry-attack", cavalryAttackUrl);
     this.load.image("commander-canter", commanderUrl);
     this.load.image("spear-walk", walkUrl);
     this.load.image("spear-attack", attackUrl);
@@ -704,11 +706,12 @@ class BattleScene extends Phaser.Scene {
       const pose =
         s.unitType === "cavalry"
           ? mountedPose(
-              s.facing,
+              s.charge ? s.facing : attackFacing,
               session.state.tick,
               moving,
               s.charge !== null,
               "cavalry",
+              feedback.attackAllowed ? attackSample?.startTick : undefined,
             )
           : footPose(
               s.unitType,
@@ -980,9 +983,11 @@ Object.defineProperty(window, "battleDemo", {
         ].every((key) => scene.textures.exists(key)),
         visibleArrows: (scene as BattleScene).visibleArrowCount,
         orderCues: structuredClone((scene as BattleScene).visibleOrderCues),
-        loadedMounted: ["cavalry-canter", "commander-canter"].every((key) =>
-          scene.textures.exists(key),
-        ),
+        loadedMounted: [
+          "cavalry-canter",
+          "cavalry-attack",
+          "commander-canter",
+        ].every((key) => scene.textures.exists(key)),
         loadedMotion: ["spear-walk", "spear-attack"].every((key) =>
           scene.textures.exists(key),
         ),
