@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { replay } from "../../../packages/battle-core/dist/index.js";
 async function state(page) {
@@ -807,4 +808,61 @@ test("accepted W and R animate the commander while pending input and reset do no
   await expect
     .poll(visual)
     .toMatchObject({ texture: "commander-canter", mode: "idle" });
+});
+
+test("natural annihilation stops the test, exports replay, and retries the actual setup", async ({
+  page,
+}) => {
+  test.setTimeout(70000);
+  await page.locator("#human2").selectOption("cavalry");
+  await page.locator("#enemy1").selectOption("archers");
+  await page.locator("#enemy2").selectOption("archers");
+  await page.locator("#reset").click();
+  await page.keyboard.press("Shift+2");
+  await page.locator("#stance").selectOption("aggressive");
+  await page.locator("#applyStance").click();
+  await cast(page, "W", ["human-1", "human-2"]);
+  await cast(page, "R", ["human-1", "human-2"]);
+  await page.locator("#attackMove").click();
+  await clickGround(page, 14000, 6500);
+  await page.locator("#pause").click();
+  await expect(page.locator("#test-result")).toBeVisible({ timeout: 45000 });
+  await expect(page.locator("#result-title")).toContainText("적군 전멸");
+  await expect(page.locator("#pause")).toBeDisabled();
+  await expect(page.locator("#W")).toBeDisabled();
+  const result = await page.evaluate(() => window.battleDemo.view().testResult);
+  const ended = await state(page);
+  expect(result.tick).toBe(ended.tick);
+  expect(
+    result.sides.find((s) => s.playerId === "enemy").remainingSoldiers,
+  ).toBe(0);
+  expect(result.sides.find((s) => s.playerId === "human").skills).toEqual({
+    Q: 0,
+    W: 1,
+    R: 1,
+  });
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(400);
+  expect((await state(page)).tick).toBe(ended.tick);
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator("#result-log").click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("battle-replay.json");
+  const log = JSON.parse(await readFile(await download.path(), "utf8"));
+  const replayed = replay(log.initial, log.frames);
+  expect(replayed.stateHash).toBe(log.stateHash);
+  expect(replayed.eventHash).toBe(log.eventHash);
+  await page.locator("#test-result").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: test.info().outputPath("test-result.png") });
+  await page.locator("#result-edit").click();
+  await expect(page.locator("#setup-panel")).toHaveAttribute("open", "");
+  await page.locator("#human2").selectOption("infantry"); // Unapplied edit must not change same-setup retry.
+  await page.locator("#result-retry").click();
+  await expect(page.locator("#test-result")).toBeHidden();
+  expect((await state(page)).tick).toBe(0);
+  expect(
+    (await state(page)).squads.find((s) => s.id === "human-2").unitType,
+  ).toBe("cavalry");
+  await expect(page.locator("#human2")).toHaveValue("cavalry");
+  await expect(page.locator("#pause")).toBeEnabled();
 });
