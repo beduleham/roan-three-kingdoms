@@ -1,0 +1,43 @@
+#online {
+  max-width: 1040px;
+}
+#online a {
+  color: #e5c98d;
+}
+#field {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  background: #efe3c8;
+  border: 1px solid #89734a;
+}
+.online-controls,
+#lobby-panel {
+  max-width: 720px;
+  padding: 16px;
+  margin: 18px 0;
+  border: 1px solid #89734a;
+  border-radius: 8px;
+  background: #302822;
+}
+.online-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 12px 6px 0;
+}
+.online-controls input {
+  width: 58px;
+}
+.online-controls button,
+#start {
+  margin: 4px 5px 4px 0;
+}
+.online-actions {
+  margin: 6px 0;
+}
+#units,
+#events {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}

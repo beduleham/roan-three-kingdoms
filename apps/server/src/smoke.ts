@@ -56,6 +56,8 @@ try {
   });
   blue.onMessage("ready", () => {});
   red.onMessage("ready", () => {});
+  blue.onMessage("lobby", () => {});
+  red.onMessage("lobby", () => {});
   for (const [index, connection] of [blue, red].entries()) {
     connection.onMessage("snapshot", (v: { state: BattleState }) => {
       latest[index] = v.state;

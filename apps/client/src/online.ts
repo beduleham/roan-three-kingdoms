@@ -7,19 +7,33 @@ import type { BattleState } from "../../../packages/battle-core/src/index.js";
 import { applyStateDelta, type StateDelta } from "@roan/protocol";
 import "@fontsource/noto-sans-kr/400.css";
 import "./style.css";
+import "./online.css";
 
 const root = document.querySelector<HTMLElement>("#online")!;
-root.innerHTML = `<header><h1>로언 베이의 삼국지 · 서버 권위 1대1</h1><span>각 2부대 · 실험 시연</span></header>
-<p>두 브라우저에서 이 페이지를 열어 각각 한 진영에 접속하세요. 서버가 100ms마다 전투를 계산합니다.</p>
+const mode =
+  new URLSearchParams(location.search).get("mode") === "3v3" ? "3v3" : "1v1";
+root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
+<p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> | 서버 10Hz · 동기화 5Hz</p>
 <button id="join">경기 접속</button> <span id="connection" role="status">접속 대기</span>
-<p id="identity"></p><p id="clock"></p><canvas id="field" width="720" height="420" style="width:100%;max-width:720px;background:#efe3c8"></canvas>
-<div><label>내 부대 <select id="squad"></select></label> <label>대상 <select id="target"></select></label>
-<button id="attack" disabled>대상 공격</button> <button id="advance" disabled>중앙으로 이동</button></div>
-<p id="result" role="status"></p><h2>서버 상태</h2><pre id="units"></pre><p>두 화면의 tick·상태 해시가 같아야 합니다. 각 브라우저는 자기 진영에만 명령을 보낼 수 있습니다.</p>`;
+<section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button></section>
+<p id="identity"></p><p id="clock"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
+<section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
+<label>목적지 X (타일) <input id="dest-x" type="number" value="10" min="0" max="24"></label>
+<label>Y (타일) <input id="dest-y" type="number" value="6" min="0" max="13"></label>
+<div class="online-actions"><button id="move" data-command disabled>이동</button><button id="attack" data-command disabled>대상 공격</button><button id="advance" data-command disabled>공격 이동</button><button id="retreat" data-command disabled>후퇴</button></div>
+<label>태세 <select id="stance"><option value="defensive">방어</option><option value="balanced">균형</option><option value="aggressive">공격</option></select></label><button id="applyStance" data-command disabled>태세 변경</button>
+<label>진형 <select id="formation"><option value="normal">기본</option><option value="defense">방어진</option><option value="offense">공격진</option></select></label><button id="applyFormation" data-command disabled>진형 변경</button>
+<button id="reassign" data-command disabled>장수 재배속</button>
+<div class="online-actions"><button id="Q" data-command disabled>Q 돌격</button><button id="W" data-command disabled>W 함성</button><button id="R" data-command disabled>R 파죽지세</button></div></section>
+<p id="result" role="status"></p><h2>서버 상태</h2><p id="selected"></p><p id="commander"></p><pre id="units"></pre><h2>최근 전투 사건</h2><pre id="events"></pre>
+<p>명령은 서버에서 검증됩니다. 화면 위치만 두 서버 상태 사이에서 보간합니다.</p>`;
 const el = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
-const tokenKey = "roan-online-reconnection";
-let seat: "blue" | "red" | null = null;
+const tokenKey = `roan-online-reconnection-${mode}`;
+let seat: string | null = null;
+let host = false;
+let ready = false;
+let lobbyStarted = mode === "1v1";
 let room: Awaited<ReturnType<Client["joinOrCreate"]>> | null = null;
 let state: BattleState | null = null;
 let previousState: BattleState | null = null;
@@ -35,11 +49,11 @@ function render() {
   el("units").textContent = state.squads
     .map(
       (s) =>
-        `${s.id}: ${livingSoldiers(s, state!.config)}명 · HP ${s.hpMilli} · 사기 ${s.morale} · 전열 ${s.cohesion} · ${s.fsmState}`,
+        `${s.id}: ${livingSoldiers(s, state!.config)}명 · HP ${s.hpMilli} · 사기 ${s.morale} · 전열 ${s.cohesion} · ${s.fsmState} · ${s.stance}/${s.formation}`,
     )
     .join("\n");
   const own = state.squads.filter((s) => s.ownerPlayerId === seat);
-  const enemy = state.squads.filter((s) => s.ownerPlayerId !== seat);
+  const enemy = state.squads.filter((s) => s.nationId !== seat?.split("-")[0]);
   for (const [id, squads] of [
     ["squad", own],
     ["target", enemy],
@@ -50,6 +64,49 @@ function render() {
       select.replaceChildren(...squads.map((s) => new Option(s.id, s.id)));
     if (squads.some((s) => s.id === previous)) select.value = previous;
   }
+  const commander = state.commanders.find((c) => c.ownerPlayerId === seat);
+  el("commander").textContent = commander
+    ? `장수 ${commander.status} · HP ${commander.hpMilli} · 본대 ${commander.assignedSquadId ?? "없음"} · Q/W/R 대기 ${["Q", "W", "R"].map((skill) => commander.cooldownTicks[skill as "Q" | "W" | "R"]).join("/")} tick`
+    : "";
+  const selected = own.find(
+    (s) => s.id === el<HTMLSelectElement>("squad").value,
+  );
+  el("selected").textContent = selected
+    ? `선택 ${selected.id} · 병력 ${livingSoldiers(selected, state.config)}/${selected.maxSoldiers} · HP ${selected.hpMilli} · 사기 ${selected.morale} · 전열 ${selected.cohesion} · ${selected.fsmState}`
+    : "";
+  for (const skill of ["Q", "W", "R"] as const) {
+    const button = el<HTMLButtonElement>(skill);
+    button.disabled =
+      !ready ||
+      !commander ||
+      commander.status !== "ACTIVE" ||
+      commander.cooldownTicks[skill] > 0;
+    button.title = commander?.cooldownTicks[skill]
+      ? `대기 ${commander.cooldownTicks[skill]} tick`
+      : "";
+  }
+}
+function refreshControls() {
+  for (const button of document.querySelectorAll<HTMLButtonElement>(
+    "[data-command]",
+  ))
+    button.disabled = !ready;
+  el<HTMLButtonElement>("start").disabled = !host || lobbyStarted;
+  render();
+}
+function send(command: Record<string, unknown>) {
+  if (!room || !ready) return;
+  room.send("command", {
+    squadIds: [el<HTMLSelectElement>("squad").value],
+    ...command,
+  });
+}
+function destination() {
+  const scale = state?.config.positionUnitsPerTile ?? 1000;
+  return {
+    x: Number(el<HTMLInputElement>("dest-x").value) * scale,
+    y: Number(el<HTMLInputElement>("dest-y").value) * scale,
+  };
 }
 function draw() {
   if (!state) return;
@@ -66,17 +123,56 @@ function draw() {
       : s.position.y;
     const x = 40 + (xUnits / state.config.positionUnitsPerTile) * 30;
     const y = 40 + (yUnits / state.config.positionUnitsPerTile) * 30;
-    if (s.id === "blue-1") root.dataset.renderX = String(x);
+    if (s.id === (mode === "3v3" ? "blue-1-1" : "blue-1"))
+      root.dataset.renderX = String(x);
     ctx.beginPath();
     ctx.arc(x, y, 16, 0, Math.PI * 2);
     ctx.fillStyle = s.nationId === "blue" ? "#286b9a" : "#ae4a36";
     ctx.fill();
+    if (
+      s.id ===
+      el<HTMLSelectElement>(s.ownerPlayerId === seat ? "squad" : "target").value
+    ) {
+      ctx.strokeStyle = "#e8bd51";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
     ctx.fillStyle = "#222";
     ctx.font = "14px sans-serif";
     ctx.fillText(s.id, x + 20, y + 4);
   }
   requestAnimationFrame(draw);
 }
+canvas.addEventListener("click", (event) => {
+  if (!state || !seat) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) * canvas.width) / rect.width;
+  const y = ((event.clientY - rect.top) * canvas.height) / rect.height;
+  const hit = state.squads
+    .filter((s) => s.hpMilli > 0)
+    .map((s) => ({
+      s,
+      distance: Math.hypot(
+        x - (40 + (s.position.x / state!.config.positionUnitsPerTile) * 30),
+        y - (40 + (s.position.y / state!.config.positionUnitsPerTile) * 30),
+      ),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0];
+  if (hit && hit.distance <= 25) {
+    if (hit.s.ownerPlayerId === seat)
+      el<HTMLSelectElement>("squad").value = hit.s.id;
+    else if (hit.s.nationId !== seat.split("-")[0])
+      el<HTMLSelectElement>("target").value = hit.s.id;
+    render();
+  } else {
+    el<HTMLInputElement>("dest-x").value = String(
+      Math.max(0, Math.round((x - 40) / 30)),
+    );
+    el<HTMLInputElement>("dest-y").value = String(
+      Math.max(0, Math.round((y - 40) / 30)),
+    );
+  }
+});
 el("join").addEventListener("click", async () => {
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
   try {
@@ -92,21 +188,50 @@ el("join").addEventListener("click", async () => {
         sessionStorage.removeItem(tokenKey);
       }
     }
-    room ??= await client.joinOrCreate("battle_1v1");
+    room ??= await client.joinOrCreate(
+      mode === "3v3" ? "battle_3v3" : "battle_1v1",
+    );
     sessionStorage.setItem(tokenKey, room.reconnectionToken);
     root.dataset.roomId = room.roomId;
     el("connection").textContent = `접속됨 · Room ${room.roomId}`;
-    room.onMessage("seat", ({ seat: assigned }: { seat: "blue" | "red" }) => {
-      seat = assigned;
-      el("identity").textContent = `내 진영: ${assigned}`;
-      el<HTMLButtonElement>("attack").disabled = false;
-      el<HTMLButtonElement>("advance").disabled = false;
-      render();
-    });
+    room.onMessage(
+      "seat",
+      ({ seat: assigned, host: isHost }: { seat: string; host: boolean }) => {
+        seat = assigned;
+        host = isHost;
+        el("identity").textContent = `내 진영: ${assigned}`;
+        refreshControls();
+      },
+    );
+    room.onMessage(
+      "lobby",
+      (lobby: {
+        started: boolean;
+        slots: { id: string; occupant: string }[];
+      }) => {
+        lobbyStarted = lobby.started;
+        el("lobby").textContent = lobby.slots
+          .map((slot) => `${slot.id}: ${slot.occupant}`)
+          .join(" · ");
+        refreshControls();
+      },
+    );
+    room.onMessage(
+      "start-result",
+      ({ accepted, reason }: { accepted: boolean; reason?: string }) => {
+        el("result").textContent = accepted
+          ? "경기 시작 · 빈자리 AI 보충"
+          : `시작 거부: ${reason}`;
+      },
+    );
     room.onMessage("ready", ({ ready }: { ready: boolean }) => {
+      // Keep the server as the sole source of readiness.
+      isReady(ready);
       el("connection").textContent = ready
-        ? "두 플레이어 접속 · 전투 진행"
-        : "상대 접속 대기";
+        ? "플레이어 접속 · 전투 진행"
+        : mode === "3v3" && !lobbyStarted
+          ? "로비 대기"
+          : "상대 접속 대기";
     });
     room.onMessage("snapshot", ({ state: next }: { state: BattleState }) => {
       state = next;
@@ -119,34 +244,49 @@ el("join").addEventListener("click", async () => {
         draw();
       }
     });
-    room.onMessage("delta", (delta: StateDelta) => {
-      if (!state || awaitingSnapshot) return;
-      if (state.tick !== delta.baseTick) {
-        awaitingSnapshot = true;
-        room?.send("hello");
-        return;
-      }
-      let next: BattleState;
-      try {
-        next = applyStateDelta(state, delta.changes);
-      } catch {
-        awaitingSnapshot = true;
-        room?.send("hello");
-        return;
-      }
-      if (next.tick !== delta.tick || hashReplayValue(next) !== delta.hash) {
-        awaitingSnapshot = true;
-        room?.send("hello");
-        return;
-      }
-      previousState = state;
-      state = next;
-      receivedAt = performance.now();
-      root.dataset.deltaCount = String(
-        Number(root.dataset.deltaCount ?? 0) + 1,
-      );
-      render();
-    });
+    room.onMessage(
+      "delta",
+      (
+        delta: StateDelta & {
+          events?: { type: string; actorId?: string; reason?: string }[];
+        },
+      ) => {
+        if (!state || awaitingSnapshot) return;
+        if (state.tick !== delta.baseTick) {
+          awaitingSnapshot = true;
+          room?.send("hello");
+          return;
+        }
+        let next: BattleState;
+        try {
+          next = applyStateDelta(state, delta.changes);
+        } catch {
+          awaitingSnapshot = true;
+          room?.send("hello");
+          return;
+        }
+        if (next.tick !== delta.tick || hashReplayValue(next) !== delta.hash) {
+          awaitingSnapshot = true;
+          room?.send("hello");
+          return;
+        }
+        previousState = state;
+        state = next;
+        receivedAt = performance.now();
+        root.dataset.deltaCount = String(
+          Number(root.dataset.deltaCount ?? 0) + 1,
+        );
+        render();
+        if (delta.events?.length)
+          el("events").textContent = delta.events
+            .slice(-8)
+            .map(
+              (event) =>
+                `${event.type} ${event.actorId ?? ""} ${event.reason ?? ""}`,
+            )
+            .join("\n");
+      },
+    );
     room.onMessage(
       "command-result",
       (response: { accepted: boolean; reason?: string }) => {
@@ -156,9 +296,8 @@ el("join").addEventListener("click", async () => {
       },
     );
     room.onDrop(() => {
+      isReady(false);
       el("connection").textContent = "연결 복구 중 · 전투 일시 중지";
-      el<HTMLButtonElement>("attack").disabled = true;
-      el<HTMLButtonElement>("advance").disabled = true;
     });
     room.onReconnect(() => {
       sessionStorage.setItem(tokenKey, room!.reconnectionToken);
@@ -167,6 +306,8 @@ el("join").addEventListener("click", async () => {
     room.onLeave(() => {
       room = null;
       seat = null;
+      host = false;
+      isReady(false);
       state = null;
       previousState = null;
       drawing = false;
@@ -174,8 +315,6 @@ el("join").addEventListener("click", async () => {
       el("connection").textContent = "연결 종료";
       el("identity").textContent = "";
       el("clock").textContent = "";
-      el<HTMLButtonElement>("attack").disabled = true;
-      el<HTMLButtonElement>("advance").disabled = true;
       el<HTMLButtonElement>("join").disabled = false;
     });
     room.send("hello");
@@ -184,17 +323,48 @@ el("join").addEventListener("click", async () => {
     el<HTMLButtonElement>("join").disabled = false;
   }
 });
+function isReady(value: boolean) {
+  ready = value;
+  refreshControls();
+}
+el("start").addEventListener("click", () => room?.send("start"));
 el("attack").addEventListener("click", () =>
-  room?.send("command", {
+  send({
     type: "ATTACK",
-    squadIds: [el<HTMLSelectElement>("squad").value],
     targetSquadId: el<HTMLSelectElement>("target").value,
   }),
 );
-el("advance").addEventListener("click", () =>
-  room?.send("command", {
-    type: "ATTACK_MOVE",
-    squadIds: [el<HTMLSelectElement>("squad").value],
-    destination: { x: 10000, y: 6500 },
+for (const [id, type] of [
+  ["move", "MOVE"],
+  ["advance", "ATTACK_MOVE"],
+  ["retreat", "RETREAT"],
+] as const)
+  el(id).addEventListener("click", () =>
+    send({ type, destination: destination() }),
+  );
+el("applyStance").addEventListener("click", () =>
+  send({ type: "SET_STANCE", stance: el<HTMLSelectElement>("stance").value }),
+);
+el("applyFormation").addEventListener("click", () =>
+  send({
+    type: "SET_FORMATION",
+    formation: el<HTMLSelectElement>("formation").value,
   }),
 );
+el("reassign").addEventListener("click", () =>
+  send({
+    type: "REASSIGN_COMMANDER",
+    commanderId: state?.commanders.find((c) => c.ownerPlayerId === seat)?.id,
+  }),
+);
+for (const skill of ["Q", "W", "R"] as const)
+  el(skill).addEventListener("click", () =>
+    send({
+      type: "CAST_SKILL",
+      commanderId: state?.commanders.find((c) => c.ownerPlayerId === seat)?.id,
+      skill,
+      ...(skill === "Q"
+        ? { targetSquadId: el<HTMLSelectElement>("target").value }
+        : {}),
+    }),
+  );
