@@ -616,3 +616,24 @@ details {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.replay-check canvas {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  border: 1px solid #a99168;
+  margin: 1rem 0;
+}
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.replay-controls label {
+  flex: 1;
+  min-width: 180px;
+}
+.replay-controls input {
+  width: 100%;
+}
