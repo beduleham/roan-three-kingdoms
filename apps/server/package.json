@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "colyseus": "0.18.10",
-    "@colyseus/sdk": "0.18.8"
+    "@colyseus/sdk": "0.18.8",
+    "@roan/protocol": "0.0.0"
   }
 }
