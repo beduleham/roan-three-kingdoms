@@ -26,3 +26,14 @@ export function replayAtTick(
   }
   return state;
 }
+
+/** A command submitted in frame n has taken effect in the state at tick n + 1. */
+export function commandResultTicks(
+  frames: readonly (readonly BattleInput[])[],
+): number[] {
+  const ticks: number[] = [];
+  frames.forEach((frame, index) => {
+    if (frame.length) ticks.push(index + 1);
+  });
+  return ticks;
+}

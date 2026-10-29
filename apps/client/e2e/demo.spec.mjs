@@ -1047,7 +1047,9 @@ test("downloaded replay verifies in a worker and reports mismatches without chan
   await expect(page.locator("#replay-next-command")).toBeEnabled();
   await page.locator("#replay-next-command").click();
   const firstCommandTick = saved.frames.findIndex((frame) => frame.length) + 1;
-  await expect(page.locator("#replay-time")).toContainText(`${firstCommandTick} tick`);
+  await expect(page.locator("#replay-time")).toContainText(
+    `${firstCommandTick} tick`,
+  );
   await page.locator("#replay-seek").fill("0");
   await expect(page.locator("#replay-time")).toContainText("0 tick");
   await page.locator("#replay-forward").click();

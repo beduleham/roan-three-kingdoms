@@ -1,12 +1,12 @@
 # Codex 개발 순서 및 인수 기준
 
-이 문서는 전투 엔진을 **작은 검증 가능한 단위**로 개발하기 위한 체크리스트다. 이 저장소의 명세·예시 파일들은 구현 착수용이며 전투 엔진이 구현됐음을 의미하지 않는다.
+이 문서는 전투 엔진을 **작은 검증 가능한 단위**로 개발하기 위한 체크리스트다. Phase 0~2와 Phase 3 일부, Phase 4의 로컬 데모가 구현됐다. 운영 밸런스와 정식 온라인 경기는 검증·구현되지 않았다.
 
 ## Phase 0 — 저장소 초기화
-- [ ] TS 모노레포 또는 단일 `packages/battle-core` 생성(처음엔 단일 패키지로 시작해도 됨).
-- [ ] `tsconfig` strict mode, formatter, test runner(Vitest 등) 설정.
-- [ ] `npm run typecheck`, `npm run test`, `npm run sim:smoke` 스크립트 구성.
-- [ ] `battle_config.v1.json` 읽기/유효성 검사 및 규칙 상수화.
+- [x] TS 모노레포 또는 단일 `packages/battle-core` 생성(처음엔 단일 패키지로 시작해도 됨).
+- [x] `tsconfig` strict mode, formatter, test runner(Vitest 등) 설정.
+- [x] `npm run typecheck`, `npm run test`, `npm run sim:smoke` 스크립트 구성.
+- [x] `battle_config.v1.json` 읽기/유효성 검사 및 규칙 상수화.
 
 **통과 조건:** 타입검사·빈 테스트 실행 가능; JSON 부적합 설정을 명확한 메시지로 거부.
 
@@ -51,12 +51,13 @@
 
 ## Phase 4 — 시각화 (Phaser)
 
-첫 로컬 데모는 apps/client에 구현했습니다. 진행 기록은 [클라이언트 안내](apps/client/README.md) 및 [검증 기록](apps/client/reports/VALIDATION.md)을 참고하세요.
-아래는 전체 Phase의 인수 목록이며 최초 데모만으로 Phase 4 전체 완료를 표시하지 않습니다.
-- [ ] 사각형/원으로 병력과 장수 표시(아트 필수 아님).
-- [ ] 클릭/번호키 부대 선택, 우클릭 이동, Q/W/R, 태세/진형 표시.
-- [ ] 실시간 상태 HUD: 병력/사기/전열/쿨다운/경고.
-- [ ] 동일한 시뮬레이션을 headless와 UI에서 재현.
+로컬 데모는 apps/client에 구현했습니다. 진행 기록은 [클라이언트 안내](apps/client/README.md) 및 [검증 기록](apps/client/reports/VALIDATION.md)을 참고하세요.
+아래 기능은 데모 범위의 구현 상태입니다. 최신 재생·탐색 변경의 실제 브라우저 검사가 남아 있어 Phase 4 전체 완료를 표시하지 않습니다.
+- [x] 병력과 장수 표시 및 병종별 이동·공격/군령 동작.
+- [x] 클릭/번호키 부대 선택, 우클릭 이동, Q/W/R, 태세/진형 표시.
+- [x] 실시간 상태 HUD: 병력/사기/전열/쿨다운/경고.
+- [x] 저장 로그의 최종 상태·사건 해시 검증과 간략 지도 재생·tick 탐색.
+- [ ] 최신 변경을 포함한 실제 브라우저 전체 회귀 검사 및 90초 headless/UI 재현 확인.
 
 **통과 조건:** 인간 1명 vs AI 1명, 각 2부대, 90초 이상 플레이/결과 확인 가능.
 
