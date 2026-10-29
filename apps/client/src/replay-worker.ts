@@ -1,5 +1,5 @@
 import { verifyReplayText } from "./replay-validation.js";
-import { replayAtTick } from "./replay-seek.js";
+import { commandResultTicks, replayAtTick } from "./replay-seek.js";
 import type {
   BattleInput,
   BattleState,
@@ -22,9 +22,7 @@ self.addEventListener(
         checkpoints.set(0, log.initial);
         self.postMessage({
           type: "commands",
-          ticks: frames.flatMap((frame, index) =>
-            frame.length ? [index + 1] : [],
-          ),
+          ticks: commandResultTicks(frames),
         });
       }
       self.postMessage(result);
