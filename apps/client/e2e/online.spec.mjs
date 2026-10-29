@@ -18,6 +18,11 @@ test("two browser pages share authoritative ticks and reject enemy control", asy
     await expect(blue.locator("#clock")).toContainText("tick");
     await expect(red.locator("#clock")).toContainText("tick");
     await expect
+      .poll(async () =>
+        Number(await blue.locator("#online").getAttribute("data-delta-count")),
+      )
+      .toBeGreaterThanOrEqual(2);
+    await expect
       .poll(async () => {
         const a = await blue.locator("#clock").textContent();
         const b = await red.locator("#clock").textContent();
@@ -33,6 +38,16 @@ test("two browser pages share authoritative ticks and reject enemy control", asy
     await blue.locator("#squad").selectOption("blue-1");
     await blue.locator("#advance").click();
     await expect(blue.locator("#result")).toContainText("명령 접수");
+    const samples = await blue.evaluate(async () => {
+      const values = [];
+      const deadline = performance.now() + 700;
+      while (performance.now() < deadline) {
+        await new Promise(requestAnimationFrame);
+        values.push(Number(document.querySelector("#online").dataset.renderX));
+      }
+      return values;
+    });
+    expect(new Set(samples).size).toBeGreaterThan(3);
     await expect
       .poll(async () => {
         const a = await blue.locator("#clock").textContent();
@@ -40,10 +55,56 @@ test("two browser pages share authoritative ticks and reject enemy control", asy
         return a === b && Number(a?.split(" ")[0]) >= 5;
       })
       .toBe(true);
+    await expect
+      .poll(async () => {
+        const [a, b] = await Promise.all([
+          blue.locator("#units").textContent(),
+          red.locator("#units").textContent(),
+        ]);
+        return a === b;
+      })
+      .toBe(true);
     await blue.screenshot({
       path: test.info().outputPath("blue-online.png"),
       fullPage: true,
     });
+  } finally {
+    await blue.close();
+    await red.close();
+  }
+});
+
+test("reloaded player resumes the reserved seat in the same room", async ({
+  browser,
+}) => {
+  const blue = await browser.newPage(),
+    red = await browser.newPage();
+  try {
+    await blue.goto("/online.html");
+    await red.goto("/online.html");
+    await blue.locator("#join").click();
+    await expect(blue.locator("#identity")).toContainText("blue");
+    await red.locator("#join").click();
+    await expect(red.locator("#identity")).toContainText("red");
+    const roomId = await blue.locator("#online").getAttribute("data-room-id");
+    await blue.reload();
+    await expect(red.locator("#connection")).toContainText("상대 접속 대기");
+    const paused = await red.locator("#clock").textContent();
+    await blue.locator("#join").click();
+    await expect(blue.locator("#identity")).toContainText("blue");
+    expect(await blue.locator("#online").getAttribute("data-room-id")).toBe(
+      roomId,
+    );
+    await expect(red.locator("#connection")).toContainText("전투 진행");
+    await expect
+      .poll(async () => red.locator("#clock").textContent())
+      .not.toBe(paused);
+    await blue.locator("#squad").evaluate((select) => {
+      select.add(new Option("red-1", "red-1"));
+      select.value = "red-1";
+      document.querySelector("#attack").click();
+    });
+    await expect(blue.locator("#result")).toContainText("NOT_OWNER");
   } finally {
     await blue.close();
     await red.close();
