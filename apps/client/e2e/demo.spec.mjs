@@ -1043,6 +1043,23 @@ test("downloaded replay verifies in a worker and reports mismatches without chan
   );
   await expect(page.locator("#replay-report")).toContainText(saved.stateHash);
   await expect(page.locator("#replay-report")).toContainText(saved.eventHash);
+  await expect(page.locator("#replay-player")).toBeVisible();
+  await expect(page.locator("#replay-next-command")).toBeEnabled();
+  await page.locator("#replay-next-command").click();
+  const firstCommandTick = saved.frames.findIndex((frame) => frame.length) + 1;
+  await expect(page.locator("#replay-time")).toContainText(`${firstCommandTick} tick`);
+  await page.locator("#replay-seek").fill("0");
+  await expect(page.locator("#replay-time")).toContainText("0 tick");
+  await page.locator("#replay-forward").click();
+  await expect(page.locator("#replay-time")).toContainText("1 tick");
+  await page.locator("#replay-seek").fill(String(saved.frames.length));
+  await expect(page.locator("#replay-time")).toContainText(
+    `${saved.frames.length} tick`,
+  );
+  await page.locator("#replay-back").click();
+  await expect(page.locator("#replay-time")).toContainText(
+    `${saved.frames.length - 1} tick`,
+  );
   expect(await page.evaluate(() => window.battleDemo.log())).toEqual(before);
   await page.screenshot({
     path: test.info().outputPath("replay-verification.png"),
@@ -1055,6 +1072,7 @@ test("downloaded replay verifies in a worker and reports mismatches without chan
     "data-verdict",
     "mismatch",
   );
+  await expect(page.locator("#replay-player")).toBeHidden();
   await expect(page.locator("#replay-report tbody tr").nth(0)).toContainText(
     "불일치",
   );
