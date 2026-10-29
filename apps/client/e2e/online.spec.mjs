@@ -12,6 +12,9 @@ test("two browser pages share authoritative ticks and reject enemy control", asy
     await expect(blue.locator("#identity")).toContainText("blue");
     await red.locator("#join").click();
     await expect(red.locator("#identity")).toContainText("red");
+    expect(await blue.locator("#online").getAttribute("data-room-id")).toBe(
+      await red.locator("#online").getAttribute("data-room-id"),
+    );
     await expect(blue.locator("#clock")).toContainText("tick");
     await expect(red.locator("#clock")).toContainText("tick");
     await expect
