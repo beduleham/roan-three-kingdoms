@@ -1,0 +1,14 @@
+{
+  "name": "@roan/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "smoke": "node dist/smoke.js"
+  },
+  "dependencies": {
+    "colyseus": "0.18.10",
+    "@colyseus/sdk": "0.18.8"
+  }
+}
