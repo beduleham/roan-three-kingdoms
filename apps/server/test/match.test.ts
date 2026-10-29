@@ -145,4 +145,13 @@ describe("server seat authority", () => {
     expect(match.start("only")).toEqual({ accepted: true });
     expect(match.ready).toBe(true);
   });
+  it("hands lobby ownership to the next connected player", () => {
+    const match = new AuthoritativeMatch("3v3");
+    match.join("first");
+    match.join("second");
+    match.leave("first");
+    expect(match.isHost("second")).toBe(true);
+    expect(match.join("third")).toBe("blue-1");
+    expect(match.start("second")).toEqual({ accepted: true });
+  });
 });
