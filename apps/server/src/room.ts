@@ -75,6 +75,11 @@ export class BattleRoom extends Room {
   }
   onLeave(client: Client) {
     this.match.leave(client.sessionId);
+    for (const connected of this.clients)
+      connected.send("seat", {
+        seat: this.match.seat(connected.sessionId),
+        host: this.match.isHost(connected.sessionId),
+      });
     this.broadcast("lobby", this.match.lobby);
     this.broadcast("ready", { ready: this.match.ready });
   }
