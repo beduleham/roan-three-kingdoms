@@ -6,8 +6,8 @@ async function state(page) {
 }
 async function clickSquad(page, id, button = "left") {
   const s = (await state(page)).squads.find((s) => s.id === id);
-  await page.locator("canvas").scrollIntoViewIfNeeded();
-  const box = await page.locator("canvas").boundingBox();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
+  const box = await page.locator("#arena canvas").boundingBox();
   const camera = await page.evaluate(() => window.battleDemo.view());
   await page.mouse.click(
     box.x +
@@ -22,8 +22,8 @@ async function clickSquad(page, id, button = "left") {
   );
 }
 async function clickGround(page, x, y, button = "right") {
-  await page.locator("canvas").scrollIntoViewIfNeeded();
-  const box = await page.locator("canvas").boundingBox();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
+  const box = await page.locator("#arena canvas").boundingBox();
   const camera = await page.evaluate(() => window.battleDemo.view());
   await page.mouse.click(
     box.x + ((340 + (x - y) * 0.032 - camera.scrollX) * box.width) / 960,
@@ -47,8 +47,9 @@ test.beforeEach(async ({ page }) => {
     () =>
       window.battleDemo?.view()?.loadedFootMotion &&
       window.battleDemo.view().visibleImages > 0 &&
-      document.querySelector("canvas"),
+      document.querySelector("#arena canvas"),
   );
+  await expect(page.locator("#arena canvas")).toHaveCount(1);
   await page.locator("#setup-panel > summary").click();
   await page.locator(".tactics > summary").click();
   await page.locator("#augment-panel > summary").click();
@@ -215,8 +216,8 @@ test("static artwork, resized canvas and panned camera retain command coordinate
   expect(move.command.squadIds).toEqual(["human-2"]);
   // Pointer coordinates quantize to CSS pixels on a scaled canvas.
   // Bound the error in visible pixels rather than assuming a core-unit precision.
-  await page.locator("canvas").scrollIntoViewIfNeeded();
-  const box = await page.locator("canvas").boundingBox();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
+  const box = await page.locator("#arena canvas").boundingBox();
   const dx = move.command.destination.x - 8000;
   const dy = move.command.destination.y - 11000;
   expect(Math.abs(((dx - dy) * 0.032 * box.width) / 960)).toBeLessThan(1.5);
@@ -538,7 +539,7 @@ test("nameplates remain separate during combat and camera movement", async ({
     .toBeLessThan(hp);
   await page.locator("#pause").click();
   await checkLabels();
-  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   await page.keyboard.down("ArrowRight");
   await page.waitForTimeout(180);
   await page.keyboard.up("ArrowRight");
@@ -597,7 +598,7 @@ test("selection markers follow single and multiple selection while commander lan
       ),
     )
     .toEqual(["label:human-1", "label:human-2"]);
-  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "apps/client/test-results/formation-selection.png",
   });
@@ -657,7 +658,7 @@ test("accepted movement and actual combat targets drive selection guides", async
   expect(cue.to).toEqual(
     combat.squads.find((s) => s.id === cue.targetId).position,
   );
-  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   await page.screenshot({ path: "apps/client/test-results/order-guides.png" });
   await page.locator("#reset").click();
   await expect
@@ -719,7 +720,7 @@ for (const unit of ["infantry", "cavalry"]) {
       await page.evaluate(() => window.battleDemo.view().unitVisuals),
     ).toEqual(frozen);
     if (unit === "cavalry") {
-      await page.locator("canvas").scrollIntoViewIfNeeded();
+      await page.locator("#arena canvas").scrollIntoViewIfNeeded();
       await page.screenshot({
         path: test.info().outputPath("cavalry-melee.png"),
       });
@@ -803,7 +804,7 @@ test("accepted W and R animate the commander while pending input and reset do no
     )
     .toEqual({ mode: "command", phase: 2 });
   await page.locator("#pause").click();
-  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: test.info().outputPath("commander-command.png"),
   });
@@ -870,13 +871,13 @@ test("natural annihilation stops the test, exports replay, and retries the actua
 });
 
 async function clickLabel(page, id) {
-  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   const label = await page.evaluate(
     (id) => window.battleDemo.view().labels.find((l) => l.id === `label:${id}`),
     id,
   );
   expect(label).toBeTruthy();
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator("#arena canvas").boundingBox();
   await page.mouse.click(
     box.x + ((label.x + label.width / 2) * box.width) / 960,
     box.y + ((label.y + label.height / 2) * box.height) / 560,
@@ -941,7 +942,7 @@ test("enemy observation and nameplate clicks preserve friendly orders and track 
       String(value),
     );
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.locator("canvas").scrollIntoViewIfNeeded();
+  await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   await page.keyboard.down("ArrowRight");
   await page.waitForTimeout(150);
   await page.keyboard.up("ArrowRight");
