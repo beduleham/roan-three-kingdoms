@@ -6,9 +6,24 @@ import {
   hashReplayValue,
 } from "../../../packages/battle-core/src/index.js";
 import { LocalSession } from "../src/session.js";
-import { replayAtTick } from "../src/replay-seek.js";
+import { commandResultTicks, replayAtTick } from "../src/replay-seek.js";
 
 describe("recorded timeline seeking", () => {
+  it("indexes only processed command ticks", () => {
+    const session = new LocalSession(parseBattleConfig(rawConfig));
+    session.send({
+      type: "SET_STANCE",
+      squadIds: ["human-1"],
+      stance: "aggressive",
+    });
+    session.togglePause();
+    session.advance(session.config.tickMs);
+    session.advance(session.config.tickMs);
+    expect(commandResultTicks(session.frames)).toEqual([1]);
+    expect(
+      replayAtTick(session.frames, new Map([[0, session.initial]]), 1),
+    ).toEqual(replay(session.initial, session.frames.slice(0, 1)).state);
+  });
   it("returns the same states when seeking backward and across checkpoints", () => {
     const session = new LocalSession(parseBattleConfig(rawConfig));
     session.togglePause();
