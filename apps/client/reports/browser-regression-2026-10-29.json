@@ -1,0 +1,236 @@
+{
+  "baseMain": "e9e1e53ac625d3ac54b8f9159c5d8633ae120329",
+  "command": "DEMO_CHROMIUM_PATH=/usr/bin/chromium npm run test:browser -- --reporter=list,json",
+  "node": "24.19.0",
+  "chromium": "154.0.8037.57",
+  "stats": {
+    "startTime": "2026-10-29T03:23:03.881Z",
+    "duration": 255195.557,
+    "expected": 20,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "name": "Phaser Q/W/R targeting, actual collision, HUD and headless replay",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 8195,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "move, attack, formation, ownership, reset and experimental shortage through UI",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 11819,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "90 seconds on the real browser clock preserves UI/headless state and event hashes",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 95666,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "static artwork, resized canvas and panned camera retain command coordinates",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 4805,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "command desk shows selected gauges, explicit target step, cooldown and restart",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 4808,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "spear direction and tick animation freeze on pause, attack follows real hits, all infantry types render",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 9121,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "mounted commander follows direction, canter freezes, and actual Q accelerates animation",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 5715,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "infantry and archers animate in four directions with event driven arrows, pause and reset",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 8908,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "retired art is not requested, actual damage flashes and reset restores normal tint",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 7001,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "nameplates remain separate during combat and camera movement",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 7011,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "selection markers follow single and multiple selection while commander lane stays clear",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 2626,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "accepted movement and actual combat targets drive selection guides",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 7933,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "a real infantry hit plays all four attack frames in order",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 7128,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "a real cavalry hit plays all four attack frames in order",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 6799,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "accepted W and R animate the commander while pending input and reset do not",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 7165,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "natural annihilation stops the test, exports replay, and retries the actual setup",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 32297,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "enemy observation and nameplate clicks preserve friendly orders and track real gauges",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 10861,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "quick engagement respects prepared commands and keeps skills manual",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 5731,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "downloaded replay verifies in a worker and reports mismatches without changing the battle",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 5983,
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "name": "replay verification cancels and replaces long jobs without stale output",
+      "status": "expected",
+      "runs": [
+        {
+          "status": "passed",
+          "durationMs": 3926,
+          "retry": 0
+        }
+      ]
+    }
+  ]
+}
