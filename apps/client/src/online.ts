@@ -14,7 +14,7 @@ const mode =
   new URLSearchParams(location.search).get("mode") === "3v3" ? "3v3" : "1v1";
 root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
 <p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> | 서버 10Hz · 동기화 5Hz</p>
-<button id="join">경기 접속</button> <span id="connection" role="status">접속 대기</span>
+<button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button></section>
 <p id="identity"></p><p id="clock"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
 <section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
@@ -29,7 +29,9 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <p>명령은 서버에서 검증됩니다. 화면 위치만 두 서버 상태 사이에서 보간합니다.</p>`;
 const el = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
-const tokenKey = `roan-online-reconnection-${mode}`;
+const params = new URLSearchParams(location.search);
+const tokenKey = () =>
+  `roan-online-reconnection-${mode}-${params.get("room") ?? "quick"}`;
 let seat: string | null = null;
 let host = false;
 let ready = false;
@@ -173,25 +175,43 @@ canvas.addEventListener("click", (event) => {
     );
   }
 });
-el("join").addEventListener("click", async () => {
+async function connect(createPrivate = false) {
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
+  el<HTMLButtonElement>("create-private").setAttribute("disabled", "");
   try {
     const address =
       new URLSearchParams(location.search).get("server") ??
       `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
     const client = new Client(address);
-    const token = sessionStorage.getItem(tokenKey);
+    const token = createPrivate ? null : sessionStorage.getItem(tokenKey());
     if (token) {
       try {
         room = await client.reconnect(token);
       } catch {
-        sessionStorage.removeItem(tokenKey);
+        sessionStorage.removeItem(tokenKey());
       }
     }
-    room ??= await client.joinOrCreate(
-      mode === "3v3" ? "battle_3v3" : "battle_1v1",
-    );
-    sessionStorage.setItem(tokenKey, room.reconnectionToken);
+    const roomName = mode === "3v3" ? "battle_3v3" : "battle_1v1";
+    if (!room) {
+      room = createPrivate
+        ? await client.create(roomName, { inviteOnly: true })
+        : params.get("room")
+          ? await client.joinById(params.get("room")!)
+          : await client.joinOrCreate(roomName);
+    }
+    if (room.name !== roomName) {
+      await room.leave();
+      room = null;
+      throw new Error("초대 링크의 경기 종류가 다릅니다");
+    }
+    params.set("room", room.roomId);
+    history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
+    sessionStorage.setItem(tokenKey(), room.reconnectionToken);
+    const inviteUrl = location.href;
+    el("invite").hidden = false;
+    const link = el<HTMLAnchorElement>("invite-link");
+    link.href = inviteUrl;
+    link.textContent = inviteUrl;
     root.dataset.roomId = room.roomId;
     el("connection").textContent = `접속됨 · Room ${room.roomId}`;
     room.onMessage(
@@ -300,7 +320,7 @@ el("join").addEventListener("click", async () => {
       el("connection").textContent = "연결 복구 중 · 전투 일시 중지";
     });
     room.onReconnect(() => {
-      sessionStorage.setItem(tokenKey, room!.reconnectionToken);
+      sessionStorage.setItem(tokenKey(), room!.reconnectionToken);
       room?.send("hello");
     });
     room.onLeave(() => {
@@ -311,16 +331,30 @@ el("join").addEventListener("click", async () => {
       state = null;
       previousState = null;
       drawing = false;
-      sessionStorage.removeItem(tokenKey);
+      sessionStorage.removeItem(tokenKey());
       el("connection").textContent = "연결 종료";
       el("identity").textContent = "";
       el("clock").textContent = "";
       el<HTMLButtonElement>("join").disabled = false;
+      el<HTMLButtonElement>("create-private").disabled = false;
     });
     room.send("hello");
   } catch (error) {
     el("connection").textContent = `접속 실패: ${String(error)}`;
     el<HTMLButtonElement>("join").disabled = false;
+    el<HTMLButtonElement>("create-private").disabled = false;
+  }
+}
+el("join").addEventListener("click", () => void connect());
+el("create-private").addEventListener("click", () => void connect(true));
+el("copy-invite").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(
+      el<HTMLAnchorElement>("invite-link").href,
+    );
+    el("result").textContent = "초대 링크 복사 완료";
+  } catch {
+    el("result").textContent = "링크를 직접 선택해 복사하세요";
   }
 });
 function isReady(value: boolean) {

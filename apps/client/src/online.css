@@ -41,3 +41,6 @@
   white-space: pre-wrap;
   line-height: 1.7;
 }
+#invite {
+  overflow-wrap: anywhere;
+}

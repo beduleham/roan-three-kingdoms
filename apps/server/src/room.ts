@@ -35,7 +35,8 @@ export class BattleRoom extends Room {
       }
     },
   };
-  onCreate() {
+  async onCreate(options?: { inviteOnly?: boolean }) {
+    if (options?.inviteOnly === true) await this.setPrivate(true);
     this.sentState = this.match.state;
     this.setTimestep(() => {
       const result = this.match.advance();
