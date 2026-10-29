@@ -50,24 +50,42 @@ export function initialOnlineBattle(): BattleState {
 export class AuthoritativeMatch {
   state = initialOnlineBattle();
   private seats = new Map<string, Seat>();
+  private connected = new Set<string>();
   private pending: BattleInput[] = [];
   private nextSeq = new Map<Seat, number>([
     ["blue", 0],
     ["red", 0],
   ]);
   join(sessionId: string): Seat | null {
-    if (this.seats.has(sessionId)) return this.seats.get(sessionId)!;
+    if (this.seats.has(sessionId)) {
+      this.connected.add(sessionId);
+      return this.seats.get(sessionId)!;
+    }
     const seat = (["blue", "red"] as const).find(
       (s) => ![...this.seats.values()].includes(s),
     );
-    if (seat) this.seats.set(sessionId, seat);
+    if (seat) {
+      this.seats.set(sessionId, seat);
+      this.connected.add(sessionId);
+    }
     return seat ?? null;
   }
+  drop(sessionId: string) {
+    this.connected.delete(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (seat) this.pending = this.pending.filter((p) => p.playerId !== seat);
+  }
+  reconnect(sessionId: string) {
+    if (!this.seats.has(sessionId)) return false;
+    this.connected.add(sessionId);
+    return true;
+  }
   leave(sessionId: string) {
+    this.drop(sessionId);
     this.seats.delete(sessionId);
   }
   get ready() {
-    return this.seats.size === 2;
+    return this.seats.size === 2 && this.connected.size === 2;
   }
   seat(sessionId: string) {
     return this.seats.get(sessionId) ?? null;
@@ -77,7 +95,9 @@ export class AuthoritativeMatch {
     payload: unknown,
   ): { accepted: boolean; reason?: string } {
     const seat = this.seats.get(sessionId);
-    if (!seat) return { accepted: false, reason: "NO_SEAT" };
+    if (!seat || !this.connected.has(sessionId))
+      return { accepted: false, reason: "NO_SEAT" };
+    if (!this.ready) return { accepted: false, reason: "MATCH_PAUSED" };
     if (!payload || typeof payload !== "object" || Array.isArray(payload))
       return { accepted: false, reason: "INVALID_FORMAT" };
     const input = commandSchema.safeParse({
