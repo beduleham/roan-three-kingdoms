@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@colyseus/sdk": "^0.18.8",
+    "@roan/protocol": "0.0.0",
     "@fontsource/noto-sans-kr": "^5.3.1",
     "phaser": "^3.90.0"
   },
