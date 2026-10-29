@@ -65,6 +65,7 @@ el("join").addEventListener("click", async () => {
       new URLSearchParams(location.search).get("server") ??
       `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
     room = await new Client(address).joinOrCreate("battle_1v1");
+    root.dataset.roomId = room.roomId;
     el("connection").textContent = `접속됨 · Room ${room.roomId}`;
     room.onMessage("seat", ({ seat: assigned }: { seat: "blue" | "red" }) => {
       seat = assigned;
