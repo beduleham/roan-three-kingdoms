@@ -247,3 +247,63 @@ test("six human browsers occupy one 3v3 room before start", async ({
     await Promise.all(pages.map((page) => page.close()));
   }
 });
+
+test("private invite joins the intended 3v3 room while quick match stays separate", async ({
+  browser,
+}) => {
+  const host = await browser.newPage(),
+    outsider = await browser.newPage(),
+    guest = await browser.newPage();
+  try {
+    await host.goto("/online.html?mode=3v3");
+    await host.locator("#create-private").click();
+    await expect(host.locator("#identity")).toContainText("blue-1");
+    const invite = await host.locator("#invite-link").getAttribute("href");
+    expect(invite).toContain("room=");
+    await outsider.goto("/online.html?mode=3v3");
+    await outsider.locator("#join").click();
+    await expect(outsider.locator("#identity")).toContainText("blue-1");
+    expect(
+      await outsider.locator("#online").getAttribute("data-room-id"),
+    ).not.toBe(await host.locator("#online").getAttribute("data-room-id"));
+    await guest.goto(invite);
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
+    expect(await guest.locator("#online").getAttribute("data-room-id")).toBe(
+      await host.locator("#online").getAttribute("data-room-id"),
+    );
+    await host.locator("#start").click();
+    await expect(guest.locator("#connection")).toContainText("전투 진행");
+    await expect(outsider.locator("#clock")).toContainText("0 tick");
+    await guest.reload();
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
+  } finally {
+    await Promise.all([host.close(), outsider.close(), guest.close()]);
+  }
+});
+
+test("invite for another mode is rejected before showing a seat", async ({
+  browser,
+}) => {
+  const host = await browser.newPage(),
+    guest = await browser.newPage();
+  try {
+    await host.goto("/online.html?mode=3v3");
+    await host.locator("#create-private").click();
+    await expect(host.locator("#identity")).toContainText("blue-1");
+    const invite = new URL(
+      await host.locator("#invite-link").getAttribute("href"),
+    );
+    invite.searchParams.delete("mode");
+    await guest.goto(invite.href);
+    await guest.locator("#join").click();
+    await expect(guest.locator("#connection")).toContainText(
+      "경기 종류가 다릅니다",
+    );
+    await expect(guest.locator("#identity")).toBeEmpty();
+  } finally {
+    await host.close();
+    await guest.close();
+  }
+});
