@@ -9,17 +9,19 @@ async function clickSquad(page, id, button = "left") {
   await page.locator("#arena canvas").scrollIntoViewIfNeeded();
   const box = await page.locator("#arena canvas").boundingBox();
   const camera = await page.evaluate(() => window.battleDemo.view());
-  await page.mouse.click(
-    box.x +
-      ((340 + (s.position.x - s.position.y) * 0.032 - camera.scrollX) *
-        box.width) /
+  await page.locator("#arena canvas").click({
+    position: {
+      x:
+        ((340 + (s.position.x - s.position.y) * 0.032 - camera.scrollX) *
+          box.width) /
         960,
-    box.y +
-      ((20 + (s.position.x + s.position.y) * 0.016 - camera.scrollY) *
-        box.height) /
+      y:
+        ((20 + (s.position.x + s.position.y) * 0.016 - camera.scrollY) *
+          box.height) /
         560,
-    { button },
-  );
+    },
+    button,
+  });
 }
 async function clickGround(page, x, y, button = "right") {
   await page.locator("#arena canvas").scrollIntoViewIfNeeded();
@@ -33,7 +35,7 @@ async function clickGround(page, x, y, button = "right") {
 }
 async function cast(page, skill, targets) {
   await page.locator(`#${skill}`).click();
-  for (const target of targets) await clickSquad(page, target);
+  for (const target of targets) await clickLabel(page, target);
   await page.locator("#confirm").click();
 }
 async function tickAtLeast(page, n) {
@@ -887,7 +889,7 @@ async function clickLabel(page, id) {
 test("enemy observation and nameplate clicks preserve friendly orders and track real gauges", async ({
   page,
 }) => {
-  await clickSquad(page, "enemy-1");
+  await clickLabel(page, "enemy-1");
   await expect(page.locator("#enemy-inspect")).toBeVisible();
   await expect(page.locator("#enemy-inspect-content h2")).toContainText(
     "적군 1부대",

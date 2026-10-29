@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Client } from "@colyseus/sdk";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
 import type { BattleState } from "../../../packages/battle-core/dist/index.js";
+import { applyStateDelta, type StateDelta } from "@roan/protocol";
 
 const port = 2677;
 const child = spawn(
@@ -45,6 +46,8 @@ try {
   let denied = "",
     accepted = false;
   const snapshots = [new Map<number, string>(), new Map<number, string>()];
+  const latest: (BattleState | null)[] = [null, null];
+  const wireSizes: number[] = [];
   blue.onMessage("seat", (v: { seat: string }) => {
     blueSeat = v.seat;
   });
@@ -53,12 +56,22 @@ try {
   });
   blue.onMessage("ready", () => {});
   red.onMessage("ready", () => {});
-  blue.onMessage("snapshot", (v: { state: BattleState }) =>
-    snapshots[0]!.set(v.state.tick, hashReplayValue(v.state)),
-  );
-  red.onMessage("snapshot", (v: { state: BattleState }) =>
-    snapshots[1]!.set(v.state.tick, hashReplayValue(v.state)),
-  );
+  for (const [index, connection] of [blue, red].entries()) {
+    connection.onMessage("snapshot", (v: { state: BattleState }) => {
+      latest[index] = v.state;
+      snapshots[index]!.set(v.state.tick, hashReplayValue(v.state));
+    });
+    connection.onMessage("delta", (d: StateDelta) => {
+      const base = latest[index];
+      assert(base);
+      assert.equal(base.tick, d.baseTick);
+      const next = applyStateDelta(base, d.changes);
+      assert.equal(hashReplayValue(next), d.hash);
+      latest[index] = next;
+      snapshots[index]!.set(d.tick, d.hash);
+      if (index === 0) wireSizes.push(JSON.stringify(d).length);
+    });
+  }
   blue.onMessage(
     "command-result",
     (v: { accepted: boolean; reason?: string }) => {
@@ -97,6 +110,8 @@ try {
   assert(common.length >= 3);
   for (const tick of common)
     assert.equal(snapshots[0]!.get(tick), snapshots[1]!.get(tick));
+  assert(wireSizes.length > 0);
+  assert(wireSizes[0]! < JSON.stringify(latest[0]).length);
   console.log(
     JSON.stringify({
       sameRoom: true,
@@ -104,6 +119,8 @@ try {
       denied,
       accepted,
       matchingTicks: common.length,
+      firstDeltaBytes: wireSizes[0],
+      fullStateBytes: JSON.stringify(latest[0]).length,
     }),
   );
   await blue.leave();

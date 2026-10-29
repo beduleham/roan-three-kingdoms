@@ -13,7 +13,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "npm run build:core && npm run build --workspace @roan/server && node apps/server/dist/index.js",
+        "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && node apps/server/dist/index.js",
       cwd: fileURLToPath(new URL("../../", import.meta.url)),
       url: "http://127.0.0.1:2567",
       reuseExistingServer: false,

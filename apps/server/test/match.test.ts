@@ -51,4 +51,35 @@ describe("server seat authority", () => {
     expect(match.advance()).toBeNull();
     expect(match.state.tick).toBe(0);
   });
+  it("reserves a dropped seat, pauses, then resumes the same owner", () => {
+    const match = new AuthoritativeMatch();
+    match.join("first");
+    match.join("second");
+    expect(
+      match.submit("first", {
+        type: "ATTACK_MOVE",
+        squadIds: ["blue-1"],
+        destination: { x: 10000, y: 6500 },
+      }).accepted,
+    ).toBe(true);
+    match.drop("first");
+    expect(match.ready).toBe(false);
+    expect(match.join("stranger")).toBeNull();
+    expect(match.advance()).toBeNull();
+    expect(
+      match.submit("second", {
+        type: "ATTACK",
+        squadIds: ["red-1"],
+        targetSquadId: "blue-1",
+      }),
+    ).toEqual({ accepted: false, reason: "MATCH_PAUSED" });
+    expect(match.reconnect("first")).toBe(true);
+    expect(match.seat("first")).toBe("blue");
+    expect(match.advance()?.state.tick).toBe(1);
+    expect(
+      match.state.squads.find((s) => s.id === "blue-1")?.order?.type,
+    ).not.toBe("ATTACK_MOVE");
+    match.leave("first");
+    expect(match.join("stranger")).toBe("blue");
+  });
 });
