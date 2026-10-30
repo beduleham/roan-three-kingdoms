@@ -1,8 +1,9 @@
-import { Room, type Client } from "colyseus";
+import { Room, ServerError, type Client } from "colyseus";
 import { diffState } from "@roan/protocol";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
 import type { BattleState } from "../../../packages/battle-core/dist/index.js";
 import { AuthoritativeMatch } from "./match.js";
+import { InviteAccess } from "./invite.js";
 
 export class BattleRoom extends Room {
   maxClients = 2;
@@ -11,8 +12,11 @@ export class BattleRoom extends Room {
   protected match = new AuthoritativeMatch();
   private sentState!: BattleState;
   private accumulatedEvents: unknown[] = [];
+  private inviteAccess: InviteAccess | null = null;
   messages = {
     hello: (client: Client) => {
+      if (this.inviteAccess)
+        client.send("invite-key", { key: this.inviteAccess.key });
       client.send("seat", {
         seat: this.match.seat(client.sessionId),
         host: this.match.isHost(client.sessionId),
@@ -20,6 +24,14 @@ export class BattleRoom extends Room {
       client.send("snapshot", { state: this.match.state, events: [] });
       client.send("lobby", this.match.lobby);
       this.broadcast("ready", { ready: this.match.ready });
+    },
+    "rotate-invite": (client: Client) => {
+      if (!this.inviteAccess || !this.match.isHost(client.sessionId)) {
+        client.send("invite-result", { accepted: false, reason: "NOT_HOST" });
+        return;
+      }
+      client.send("invite-key", { key: this.inviteAccess.rotate() });
+      client.send("invite-result", { accepted: true });
     },
     command: (client: Client, payload: unknown) => {
       const response = this.match.submit(client.sessionId, payload);
@@ -35,8 +47,11 @@ export class BattleRoom extends Room {
       }
     },
   };
-  async onCreate(options?: { inviteOnly?: boolean }) {
-    if (options?.inviteOnly === true) await this.setPrivate(true);
+  async onCreate(options?: { inviteOnly?: boolean; creatorProof?: unknown }) {
+    if (options?.inviteOnly === true) {
+      this.inviteAccess = new InviteAccess(options.creatorProof);
+      await this.setPrivate(true);
+    }
     this.sentState = this.match.state;
     this.setTimestep(() => {
       const result = this.match.advance();
@@ -53,6 +68,11 @@ export class BattleRoom extends Room {
       this.sentState = result.state;
       this.accumulatedEvents = [];
     }, 100);
+  }
+  onAuth(_client: Client, options: unknown) {
+    if (this.inviteAccess && !this.inviteAccess.authorize(options))
+      throw new ServerError(403, "INVITE_REQUIRED");
+    return true;
   }
   onJoin(client: Client) {
     const seat = this.match.join(client.sessionId);
