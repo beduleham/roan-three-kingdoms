@@ -15,6 +15,7 @@
     "sim:smoke": "npm run build:core && node packages/battle-core/dist/smoke.js",
     "build": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && npm run build --workspace @roan/client",
     "test:online": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && npm run smoke --workspace @roan/server",
+    "test:online:soak": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && node apps/server/dist/team-soak.js",
     "format": "prettier --write packages apps package.json tsconfig.json vitest.config.ts",
     "format:check": "prettier --check packages apps package.json tsconfig.json vitest.config.ts",
     "sim:experimental": "npm run build:core && node packages/battle-core/dist/experimental-cli.js",

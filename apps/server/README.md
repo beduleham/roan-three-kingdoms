@@ -21,6 +21,7 @@ node apps/server/dist/index.js
 - 연결이 끊기면 최대 30초간 좌석을 보존하고 경기 tick을 멈춥니다. 같은 탭의 새로고침은 `sessionStorage`의 재접속 토큰으로 원래 진영에 복귀합니다. 30초가 지나면 좌석을 해제합니다.
 - `npm run test:online`은 실제 서버와 두 SDK 접속으로 같은 Room·좌석·타인 명령 거부·동일 tick 해시를 확인합니다.
 - `npm run test:browser:online`은 두 실제 페이지의 상태 일치와 명령 거부를 검사합니다. Chromium이 설치된 환경에서 실행해야 합니다.
+- `npm run test:online:soak`은 실제 서버와 SDK 연결 6개를 900tick 이상 실행합니다. 반복 명령, 타인 명령·잘못된 형식 거부, 델타 1개 의도적 누락 후 전체 상태 복구, 연결 1개 강제 종료 후 같은 좌석 자동 복귀를 검사합니다. 빠른 개발 점검은 `ONLINE_SOAK_TICKS=100 npm run test:online:soak`으로 실행할 수 있으며 90초 인수 검사를 대체하지 않습니다.
 
 ## 온라인 전술과 3대3 로비
 

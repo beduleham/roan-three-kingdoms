@@ -59,3 +59,19 @@ export function applyStateDelta<T>(base: T, changes: Change[]): T {
   }
   return result;
 }
+
+/** A rejected delta must be followed by a full snapshot; never mutate the last good state. */
+export function applyVerifiedDelta<T extends { tick: number }>(
+  base: T | null,
+  delta: StateDelta,
+  hash: (state: T) => string,
+): T | null {
+  if (!base || base.tick !== delta.baseTick || delta.tick <= delta.baseTick)
+    return null;
+  try {
+    const next = applyStateDelta(base, delta.changes);
+    return next.tick === delta.tick && hash(next) === delta.hash ? next : null;
+  } catch {
+    return null;
+  }
+}
