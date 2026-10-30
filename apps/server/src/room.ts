@@ -1,4 +1,4 @@
-import { Room, ServerError, type Client } from "colyseus";
+import { Room, ServerError, CloseCode, type Client } from "colyseus";
 import { diffState } from "@roan/protocol";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
 import type { BattleState } from "../../../packages/battle-core/dist/index.js";
@@ -13,8 +13,13 @@ export class BattleRoom extends Room {
   private sentState!: BattleState;
   private accumulatedEvents: unknown[] = [];
   private inviteAccess: InviteAccess | null = null;
+  private reconnectReservations = new Map<
+    string,
+    ReturnType<BattleRoom["allowReconnection"]>
+  >();
   messages = {
     hello: (client: Client) => {
+      if (!this.match.seat(client.sessionId)) return;
       if (this.inviteAccess)
         client.send("invite-key", { key: this.inviteAccess.key });
       client.send("seat", {
@@ -24,6 +29,35 @@ export class BattleRoom extends Room {
       client.send("snapshot", { state: this.match.state, events: [] });
       client.send("lobby", this.match.lobby);
       this.broadcast("ready", { ready: this.match.ready });
+    },
+    "remove-player": (client: Client, payload: unknown) => {
+      if (!this.inviteAccess) {
+        client.send("lobby-result", {
+          accepted: false,
+          reason: "INVITE_ROOM_REQUIRED",
+        });
+        return;
+      }
+      const seat =
+        payload && typeof payload === "object" && !Array.isArray(payload)
+          ? (payload as Record<string, unknown>).seat
+          : undefined;
+      const result = this.match.removeFromLobby(client.sessionId, seat);
+      if (!result.accepted || !result.sessionId) {
+        client.send("lobby-result", { accepted: false, reason: result.reason });
+        return;
+      }
+      const key = this.inviteAccess.rotate();
+      for (const remaining of this.clients)
+        if (this.match.seat(remaining.sessionId))
+          remaining.send("invite-key", { key });
+      this.clients
+        .find((connected) => connected.sessionId === result.sessionId)
+        ?.leave(CloseCode.CONSENTED, "REMOVED_FROM_LOBBY");
+      this.reconnectReservations.get(result.sessionId)?.reject();
+      this.reconnectReservations.delete(result.sessionId);
+      this.broadcastLobby();
+      client.send("lobby-result", { accepted: true });
     },
     "rotate-invite": (client: Client) => {
       if (!this.inviteAccess || !this.match.isHost(client.sessionId)) {
@@ -81,26 +115,35 @@ export class BattleRoom extends Room {
   }
   onDrop(client: Client) {
     this.match.drop(client.sessionId);
-    this.broadcast("ready", { ready: false });
-    this.allowReconnection(client, 30);
+    this.broadcastLobby();
+    this.reconnectReservations.set(
+      client.sessionId,
+      this.allowReconnection(client, 30),
+    );
   }
   onReconnect(client: Client) {
-    this.match.reconnect(client.sessionId);
+    if (!this.match.reconnect(client.sessionId))
+      throw new ServerError(403, "NO_SEAT");
+    this.reconnectReservations.delete(client.sessionId);
     client.send("seat", {
       seat: this.match.seat(client.sessionId),
       host: this.match.isHost(client.sessionId),
     });
     client.send("snapshot", { state: this.match.state, events: [] });
-    client.send("lobby", this.match.lobby);
-    this.broadcast("ready", { ready: this.match.ready });
+    this.broadcastLobby();
   }
   onLeave(client: Client) {
+    this.reconnectReservations.delete(client.sessionId);
     this.match.leave(client.sessionId);
+    this.broadcastLobby();
+  }
+  private broadcastLobby() {
     for (const connected of this.clients)
-      connected.send("seat", {
-        seat: this.match.seat(connected.sessionId),
-        host: this.match.isHost(connected.sessionId),
-      });
+      if (this.match.seat(connected.sessionId))
+        connected.send("seat", {
+          seat: this.match.seat(connected.sessionId),
+          host: this.match.isHost(connected.sessionId),
+        });
     this.broadcast("lobby", this.match.lobby);
     this.broadcast("ready", { ready: this.match.ready });
   }
