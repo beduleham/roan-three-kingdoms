@@ -14,8 +14,8 @@ const mode =
   new URLSearchParams(location.search).get("mode") === "3v3" ? "3v3" : "1v1";
 root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
 <p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> | 서버 10Hz · 동기화 5Hz</p>
-<button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
-<section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button></section>
+<button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
+<section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
 <p id="identity"></p><p id="clock"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
 <section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
 <label>목적지 X (타일) <input id="dest-x" type="number" value="10" min="0" max="24"></label>
@@ -43,6 +43,13 @@ let previousState: BattleState | null = null;
 let receivedAt = 0;
 let awaitingSnapshot = false;
 let drawing = false;
+let drawFrame = 0;
+let lobbySlots: {
+  id: string;
+  occupant: string;
+  connected: boolean;
+  host: boolean;
+}[] = [];
 const canvas = el<HTMLCanvasElement>("field"),
   ctx = canvas.getContext("2d")!;
 function render() {
@@ -97,6 +104,13 @@ function refreshControls() {
   el<HTMLButtonElement>("start").disabled = !host || lobbyStarted;
   el<HTMLButtonElement>("rotate-invite").disabled =
     !host || !inviteKey || !room;
+  el<HTMLButtonElement>("leave").disabled = !room;
+  el<HTMLButtonElement>("remove-player").disabled =
+    !host ||
+    !inviteKey ||
+    !room ||
+    lobbyStarted ||
+    !el<HTMLSelectElement>("remove-seat").options.length;
   render();
 }
 function updateInviteLink() {
@@ -158,7 +172,7 @@ function draw() {
     ctx.font = "14px sans-serif";
     ctx.fillText(s.id, x + 20, y + 4);
   }
-  requestAnimationFrame(draw);
+  drawFrame = requestAnimationFrame(draw);
 }
 canvas.addEventListener("click", (event) => {
   if (!state || !seat) return;
@@ -248,6 +262,14 @@ async function connect(createPrivate = false) {
       },
     );
     room.onMessage(
+      "lobby-result",
+      ({ accepted, reason }: { accepted: boolean; reason?: string }) => {
+        el("result").textContent = accepted
+          ? "참가자 내보내기 완료 · 초대 링크 갱신"
+          : `참가자 관리 거부: ${reason}`;
+      },
+    );
+    room.onMessage(
       "seat",
       ({ seat: assigned, host: isHost }: { seat: string; host: boolean }) => {
         seat = assigned;
@@ -260,12 +282,30 @@ async function connect(createPrivate = false) {
       "lobby",
       (lobby: {
         started: boolean;
-        slots: { id: string; occupant: string }[];
+        slots: {
+          id: string;
+          occupant: string;
+          connected: boolean;
+          host: boolean;
+        }[];
       }) => {
         lobbyStarted = lobby.started;
+        lobbySlots = lobby.slots;
         el("lobby").textContent = lobby.slots
-          .map((slot) => `${slot.id}: ${slot.occupant}`)
+          .map(
+            (slot) =>
+              `${slot.id}: ${slot.occupant}${slot.host ? " (로비장)" : ""}${slot.occupant === "human" && !slot.connected ? " · 재접속 대기" : ""}`,
+          )
           .join(" · ");
+        const select = el<HTMLSelectElement>("remove-seat"),
+          previous = select.value;
+        select.replaceChildren(
+          ...lobbySlots
+            .filter((slot) => slot.occupant === "human" && slot.id !== seat)
+            .map((slot) => new Option(slot.id, slot.id)),
+        );
+        if ([...select.options].some((option) => option.value === previous))
+          select.value = previous;
         refreshControls();
       },
     );
@@ -356,7 +396,7 @@ async function connect(createPrivate = false) {
       sessionStorage.setItem(tokenKey(), room!.reconnectionToken);
       room?.send("hello");
     });
-    room.onLeave(() => {
+    room.onLeave((_code, reason) => {
       room = null;
       seat = null;
       host = false;
@@ -364,10 +404,21 @@ async function connect(createPrivate = false) {
       state = null;
       previousState = null;
       drawing = false;
+      cancelAnimationFrame(drawFrame);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      lobbySlots = [];
       sessionStorage.removeItem(tokenKey());
-      el("connection").textContent = "연결 종료";
+      el("connection").textContent =
+        reason === "REMOVED_FROM_LOBBY"
+          ? "로비에서 내보내졌습니다"
+          : "연결 종료";
       el("identity").textContent = "";
       el("clock").textContent = "";
+      for (const id of ["lobby", "selected", "commander", "units", "events"])
+        el(id).textContent = "";
+      el<HTMLSelectElement>("remove-seat").replaceChildren();
+      el("invite").hidden = true;
+      refreshControls();
       el<HTMLButtonElement>("join").disabled = false;
       el<HTMLButtonElement>("create-private").disabled = false;
     });
@@ -380,6 +431,12 @@ async function connect(createPrivate = false) {
 }
 el("join").addEventListener("click", () => void connect());
 el("create-private").addEventListener("click", () => void connect(true));
+el("leave").addEventListener("click", () => void room?.leave());
+el("remove-player").addEventListener("click", () =>
+  room?.send("remove-player", {
+    seat: el<HTMLSelectElement>("remove-seat").value,
+  }),
+);
 el("rotate-invite").addEventListener("click", () =>
   room?.send("rotate-invite"),
 );

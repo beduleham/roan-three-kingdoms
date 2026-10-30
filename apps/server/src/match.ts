@@ -119,6 +119,10 @@ export class AuthoritativeMatch {
       started: this.mode === "1v1" || this.started,
       slots: this.slots.map((id) => ({
         id,
+        connected: [...this.seats].some(
+          ([session, seat]) => seat === id && this.connected.has(session),
+        ),
+        host: this.seats.get(this.hostSessionId ?? "") === id,
         occupant: [...this.seats.values()].includes(id)
           ? "human"
           : this.started
@@ -134,6 +138,8 @@ export class AuthoritativeMatch {
     if (this.mode !== "3v3") return { accepted: false, reason: "INVALID_MODE" };
     if (this.started) return { accepted: false, reason: "ALREADY_STARTED" };
     if (!this.isHost(sessionId)) return { accepted: false, reason: "NOT_HOST" };
+    if (this.connected.size !== this.seats.size)
+      return { accepted: false, reason: "PLAYERS_DISCONNECTED" };
     const sides = [...this.seats.values()].map((seat) =>
       seat.startsWith("blue") ? "blue" : "red",
     );
@@ -153,7 +159,7 @@ export class AuthoritativeMatch {
       if (!this.hostSessionId) this.hostSessionId = sessionId;
       this.seats.set(sessionId, seat);
       this.connected.add(sessionId);
-      this.nextSeq.set(seat, 0);
+      if (!this.nextSeq.has(seat)) this.nextSeq.set(seat, 0);
     }
     return seat ?? null;
   }
@@ -169,11 +175,26 @@ export class AuthoritativeMatch {
   }
   leave(sessionId: string) {
     this.drop(sessionId);
-    const seat = this.seats.get(sessionId);
     this.seats.delete(sessionId);
-    if (seat) this.nextSeq.delete(seat);
     if (this.hostSessionId === sessionId)
-      this.hostSessionId = this.seats.keys().next().value ?? null;
+      this.hostSessionId =
+        [...this.seats.keys()].find((id) => this.connected.has(id)) ??
+        this.seats.keys().next().value ??
+        null;
+  }
+  removeFromLobby(
+    requester: string,
+    targetSeat: unknown,
+  ): { accepted: boolean; reason?: string; sessionId?: string } {
+    if (this.mode !== "3v3") return { accepted: false, reason: "INVALID_MODE" };
+    if (!this.isHost(requester)) return { accepted: false, reason: "NOT_HOST" };
+    if (this.started) return { accepted: false, reason: "MATCH_STARTED" };
+    const target = [...this.seats].find(([, seat]) => seat === targetSeat)?.[0];
+    if (!target) return { accepted: false, reason: "INVALID_TARGET" };
+    if (target === requester)
+      return { accepted: false, reason: "CANNOT_REMOVE_SELF" };
+    this.leave(target);
+    return { accepted: true, sessionId: target };
   }
   get ready() {
     return this.mode === "3v3"
@@ -238,11 +259,12 @@ export class AuthoritativeMatch {
                 x: 10 * config.positionUnitsPerTile,
                 y: (2 + lane * 4) * config.positionUnitsPerTile,
               },
-              seq: 0,
+              seq: this.nextSeq.get(owner) ?? 0,
               requestedTick: this.state.tick,
             },
           }),
         );
+        this.nextSeq.set(owner, (this.nextSeq.get(owner) ?? 0) + 1);
       }
     }
     const result = step(this.state, commands);

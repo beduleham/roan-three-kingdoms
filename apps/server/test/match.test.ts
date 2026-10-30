@@ -154,4 +154,73 @@ describe("server seat authority", () => {
     expect(match.join("third")).toBe("blue-1");
     expect(match.start("second")).toEqual({ accepted: true });
   });
+  it("only the host removes another human before the match starts", () => {
+    const match = new AuthoritativeMatch("3v3");
+    match.join("host");
+    match.join("guest");
+    expect(match.removeFromLobby("guest", "blue-1").reason).toBe("NOT_HOST");
+    expect(match.removeFromLobby("host", "blue-1").reason).toBe(
+      "CANNOT_REMOVE_SELF",
+    );
+    expect(match.removeFromLobby("host", "blue-3").reason).toBe(
+      "INVALID_TARGET",
+    );
+    match.drop("guest");
+    expect(match.start("host").reason).toBe("PLAYERS_DISCONNECTED");
+    expect(match.removeFromLobby("host", "red-1")).toEqual({
+      accepted: true,
+      sessionId: "guest",
+    });
+    expect(match.reconnect("guest")).toBe(false);
+    expect(match.join("replacement")).toBe("red-1");
+    expect(match.start("host").accepted).toBe(true);
+    expect(match.removeFromLobby("host", "red-1").reason).toBe("MATCH_STARTED");
+  });
+  it("keeps command sequence when a new session inherits a used 1v1 seat", () => {
+    const match = new AuthoritativeMatch();
+    match.join("first");
+    match.join("opponent");
+    match.submit("first", {
+      type: "MOVE",
+      squadIds: ["blue-1"],
+      destination: { x: 9000, y: 4000 },
+    });
+    match.advance();
+    match.leave("first");
+    expect(match.join("replacement")).toBe("blue");
+    match.submit("replacement", {
+      type: "MOVE",
+      squadIds: ["blue-1"],
+      destination: { x: 10000, y: 4000 },
+    });
+    expect(
+      match
+        .advance()
+        ?.events.filter((event) => event.type === "COMMAND_REJECTED"),
+    ).toEqual([]);
+    expect(match.state.squads.find((s) => s.id === "blue-1")?.order?.seq).toBe(
+      1,
+    );
+  });
+  it("AI takeover continues after a departed human has issued commands", () => {
+    const match = new AuthoritativeMatch("3v3");
+    match.join("host");
+    match.join("guest");
+    match.start("host");
+    match.submit("guest", {
+      type: "MOVE",
+      squadIds: ["red-1-1"],
+      destination: { x: 13000, y: 2000 },
+    });
+    match.advance();
+    match.leave("guest");
+    expect(
+      match
+        .advance()
+        ?.events.filter((event) => event.type === "COMMAND_REJECTED"),
+    ).toEqual([]);
+    expect(match.state.squads.find((s) => s.id === "red-1-1")?.order?.seq).toBe(
+      1,
+    );
+  });
 });
