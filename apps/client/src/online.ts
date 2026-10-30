@@ -304,7 +304,7 @@ async function connect(createPrivate = false) {
             .filter((slot) => slot.occupant === "human" && slot.id !== seat)
             .map((slot) => new Option(slot.id, slot.id)),
         );
-        if (lobbySlots.some((slot) => slot.id === previous))
+        if ([...select.options].some((option) => option.value === previous))
           select.value = previous;
         refreshControls();
       },
