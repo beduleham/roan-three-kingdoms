@@ -4,7 +4,7 @@ import {
   livingSoldiers,
 } from "../../../packages/battle-core/src/index.js";
 import type { BattleState } from "../../../packages/battle-core/src/index.js";
-import { applyStateDelta, type StateDelta } from "@roan/protocol";
+import { applyVerifiedDelta, type StateDelta } from "@roan/protocol";
 import "@fontsource/noto-sans-kr/400.css";
 import "./style.css";
 import "./online.css";
@@ -345,20 +345,8 @@ async function connect(createPrivate = false) {
         },
       ) => {
         if (!state || awaitingSnapshot) return;
-        if (state.tick !== delta.baseTick) {
-          awaitingSnapshot = true;
-          room?.send("hello");
-          return;
-        }
-        let next: BattleState;
-        try {
-          next = applyStateDelta(state, delta.changes);
-        } catch {
-          awaitingSnapshot = true;
-          room?.send("hello");
-          return;
-        }
-        if (next.tick !== delta.tick || hashReplayValue(next) !== delta.hash) {
+        const next = applyVerifiedDelta(state, delta, hashReplayValue);
+        if (!next) {
           awaitingSnapshot = true;
           room?.send("hello");
           return;
