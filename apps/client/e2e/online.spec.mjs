@@ -365,3 +365,85 @@ test("private room rejects missing or revoked keys and only the host rotates inv
     await Promise.all([host.close(), guest.close(), outsider.close()]);
   }
 });
+
+test("host removes a lobby guest, revokes its admission, and hands off on leave", async ({
+  browser,
+}) => {
+  const host = await browser.newPage(),
+    guest = await browser.newPage(),
+    survivor = await browser.newPage();
+  try {
+    await host.goto("/online.html?mode=3v3");
+    await host.locator("#create-private").click();
+    await expect(host.locator("#identity")).toContainText("blue-1");
+    const original = await host.locator("#invite-link").getAttribute("href");
+    await guest.goto(original);
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
+    const saved = await guest.evaluate(() =>
+      Object.entries(sessionStorage).find(([key]) =>
+        key.startsWith("roan-online-reconnection-"),
+      ),
+    );
+    await survivor.goto(original);
+    await survivor.locator("#join").click();
+    await expect(survivor.locator("#identity")).toContainText("blue-2");
+    await guest.locator("#remove-seat").selectOption("blue-1");
+    await guest.locator("#remove-player").evaluate((button) => {
+      button.disabled = false;
+      button.click();
+    });
+    await expect(guest.locator("#result")).toContainText("NOT_HOST");
+    await host.locator("#remove-seat").selectOption("red-1");
+    await host.locator("#remove-player").click();
+    await expect(host.locator("#result")).toContainText("내보내기 완료");
+    await expect(guest.locator("#connection")).toContainText("내보내졌습니다");
+    await expect(guest.locator("#clock")).toBeEmpty();
+    const current = await host.locator("#invite-link").getAttribute("href");
+    expect(current).not.toBe(original);
+    await expect(survivor.locator("#invite-link")).toHaveAttribute(
+      "href",
+      current,
+    );
+    await guest.evaluate(
+      ([key, token]) => sessionStorage.setItem(key, token),
+      saved,
+    );
+    await guest.locator("#join").click();
+    await expect(guest.locator("#connection")).toContainText("INVITE_REQUIRED");
+    await host.locator("#leave").click();
+    await expect(host.locator("#clock")).toBeEmpty();
+    await expect(survivor.locator("#rotate-invite")).toBeEnabled();
+    await survivor.locator("#rotate-invite").click();
+    await expect(survivor.locator("#result")).toContainText("재발급 완료");
+  } finally {
+    await Promise.all([host.close(), guest.close(), survivor.close()]);
+  }
+});
+
+test("host can revoke a disconnected lobby seat before its reconnect window expires", async ({
+  browser,
+}) => {
+  const host = await browser.newPage(),
+    guest = await browser.newPage();
+  try {
+    await host.goto("/online.html?mode=3v3");
+    await host.locator("#create-private").click();
+    await expect(host.locator("#identity")).toContainText("blue-1");
+    const invite = await host.locator("#invite-link").getAttribute("href");
+    await guest.goto(invite);
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
+    await guest.reload();
+    await expect(host.locator("#lobby")).toContainText("재접속 대기");
+    await host.locator("#remove-seat").selectOption("red-1");
+    await host.locator("#remove-player").click();
+    await expect(host.locator("#lobby")).toContainText("red-1: empty");
+    await guest.locator("#join").click();
+    await expect(guest.locator("#connection")).toContainText("INVITE_REQUIRED");
+    await expect(guest.locator("#identity")).toBeEmpty();
+  } finally {
+    await host.close();
+    await guest.close();
+  }
+});
