@@ -307,3 +307,61 @@ test("invite for another mode is rejected before showing a seat", async ({
     await guest.close();
   }
 });
+
+test("private room rejects missing or revoked keys and only the host rotates invites", async ({
+  browser,
+}) => {
+  const host = await browser.newPage(),
+    guest = await browser.newPage(),
+    outsider = await browser.newPage();
+  try {
+    await host.goto("/online.html?mode=3v3");
+    await host.locator("#create-private").click();
+    await expect(host.locator("#identity")).toContainText("blue-1");
+    const original = await host.locator("#invite-link").getAttribute("href");
+    expect(original).toMatch(/#invite=[0-9a-f]{64}$/);
+    const missing = new URL(original);
+    missing.hash = "";
+    await outsider.goto(missing.href);
+    await outsider.locator("#join").click();
+    await expect(outsider.locator("#connection")).toContainText(
+      "INVITE_REQUIRED",
+    );
+    await expect(outsider.locator("#clock")).toBeEmpty();
+    const tampered = new URL(original);
+    tampered.hash = "invite=" + "0".repeat(64);
+    await outsider.goto(tampered.href);
+    await outsider.locator("#join").click();
+    await expect(outsider.locator("#connection")).toContainText(
+      "INVITE_REQUIRED",
+    );
+    await guest.goto(original);
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
+    await guest.locator("#rotate-invite").evaluate((button) => {
+      button.disabled = false;
+      button.click();
+    });
+    await expect(guest.locator("#result")).toContainText("NOT_HOST");
+    await host.locator("#rotate-invite").click();
+    await expect(host.locator("#result")).toContainText("재발급 완료");
+    const current = await host.locator("#invite-link").getAttribute("href");
+    expect(current).not.toBe(original);
+    await outsider.goto(original);
+    await outsider.locator("#join").click();
+    await expect(outsider.locator("#connection")).toContainText(
+      "INVITE_REQUIRED",
+    );
+    await outsider.goto(current);
+    await outsider.locator("#join").click();
+    await expect(outsider.locator("#identity")).toContainText("blue-2");
+    await guest.reload();
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
+    expect(await guest.locator("#invite-link").getAttribute("href")).toBe(
+      current,
+    );
+  } finally {
+    await Promise.all([host.close(), guest.close(), outsider.close()]);
+  }
+});

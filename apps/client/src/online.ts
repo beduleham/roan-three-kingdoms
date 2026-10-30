@@ -14,7 +14,7 @@ const mode =
   new URLSearchParams(location.search).get("mode") === "3v3" ? "3v3" : "1v1";
 root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
 <p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> | 서버 10Hz · 동기화 5Hz</p>
-<button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button></p>
+<button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button></section>
 <p id="identity"></p><p id="clock"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
 <section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
@@ -30,6 +30,7 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 const el = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
+let inviteKey = new URLSearchParams(location.hash.slice(1)).get("invite");
 const tokenKey = () =>
   `roan-online-reconnection-${mode}-${params.get("room") ?? "quick"}`;
 let seat: string | null = null;
@@ -94,7 +95,21 @@ function refreshControls() {
   ))
     button.disabled = !ready;
   el<HTMLButtonElement>("start").disabled = !host || lobbyStarted;
+  el<HTMLButtonElement>("rotate-invite").disabled =
+    !host || !inviteKey || !room;
   render();
+}
+function updateInviteLink() {
+  const hash = inviteKey ? `#invite=${encodeURIComponent(inviteKey)}` : "";
+  history.replaceState(
+    null,
+    "",
+    `${location.pathname}?${params.toString()}${hash}`,
+  );
+  el("invite").hidden = false;
+  const link = el<HTMLAnchorElement>("invite-link");
+  link.href = location.href;
+  link.textContent = location.href;
 }
 function send(command: Record<string, unknown>) {
   if (!room || !ready) return;
@@ -178,6 +193,9 @@ canvas.addEventListener("click", (event) => {
 async function connect(createPrivate = false) {
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
   el<HTMLButtonElement>("create-private").setAttribute("disabled", "");
+  el("connection").textContent = "접속 중";
+  if (!createPrivate)
+    inviteKey = new URLSearchParams(location.hash.slice(1)).get("invite");
   try {
     const address =
       new URLSearchParams(location.search).get("server") ??
@@ -194,9 +212,15 @@ async function connect(createPrivate = false) {
     const roomName = mode === "3v3" ? "battle_3v3" : "battle_1v1";
     if (!room) {
       room = createPrivate
-        ? await client.create(roomName, { inviteOnly: true })
+        ? await client.create(roomName, {
+            inviteOnly: true,
+            creatorProof: Array.from(
+              crypto.getRandomValues(new Uint8Array(32)),
+              (byte) => byte.toString(16).padStart(2, "0"),
+            ).join(""),
+          })
         : params.get("room")
-          ? await client.joinById(params.get("room")!)
+          ? await client.joinById(params.get("room")!, { inviteKey })
           : await client.joinOrCreate(roomName);
     }
     if (room.name !== roomName) {
@@ -205,15 +229,24 @@ async function connect(createPrivate = false) {
       throw new Error("초대 링크의 경기 종류가 다릅니다");
     }
     params.set("room", room.roomId);
-    history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
+    if (createPrivate) inviteKey = null;
+    updateInviteLink();
     sessionStorage.setItem(tokenKey(), room.reconnectionToken);
-    const inviteUrl = location.href;
-    el("invite").hidden = false;
-    const link = el<HTMLAnchorElement>("invite-link");
-    link.href = inviteUrl;
-    link.textContent = inviteUrl;
     root.dataset.roomId = room.roomId;
     el("connection").textContent = `접속됨 · Room ${room.roomId}`;
+    room.onMessage("invite-key", ({ key }: { key: string }) => {
+      inviteKey = key;
+      updateInviteLink();
+      refreshControls();
+    });
+    room.onMessage(
+      "invite-result",
+      ({ accepted, reason }: { accepted: boolean; reason?: string }) => {
+        el("result").textContent = accepted
+          ? "초대 링크 재발급 완료 · 이전 링크는 입장 불가"
+          : `초대 변경 거부: ${reason}`;
+      },
+    );
     room.onMessage(
       "seat",
       ({ seat: assigned, host: isHost }: { seat: string; host: boolean }) => {
@@ -347,6 +380,9 @@ async function connect(createPrivate = false) {
 }
 el("join").addEventListener("click", () => void connect());
 el("create-private").addEventListener("click", () => void connect(true));
+el("rotate-invite").addEventListener("click", () =>
+  room?.send("rotate-invite"),
+);
 el("copy-invite").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(
