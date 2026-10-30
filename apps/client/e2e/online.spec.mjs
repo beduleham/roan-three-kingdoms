@@ -411,9 +411,13 @@ test("host removes a lobby guest, revokes its admission, and hands off on leave"
     );
     await guest.locator("#join").click();
     await expect(guest.locator("#connection")).toContainText("INVITE_REQUIRED");
+    await guest.goto(current);
+    await guest.locator("#join").click();
+    await expect(guest.locator("#identity")).toContainText("red-1");
     await host.locator("#leave").click();
     await expect(host.locator("#clock")).toBeEmpty();
     await expect(survivor.locator("#rotate-invite")).toBeEnabled();
+    await expect(survivor.locator("#remove-seat")).toHaveValue("red-1");
     await survivor.locator("#rotate-invite").click();
     await expect(survivor.locator("#result")).toContainText("재발급 완료");
   } finally {
