@@ -1,5 +1,21 @@
 import { test, expect } from "@playwright/test";
 
+async function visibleUnitsAgree(first, second) {
+  const read = (page) =>
+    page.evaluate(() => ({
+      tick: document.querySelector("#clock").textContent.split(" ")[0],
+      rows: document.querySelector("#units").textContent.split("\n"),
+    }));
+  const [a, b] = await Promise.all([read(first), read(second)]);
+  if (a.tick !== b.tick) return false;
+  const other = new Map(b.rows.map((row) => [row.split(":")[0], row]));
+  const shared = a.rows.filter((row) => other.has(row.split(":")[0]));
+  return (
+    shared.length > 0 &&
+    shared.every((row) => other.get(row.split(":")[0]) === row)
+  );
+}
+
 test("two browser pages share authoritative ticks and reject enemy control", async ({
   browser,
 }) => {
@@ -26,7 +42,9 @@ test("two browser pages share authoritative ticks and reject enemy control", asy
       .poll(async () => {
         const a = await blue.locator("#clock").textContent();
         const b = await red.locator("#clock").textContent();
-        return a === b && Number(a?.split(" ")[0]) >= 3;
+        return (
+          a?.split(" ")[0] === b?.split(" ")[0] && Number(a?.split(" ")[0]) >= 3
+        );
       })
       .toBe(true);
     await blue.locator("#squad").evaluate((select) => {
@@ -52,18 +70,12 @@ test("two browser pages share authoritative ticks and reject enemy control", asy
       .poll(async () => {
         const a = await blue.locator("#clock").textContent();
         const b = await red.locator("#clock").textContent();
-        return a === b && Number(a?.split(" ")[0]) >= 5;
+        return (
+          a?.split(" ")[0] === b?.split(" ")[0] && Number(a?.split(" ")[0]) >= 5
+        );
       })
       .toBe(true);
-    await expect
-      .poll(async () => {
-        const [a, b] = await Promise.all([
-          blue.locator("#units").textContent(),
-          red.locator("#units").textContent(),
-        ]);
-        return a === b;
-      })
-      .toBe(true);
+    await expect.poll(() => visibleUnitsAgree(blue, red)).toBe(true);
     await blue.screenshot({
       path: test.info().outputPath("blue-online.png"),
       fullPage: true,
@@ -151,13 +163,7 @@ test("online command desk changes server state and displays commander cooldown",
     await expect
       .poll(async () => blue.locator("#clock").textContent())
       .toContain("상태 해시");
-    await expect
-      .poll(async () => {
-        const a = await blue.locator("#units").textContent(),
-          b = await red.locator("#units").textContent();
-        return a === b;
-      })
-      .toBe(true);
+    await expect.poll(() => visibleUnitsAgree(blue, red)).toBe(true);
   } finally {
     await blue.close();
     await red.close();
@@ -200,8 +206,8 @@ test("3v3 lobby fills four AI seats and rejects other human or AI squad commands
     await expect
       .poll(
         async () =>
-          (await host.locator("#clock").textContent()) ===
-          (await opponent.locator("#clock").textContent()),
+          (await host.locator("#clock").textContent())?.split(" ")[0] ===
+          (await opponent.locator("#clock").textContent())?.split(" ")[0],
       )
       .toBe(true);
     await host.screenshot({
@@ -243,6 +249,16 @@ test("six human browsers occupy one 3v3 room before start", async ({
         Number((await pages[0].locator("#clock").textContent())?.split(" ")[0]),
       )
       .toBeGreaterThan(2);
+    await expect
+      .poll(async () => {
+        const clocks = await Promise.all(
+          [pages[0], pages[2], pages[4]].map((page) =>
+            page.locator("#clock").textContent(),
+          ),
+        );
+        return new Set(clocks).size;
+      })
+      .toBe(1);
   } finally {
     await Promise.all(pages.map((page) => page.close()));
   }
@@ -449,5 +465,87 @@ test("host can revoke a disconnected lobby seat before its reconnect window expi
   } finally {
     await host.close();
     await guest.close();
+  }
+});
+
+test("hidden enemy leaves only a frozen sighting and cannot be directly commanded against", async ({
+  browser,
+}) => {
+  test.setTimeout(45000);
+  const blue = await browser.newPage(),
+    red = await browser.newPage();
+  try {
+    await blue.goto("/online.html");
+    await red.goto("/online.html");
+    await blue.locator("#join").click();
+    await red.locator("#join").click();
+    await expect(red.locator("#identity")).toContainText("red");
+    await expect(blue.locator("#vision-info")).toContainText("10타일");
+    await expect(blue.locator('#target option[value="red-1"]')).toHaveCount(1);
+    for (const [id, y] of [
+      ["red-1", "4"],
+      ["red-2", "9"],
+    ]) {
+      await red.locator("#squad").selectOption(id);
+      await red.locator("#dest-x").fill("24");
+      await red.locator("#dest-y").fill(y);
+      await red.locator("#move").click();
+    }
+    await expect(blue.locator('#target option[value="red-1"]')).toHaveCount(0, {
+      timeout: 15000,
+    });
+    await expect(blue.locator("#units")).not.toContainText("red-1:");
+    await expect(blue.locator("#last-seen")).toContainText(
+      "red-1: 마지막 위치",
+    );
+    const sighting = await blue.locator("#last-seen").textContent();
+    const tick = Number(
+      (await blue.locator("#clock").textContent()).split(" ")[0],
+    );
+    await expect
+      .poll(async () =>
+        Number((await blue.locator("#clock").textContent()).split(" ")[0]),
+      )
+      .toBeGreaterThan(tick + 8);
+    const red1Line = (text) =>
+      text.split("\n").find((line) => line.startsWith("red-1:"));
+    expect(red1Line(await blue.locator("#last-seen").textContent())).toBe(
+      red1Line(sighting),
+    );
+    await blue.locator("#target").evaluate((select) => {
+      select.add(new Option("red-1", "red-1"));
+      select.value = "red-1";
+      document.querySelector("#attack").disabled = false;
+      document.querySelector("#attack").click();
+    });
+    await expect(blue.locator("#result")).toContainText("TARGET_NOT_VISIBLE");
+    await blue.screenshot({
+      path: test.info().outputPath("fog-last-sighting.png"),
+      fullPage: true,
+    });
+    await blue.reload();
+    await blue.locator("#join").click();
+    await expect(blue.locator("#last-seen")).toContainText(red1Line(sighting));
+    await expect(blue.locator('#target option[value="red-1"]')).toHaveCount(0);
+    for (const [id, y] of [
+      ["red-1", "4"],
+      ["red-2", "9"],
+    ]) {
+      await red.locator("#squad").selectOption(id);
+      await red.locator("#dest-x").fill("14");
+      await red.locator("#dest-y").fill(y);
+      await red.locator("#move").click();
+    }
+    await expect(blue.locator('#target option[value="red-1"]')).toHaveCount(1, {
+      timeout: 15000,
+    });
+    await expect
+      .poll(async () =>
+        red1Line(await blue.locator("#last-seen").textContent()),
+      )
+      .toBeUndefined();
+  } finally {
+    await blue.close();
+    await red.close();
   }
 });
