@@ -1,0 +1,31 @@
+{
+  "experimental": true,
+  "captureTicks": 30,
+  "radiusUnits": 1500,
+  "scoreEveryTicks": 50,
+  "targetScore": 12,
+  "limitTicks": 1800,
+  "points": [
+    {
+      "id": "west",
+      "name": "서쪽 거점",
+      "position": { "x": 8000, "y": 3000 },
+      "opensAtTick": 0,
+      "score": 1
+    },
+    {
+      "id": "center",
+      "name": "중앙 거점",
+      "position": { "x": 11000, "y": 6500 },
+      "opensAtTick": 300,
+      "score": 2
+    },
+    {
+      "id": "east",
+      "name": "동쪽 거점",
+      "position": { "x": 16000, "y": 10000 },
+      "opensAtTick": 0,
+      "score": 1
+    }
+  ]
+}
