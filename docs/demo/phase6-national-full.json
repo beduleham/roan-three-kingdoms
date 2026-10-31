@@ -1,0 +1,23 @@
+{
+  "profile": "national_demo.v1 (full clock)",
+  "runs": 1,
+  "replays": 1,
+  "deterministic": true,
+  "results": [
+    {
+      "seed": 41,
+      "tick": 6449,
+      "result": {
+        "winner": "blue",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 433,
+          "red": 4,
+          "green": 0
+        }
+      },
+      "hash": "83c848439f2dbc717467c480d5459c75a4e1c6ce010c2c1482f98fdd1112b67c"
+    }
+  ]
+}
