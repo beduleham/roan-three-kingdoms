@@ -1,3 +1,4 @@
+import { placeFieldLabels, type FieldLabel } from "./field-labels.js";
 import { Client } from "@colyseus/sdk";
 import { hashReplayValue } from "../../../packages/battle-core/src/index.js";
 import {
@@ -206,6 +207,8 @@ function draw() {
   ctx.fillStyle = "#efe3c8";
   ctx.fillRect(0, 0, 720, 420);
   ctx.restore();
+  ctx.font = "14px sans-serif";
+  const labels: FieldLabel[] = [];
   for (const entry of state.lastSeen) {
     const x = 40 + (entry.position.x / state.config.positionUnitsPerTile) * 30,
       y = 40 + (entry.position.y / state.config.positionUnitsPerTile) * 30;
@@ -217,8 +220,14 @@ function draw() {
     ctx.arc(x, y, 16, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = "#f4e9d0";
-    ctx.fillText(`? ${entry.id} · ${entry.observedTick}tick`, x + 20, y + 4);
+    const text = `? ${entry.id} · ${entry.observedTick}tick`;
+    labels.push({
+      text,
+      x,
+      y,
+      width: ctx.measureText(text).width,
+      memory: true,
+    });
   }
   for (const s of state.squads) {
     const old = previousState?.squads.find((p) => p.id === s.id);
@@ -244,9 +253,19 @@ function draw() {
       ctx.lineWidth = 3;
       ctx.stroke();
     }
-    ctx.fillStyle = "#222";
-    ctx.font = "14px sans-serif";
-    ctx.fillText(s.id, x + 20, y + 4);
+    labels.push({ text: s.id, x, y, width: ctx.measureText(s.id).width });
+  }
+  for (const label of placeFieldLabels(labels, canvas.width, canvas.height)) {
+    const { box } = label;
+    ctx.strokeStyle = label.memory ? "#c1b49c" : "#514331";
+    ctx.beginPath();
+    ctx.moveTo(label.x, label.y);
+    ctx.lineTo(box.x, box.y + box.height / 2);
+    ctx.stroke();
+    ctx.fillStyle = label.memory ? "#514a3f" : "#fff5df";
+    ctx.fillRect(box.x, box.y, box.width, box.height);
+    ctx.fillStyle = label.memory ? "#f4e9d0" : "#222";
+    ctx.fillText(label.text, box.x + 4, box.y + 15, box.width - 8);
   }
   drawFrame = requestAnimationFrame(draw);
 }

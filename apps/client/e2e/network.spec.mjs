@@ -12,9 +12,17 @@ test("deployment acceptance CLI verifies real guest WS connections", async () =>
         new URL("../../server/test-support/remote-smoke.mjs", import.meta.url),
       ),
     ],
-    { env: { ...process.env, DEMO_URL: "http://127.0.0.1:4185" } },
+    {
+      env: {
+        ...process.env,
+        DEMO_URL: "http://127.0.0.1:4185",
+        REMOTE_SMOKE_SKIP_ONE_DELTA: "1",
+      },
+    },
   );
-  expect(JSON.parse(stdout.trim())).toMatchObject({
+  const summary = JSON.parse(stdout.trim());
+  expect(summary.resyncs.every((count) => count >= 1)).toBe(true);
+  expect(summary).toMatchObject({
     ok: true,
     sameRoom: true,
     seats: ["blue", "red"],
