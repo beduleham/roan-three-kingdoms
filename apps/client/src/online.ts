@@ -23,18 +23,22 @@ import { createAccountPanel } from "./account.js";
 const root = document.querySelector<HTMLElement>("#online")!;
 const requestedMode = new URLSearchParams(location.search).get("mode");
 const mode =
-  requestedMode === "objectives"
-    ? "objectives"
-    : requestedMode === "3v3"
-      ? "3v3"
-      : "1v1";
-root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "objectives" ? "거점 경기 (시연)" : mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
-<p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> · <a href="/online.html?mode=objectives">거점 경기 (시연)</a> | 서버 10Hz · 동기화 5Hz</p>
+  requestedMode === "national"
+    ? "national"
+    : requestedMode === "objectives"
+      ? "objectives"
+      : requestedMode === "3v3"
+        ? "3v3"
+        : "1v1";
+const hasObjectives = mode === "objectives" || mode === "national";
+root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "national" ? "3국가 경기 (실험)" : hasObjectives ? "거점 경기 (시연)" : mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
+<p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> · <a href="/online.html?mode=objectives">거점 경기 (시연)</a> · <a href="/online.html?mode=national">3국가 경기 (실험)</a> | 서버 10Hz · 동기화 5Hz</p>
 <section id="account-panel" aria-label="로그인"><p id="account-status" role="status">게스트 이용 중</p><div id="google-login" hidden></div><button id="account-logout" hidden>로그아웃 · 게스트로 전환</button><p>로그인 없이 게스트로도 접속할 수 있습니다. 계정 변경은 경기에서 나간 뒤 가능합니다.</p></section>
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
-<section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>${mode === "objectives" ? "거점 경기 시작" : "빈자리를 AI로 채워 시작"}</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
-<section id="objective-panel" class="online-controls" ${mode === "objectives" ? "" : "hidden"}><h2>거점 경기 · 시연 규칙</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 양측 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
-<p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><section id="map-panel" class="online-controls" ${mode === "objectives" ? "" : "hidden"} aria-label="지도와 시점">
+<section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>${mode === "national" ? "빈자리를 AI로 채워 국가 경기 시작" : hasObjectives ? "거점 경기 시작" : "빈자리를 AI로 채워 시작"}</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
+<section id="objective-panel" class="online-controls" ${hasObjectives ? "" : "hidden"}><h2>${mode === "national" ? "국가 경기 · 미확정 실험 프로필" : "거점 경기 · 시연 규칙"}</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 참가국 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
+<section id="national-panel" class="online-controls" ${mode === "national" ? "" : "hidden"}><h2>성장·보급</h2><p>3국가×3좌석 · 본영3/외곽3/중앙성1. 새 성장·보급 수치는 실험 기준이며 기존 1대1 시연 규칙과 별도입니다.</p><p id="national-clock"></p><p id="national-player"></p><p id="national-economy"></p><button id="resupply" data-command disabled>선택 부대 충원</button><select id="recruit-unit"><option value="infantry">보병</option><option value="spears">창병</option><option value="archers">궁병</option><option value="cavalry">기병</option></select><button id="recruit" data-command disabled>추가 부대 편성</button><p id="supply-feedback" role="status"></p><h3>증강 선택</h3><p>실험 후보: 돌파·기동·군율 각3개. 같은 효과가 중첩될 수 있으며 정식 후보군은 미정입니다.</p><p id="augment-progress"></p><div id="augment-offer"></div><h3>전체 인간 공적 순위</h3><pre id="national-ranking"></pre></section>
+<p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><section id="map-panel" class="online-controls" ${hasObjectives ? "" : "hidden"} aria-label="지도와 시점">
 <h2>전국 지도 · 현재 시연 전역</h2><canvas id="strategic-map" width="300" height="180" aria-label="전국 지도: 클릭한 위치로 전투 시점 이동"></canvas>
 <p>지도 클릭은 시점만 이동합니다. 부대 이동은 전장에서 목적지를 지정한 뒤 이동 버튼을 누르세요.</p>
 <div class="online-actions"><button id="view-overview" aria-pressed="true">전국 보기</button><button id="view-battle" aria-pressed="false">전투 보기 · ${mapSettings.battleZoom}배</button><button id="focus-own">선택 아군으로 이동</button></div>
@@ -102,7 +106,7 @@ function mapWorld() {
 }
 function fieldCamera(): MapCamera {
   const units = state?.config.positionUnitsPerTile ?? 1000;
-  if (mode !== "objectives")
+  if (!hasObjectives)
     return {
       left: 0,
       top: 0,
@@ -146,7 +150,7 @@ function setMapView(view: "overview" | "battle", focus?: MapPosition) {
   render();
 }
 function updateMapControls() {
-  if (mode !== "objectives") return;
+  if (!hasObjectives) return;
   const camera = fieldCamera();
   for (const id of ["view-overview", "view-battle"])
     el<HTMLButtonElement>(id).disabled = !state;
@@ -246,9 +250,14 @@ function render() {
     const seconds = (ticks: number) =>
       Math.ceil((ticks * state!.config.tickMs) / 1000);
     el("objective-rules").textContent =
-      `중립 거점 ${objective.points.length}개 · 반경 ${objective.radiusUnits / state.config.positionUnitsPerTile}타일 · 단독 ${seconds(objective.captureTicks)}초 점령 · ${seconds(objective.scoreEveryTicks)}초마다 점수 · 목표 ${objective.targetScore}점 · 제한 ${seconds(objective.limitTicks)}초 (시연 기준)`;
-    el("objective-score").textContent =
-      `blue ${objective.scores.blue} : ${objective.scores.red} red · 남은 시간 ${seconds(Math.max(0, objective.limitTicks - objective.tick))}초 · ${lobbyStarted ? (objective.status === "finished" ? "종료" : ready ? "진행 중" : "접속 대기") : "시작 대기"}`;
+      `${mode === "national" ? "본영3 · 외곽3 · 중앙성1" : `중립 거점 ${objective.points.length}개`} · 반경 ${objective.radiusUnits / state.config.positionUnitsPerTile}타일 · 단독 ${seconds(objective.captureTicks)}초 점령 · ${seconds(objective.scoreEveryTicks)}초마다 점수 · ${mode === "national" ? "15/18/21분 판정·천하통일" : `목표 ${objective.targetScore}점`} · 제한 ${seconds(objective.limitTicks)}초 (${mode === "national" ? "미확정 실험값" : "시연 기준"})`;
+    el("objective-score").textContent = `${
+      mode === "national"
+        ? Object.entries(objective.scores)
+            .map(([id, score]) => `${id} ${score}`)
+            .join(" : ")
+        : `blue ${objective.scores.blue} : ${objective.scores.red} red`
+    } · 남은 시간 ${seconds(Math.max(0, objective.limitTicks - objective.tick))}초 · ${lobbyStarted ? (objective.status === "finished" ? "종료" : ready ? "진행 중" : "접속 대기") : "시작 대기"}`;
     el("objective-points").textContent = objective.points
       .map(
         (p) =>
@@ -257,7 +266,13 @@ function render() {
       .join("\n");
     const result = objective.result;
     el("match-result").textContent = result
-      ? `${result.reason === "abandoned" ? "참가자 이탈 · 경기 중단" : result.winner ? `${result.winner} 승리` : "무승부"} · ${result.reason === "score" ? "목표 점수" : result.reason === "time" ? "시간 종료" : "승패 미산정"} · 최종 blue ${result.scores.blue} : ${result.scores.red} red`
+      ? `${result.reason === "abandoned" ? "참가자 이탈 · 경기 중단" : result.winner ? `${result.winner} 승리` : "무승부"} · ${result.reason === "unification" ? "천하통일" : result.reason === "score" ? "목표 점수" : result.reason === "time" ? "시간 종료" : "승패 미산정"} · 최종 ${
+          mode === "national"
+            ? Object.entries(result.scores)
+                .map(([id, score]) => `${id} ${score}`)
+                .join(" : ")
+            : `blue ${result.scores.blue} : ${result.scores.red} red`
+        }`
       : "";
     el<HTMLButtonElement>("next-match").hidden = !result;
     if (result) {
@@ -269,6 +284,70 @@ function render() {
     }
   }
   const canCommand = ready && !objective?.result;
+  const national = state.nationalMatch,
+    me = national?.players.find((p) => p.id === seat);
+  if (national && me) {
+    el("national-clock").textContent =
+      `${["15분 판정 전", "18분 연장", "21분 최종 연장"][national.phase]} · 다음 판정 ${Math.max(0, Math.ceil(((national.deadline - state.tick) * state.config.tickMs) / 1000))}초 · 천하통일 ${national.unifyNation ?? "없음"} ${national.unifyTicks}/${national.unifyRequired} tick`;
+    el("national-player").textContent =
+      `Lv.${me.level} · XP ${me.xp}/${me.nextXp ?? "MAX"} · 공적 ${me.merit} · 관직 ${me.rank} · 지휘 상한 ${me.cap.squads}부대/${me.cap.soldiers}명`;
+    el("national-economy").textContent =
+      `보급 ${me.supplyPoints} · 최대 ${national.rules.refillSoldiers}명 충원 (1명당 ${national.rules.costPerSoldier}) · 추가 부대 ${national.rules.recruitSoldiers}명/비용 ${national.rules.recruitCost} · 소요 ${(national.rules.jobTicks * state.config.tickMs) / 1000}초${me.job ? ` · 작업 중: ${Math.max(0, me.job.finishAt - state.tick)} tick` : ""}`;
+    el("supply-feedback").textContent =
+      (
+        {
+          SUPPLY_STARTED: "보급 작업 시작",
+          SUPPLY_COMPLETE: "보급 완료",
+          SUPPLY_CANCELLED: "보급 조건 상실 · 비용 반환",
+          RANK_CAPACITY: "관직 지휘 상한 초과",
+          NO_CAPACITY: "충원할 병력 없음",
+          NEED_FRIENDLY_POINT: "안전한 아군 거점 범위가 필요합니다",
+          INSUFFICIENT_SUPPLY: "보급 부족",
+          SUPPLY_BUSY: "보급 작업 진행 중",
+          FORCED_STATE: "현재 상태에서는 보급할 수 없습니다",
+        } as Record<string, string>
+      )[me.feedback] ?? me.feedback;
+    el<HTMLButtonElement>("resupply").disabled = !canCommand || !!me.job;
+    el<HTMLButtonElement>("recruit").disabled = !canCommand || !!me.job;
+    el("augment-progress").textContent =
+      `선택 ${me.selected.length}/7${me.offer ? ` · ${me.offer.checkpoint}레벨 선택 대기` : " · 다음 성장 기회 대기"}`;
+    const parent = el("augment-offer"),
+      ids = me.offer?.candidates ?? [];
+    if (
+      [...parent.children].map((b) => b.getAttribute("data-augment")).join() !==
+      ids.join()
+    )
+      parent.replaceChildren(
+        ...ids.map((id) => {
+          const button = document.createElement("button");
+          button.dataset.augment = id;
+          button.textContent = `${id.includes("shock") ? "돌파: Q 충돌 후 공격 강화" : id.includes("gale") ? "기동: Q 충돌 후 이동 강화" : "군율: W 대상 전열 보호"} (실험 ${Number(id.split("-")[1]) + 1})`;
+          button.addEventListener("click", () => {
+            const offer = state?.nationalMatch?.players.find(
+              (p) => p.id === seat,
+            )?.offer;
+            if (offer)
+              send({
+                type: "SELECT_AUGMENT",
+                squadIds: [],
+                checkpoint: offer.checkpoint,
+                augmentId: id,
+              });
+          });
+          return button;
+        }),
+      );
+    for (const button of parent.querySelectorAll<HTMLButtonElement>("button"))
+      button.disabled = !canCommand;
+    el("national-ranking").textContent = national.ranking.length
+      ? national.ranking
+          .map(
+            (p) =>
+              `${p.place}. ${p.playerId} (${p.nationId}) · 공적 ${p.merit} · 국가기여 ${p.contribution} · Lv.${p.level}`,
+          )
+          .join("\n")
+      : "경기 종료 후 국가 승패와 관계없이 모든 인간 참가자를 표시합니다.";
+  }
   const own = state.squads.filter((s) => s.ownerPlayerId === seat);
   const enemy = state.squads.filter(
     (s) => s.nationId !== state!.nationId && s.hpMilli > 0,
@@ -328,7 +407,10 @@ function render() {
       !commander ||
       commander.status !== "ACTIVE" ||
       commander.cooldownTicks[skill] > 0 ||
-      (skill === "Q" && enemy.length === 0);
+      (skill === "Q" && enemy.length === 0) ||
+      (skill === "R" &&
+        !!me &&
+        me.level < state.nationalMatch!.rules.rMinLevel);
     button.title = commander?.cooldownTicks[skill]
       ? `대기 ${commander.cooldownTicks[skill]} tick`
       : "";
@@ -391,7 +473,7 @@ function drawView(
   ctx.fillRect(0, 0, size.width, size.height);
   ctx.save();
   ctx.beginPath();
-  if (mode === "objectives") {
+  if (hasObjectives) {
     ctx.rect(
       camera.offsetX,
       camera.offsetY,
@@ -426,7 +508,9 @@ function drawView(
           ? "#286b9a"
           : point.owner === "red"
             ? "#ae4a36"
-            : "#756743";
+            : point.owner === "green"
+              ? "#3b8656"
+              : "#756743";
     ctx.lineWidth = 2;
     ctx.setLineDash(point.open ? [] : [4, 4]);
     ctx.beginPath();
@@ -480,11 +564,19 @@ function drawView(
     const { x, y } = worldToMap({ x: xUnits, y: yUnits }, camera);
     if (x < -18 || y < -18 || x > size.width + 18 || y > size.height + 18)
       continue;
-    if (!mini && s.id === (mode === "3v3" ? "blue-1-1" : "blue-1"))
+    if (
+      !mini &&
+      s.id === (mode === "3v3" || mode === "national" ? "blue-1-1" : "blue-1")
+    )
       root.dataset.renderX = String(x);
     ctx.beginPath();
     ctx.arc(x, y, mini ? 4 : 16, 0, Math.PI * 2);
-    ctx.fillStyle = s.nationId === "blue" ? "#286b9a" : "#ae4a36";
+    ctx.fillStyle =
+      s.nationId === "blue"
+        ? "#286b9a"
+        : s.nationId === "green"
+          ? "#3b8656"
+          : "#ae4a36";
     ctx.fill();
     if (
       s.id ===
@@ -515,7 +607,7 @@ function draw() {
   const alpha = Math.min(1, (performance.now() - receivedAt) / 200),
     camera = fieldCamera();
   drawView(ctx, camera, alpha);
-  if (mode === "objectives") {
+  if (hasObjectives) {
     const mini = miniCamera();
     drawView(strategicCtx, mini, alpha, true);
     const corner = worldToMap({ x: camera.left, y: camera.top }, mini);
@@ -558,7 +650,7 @@ canvas.addEventListener("click", (event) => {
       el<HTMLSelectElement>("target").value = hit.s.id;
     render();
   } else {
-    if (mode === "objectives") {
+    if (hasObjectives) {
       const world = mapToWorld({ x, y }, camera);
       if (!world) return;
       const units = state.config.positionUnitsPerTile;
@@ -597,11 +689,13 @@ async function connect(createPrivate = false) {
       }
     }
     const roomName =
-      mode === "objectives"
-        ? "battle_objectives"
-        : mode === "3v3"
-          ? "battle_3v3"
-          : "battle_1v1";
+      mode === "national"
+        ? "battle_national"
+        : hasObjectives
+          ? "battle_objectives"
+          : mode === "3v3"
+            ? "battle_3v3"
+            : "battle_1v1";
     if (!room) {
       room = createPrivate
         ? await client.create(roomName, {
@@ -699,10 +793,12 @@ async function connect(createPrivate = false) {
       "start-result",
       ({ accepted, reason }: { accepted: boolean; reason?: string }) => {
         el("result").textContent = accepted
-          ? mode === "objectives"
+          ? hasObjectives
             ? "거점 경기 시작"
             : "경기 시작 · 빈자리 AI 보충"
-          : `시작 거부: ${reason}`;
+          : reason === "NEED_THREE_NATIONS"
+            ? "각 국가에 인간 참가자가 한 명 이상 필요합니다."
+            : `시작 거부: ${reason}`;
       },
     );
     room.onMessage("ready", ({ ready }: { ready: boolean }) => {
@@ -810,12 +906,19 @@ async function connect(createPrivate = false) {
         "objective-score",
         "objective-points",
         "match-result",
+        "national-clock",
+        "national-player",
+        "national-economy",
+        "supply-feedback",
+        "augment-progress",
+        "national-ranking",
       ])
         el(id).textContent = "";
       el<HTMLSelectElement>("remove-seat").replaceChildren();
       el("invite").hidden = true;
       lobbyStarted = mode === "1v1";
       el("next-match").hidden = true;
+      el("augment-offer").replaceChildren();
       refreshControls();
       el<HTMLButtonElement>("join").disabled = false;
       el<HTMLButtonElement>("create-private").disabled = false;
@@ -909,3 +1012,12 @@ for (const skill of ["Q", "W", "R"] as const)
   );
 
 updateMapControls();
+
+el("resupply").addEventListener("click", () => send({ type: "RESUPPLY" }));
+el("recruit").addEventListener("click", () =>
+  send({
+    type: "RECRUIT",
+    squadIds: [],
+    unitType: el<HTMLSelectElement>("recruit-unit").value,
+  }),
+);
