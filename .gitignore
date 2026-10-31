@@ -5,3 +5,12 @@ coverage/
 
 test-results/
 playwright-report/
+
+# Local account data and OAuth environment settings
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.env
+.env.*
+!.env.example
