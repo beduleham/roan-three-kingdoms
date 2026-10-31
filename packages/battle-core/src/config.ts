@@ -39,6 +39,7 @@ export const battleConfigSchema = z
     designStatus: z.literal("design-assumptions-not-validated"),
     tickMs: z.literal(100),
     positionUnitsPerTile: positive,
+    visibility: z.strictObject({ radiusTiles: positive }).optional(),
     hpMilliPerHp: z.literal(1000),
     modifierBasisPoints: z.literal(10000),
     soldierHp: positive,
@@ -148,6 +149,17 @@ export const battleConfigSchema = z
     }),
   })
   .superRefine((config, ctx) => {
+    if (
+      config.visibility &&
+      !Number.isSafeInteger(
+        config.visibility.radiusTiles * config.positionUnitsPerTile,
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["visibility", "radiusTiles"],
+        message: "Vision radius exceeds safe integer range",
+      });
     const rules = config.warriorAssumptions;
     if (
       rules.chargeMaxTravelUnits <=
