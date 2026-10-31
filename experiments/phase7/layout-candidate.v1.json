@@ -1,0 +1,29 @@
+{
+  "experimental": true,
+  "note": "offline candidate only, approximately rotational geometry in integer coordinates; no production defaults changed",
+  "positions": {
+    "base-blue": { "x": 12000, "y": 1500 },
+    "base-red": { "x": 7669, "y": 9000 },
+    "base-green": { "x": 16331, "y": 9000 },
+    "outer-west": { "x": 12000, "y": 3500 },
+    "outer-east": { "x": 9402, "y": 8000 },
+    "outer-south": { "x": 14598, "y": 8000 },
+    "capital": { "x": 12000, "y": 6500 }
+  },
+  "formations": {
+    "blue": {
+      "tangent": { "x": 1000, "y": 0 },
+      "inward": { "x": 0, "y": 1000 }
+    },
+    "red": {
+      "tangent": { "x": 500, "y": 866 },
+      "inward": { "x": 866, "y": -500 }
+    },
+    "green": {
+      "tangent": { "x": 500, "y": -866 },
+      "inward": { "x": -866, "y": -500 }
+    }
+  },
+  "offsetUnits": 500,
+  "basis": 1000
+}
