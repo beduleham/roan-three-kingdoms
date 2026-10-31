@@ -3,6 +3,7 @@ export type { BattleConfig } from "./config.js";
 export { createBattle, step } from "./battle.js";
 export { applyBp, calculateDamage, livingSoldiers } from "./damage.js";
 export { canonicalJson, hashReplayValue, replay } from "./replay.js";
+export { visibleSquadIds } from "./visibility.js";
 export type {
   Skill,
   SkillEffect,
