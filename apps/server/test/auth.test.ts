@@ -9,6 +9,13 @@ import {
   registerAccountRoutes,
 } from "../src/auth.js";
 import { Battle3v3Room } from "../src/room.js";
+import {
+  MemoryAccountRepository,
+  SqliteAccountRepository,
+} from "../src/accounts.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const audience = "test-client.apps.googleusercontent.com";
 const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -56,6 +63,62 @@ async function login(
 }
 
 describe("Google identity and guest sessions", () => {
+  it("restores the account after reopening storage, but never restores a previous app session", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "roan-auth-restart-"));
+    const path = join(directory, "accounts.sqlite");
+    const firstRepo = new SqliteAccountRepository(path);
+    const first = new AccountAuth(audience, verifier(), undefined, firstRepo);
+    const session = await login(first);
+    const before = first.authenticate({ accountSession: session.sessionToken });
+    firstRepo.close();
+    const secondRepo = new SqliteAccountRepository(path);
+    try {
+      const restarted = new AccountAuth(
+        audience,
+        verifier(),
+        undefined,
+        secondRepo,
+      );
+      expect(() =>
+        restarted.authenticate({ accountSession: session.sessionToken }),
+      ).toThrow("ACCOUNT_SESSION_EXPIRED");
+      const next = await login(restarted, { name: "재로그인" });
+      const after = restarted.authenticate({
+        accountSession: next.sessionToken,
+      });
+      expect(after.provider === "google" && after.accountId).toBe(
+        before.provider === "google" && before.accountId,
+      );
+      expect(next.identity).toEqual({ provider: "google", name: "재로그인" });
+      expect(JSON.stringify(next.identity)).not.toContain("accountId");
+    } finally {
+      secondRepo.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+  it("does not save guests or invalid Google credentials, or change repositories after authentication starts", async () => {
+    const repository = new MemoryAccountRepository();
+    const save = vi.spyOn(repository, "resolveGoogle");
+    const auth = new AccountAuth(audience, verifier(), undefined, repository);
+    expect(auth.authenticate({})).toEqual({ provider: "guest" });
+    expect(save).not.toHaveBeenCalled();
+    await expect(login(auth, { aud: "wrong-client" })).rejects.toThrow();
+    expect(save).not.toHaveBeenCalled();
+    await login(auth);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(() =>
+      auth.initializeAccounts(new MemoryAccountRepository()),
+    ).toThrow("AUTH_ALREADY_STARTED");
+  });
+  it("does not issue an app session when account storage fails", async () => {
+    const auth = new AccountAuth(audience, verifier(), undefined, {
+      resolveGoogle() {
+        throw new Error("private database path /secret/accounts.sqlite");
+      },
+    });
+    await expect(login(auth)).rejects.toThrow("ACCOUNT_STORAGE_UNAVAILABLE");
+    expect(auth.authenticate({})).toEqual({ provider: "guest" });
+  });
   it("keeps guests available when Google is unconfigured and rejects claimed identities", async () => {
     const auth = new AccountAuth(null);
     expect(
@@ -73,8 +136,10 @@ describe("Google identity and guest sessions", () => {
     const second = await login(auth, { name: "변경된 이름" });
     const a = auth.authenticate({ accountSession: first.sessionToken });
     const b = auth.authenticate({ accountSession: second.sessionToken });
-    expect(a.provider === "google" && a.accountId).toBe("google:account-one");
-    expect(b.provider === "google" && b.accountId).toBe("google:account-one");
+    expect(a.provider === "google" && a.accountId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(b.provider === "google" && b.accountId).toBe(
+      a.provider === "google" && a.accountId,
+    );
     expect(publicIdentity(a)).toEqual({
       provider: "google",
       name: "테스트 장수",
@@ -138,7 +203,15 @@ describe("Google identity and guest sessions", () => {
 });
 
 describe("HTTP login and real room authority", () => {
-  const auth = new AccountAuth(audience, verifier());
+  let storageFailed = false;
+  const repository = new MemoryAccountRepository();
+  const auth = new AccountAuth(audience, verifier(), undefined, {
+    resolveGoogle(subject, name, at) {
+      if (storageFailed)
+        throw new Error("private database path /secret/accounts.sqlite");
+      return repository.resolveGoogle(subject, name, at);
+    },
+  });
   class AccountRoom extends Battle3v3Room {
     protected override accounts = auth;
   }
@@ -157,6 +230,28 @@ describe("HTTP login and real room authority", () => {
   });
   afterAll(async () => {
     await server.gracefullyShutdown(false);
+  });
+  it("reports account storage failure as unavailable without leaking database details, while guests can enter", async () => {
+    storageFailed = true;
+    try {
+      const { nonce } = auth.challenge();
+      const response = await fetch(`${base}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nonce, credential: credential(nonce) }),
+      });
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({
+        error: "ACCOUNT_STORAGE_UNAVAILABLE",
+      });
+      const guest = await new Client(base.replace("http:", "ws:")).create(
+        "account_test",
+      );
+      guest.onMessage("*", () => {});
+      await guest.leave();
+    } finally {
+      storageFailed = false;
+    }
   });
   it("exchanges a signed credential, mixes Google and guest seats, rejects duplicate/expired accounts and preserves reconnect identity", async () => {
     const config = await fetch(`${base}/auth/config`);
