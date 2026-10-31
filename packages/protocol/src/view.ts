@@ -40,6 +40,35 @@ export interface BattleView {
   squads: VisibleSquad[];
   commanders: VisibleCommander[];
   lastSeen: LastSighting[];
+  objectiveMatch?: {
+    experimental: true;
+    tick: number;
+    limitTicks: number;
+    targetScore: number;
+    captureTicks: number;
+    radiusUnits: number;
+    scoreEveryTicks: number;
+    status: "running" | "finished";
+    scores: Record<string, number>;
+    points: {
+      id: string;
+      name: string;
+      position: ViewPosition;
+      owner: string | null;
+      capturing: string | null;
+      progressTicks: number;
+      contested: boolean;
+      open: boolean;
+      opensAtTick: number;
+      score: number;
+    }[];
+    result: {
+      winner: string | null;
+      reason: "score" | "time" | "abandoned";
+      tick: number;
+      scores: Record<string, number>;
+    } | null;
+  };
 }
 export interface VisibleBattleEvent {
   tick: number;

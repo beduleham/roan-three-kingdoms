@@ -5,6 +5,8 @@ import {
   type VisibleBattleEvent,
 } from "@roan/protocol";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
+import rawObjectives from "../../../objective_demo.v1.json" with { type: "json" };
+import { objectiveRulesSchema } from "../../../packages/battle-core/dist/index.js";
 import { AuthoritativeMatch } from "./match.js";
 import { InviteAccess } from "./invite.js";
 import { accountAuth, publicIdentity, type Identity } from "./auth.js";
@@ -113,6 +115,12 @@ export class BattleRoom extends Room {
               result.events,
             ),
           );
+      if (this.match.objectiveMatch?.result) {
+        void this.lock();
+        for (const client of this.clients) this.sendSnapshot(client);
+        this.broadcast("ready", { ready: false });
+        return;
+      }
       if (result.state.tick % 2 !== 0) return;
       for (const nation of nations) {
         const view = this.match.view(nation),
@@ -198,6 +206,10 @@ export class BattleRoom extends Room {
       this.accountSeats.delete(identity.accountId);
     this.reconnectReservations.delete(client.sessionId);
     this.match.leave(client.sessionId);
+    if (this.match.objectiveMatch?.result) {
+      void this.lock();
+      for (const connected of this.clients) this.sendSnapshot(connected);
+    }
     this.broadcastLobby();
   }
   private broadcastLobby() {
@@ -220,4 +232,12 @@ export class BattleRoom extends Room {
 export class Battle3v3Room extends BattleRoom {
   maxClients = 6;
   protected override match = new AuthoritativeMatch("3v3");
+}
+
+/** Separate experimental room; client join options cannot override objective rules. */
+export class ObjectiveBattleRoom extends BattleRoom {
+  protected override match = new AuthoritativeMatch(
+    "objectives",
+    objectiveRulesSchema.parse(rawObjectives),
+  );
 }

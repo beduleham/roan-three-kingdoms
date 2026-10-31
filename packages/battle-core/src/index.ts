@@ -25,3 +25,15 @@ export {
   augmentDefinitionsSchema,
 } from "./augments.js";
 export type { AugmentDefinition } from "./augments.js";
+
+export {
+  objectiveRulesSchema,
+  createObjectiveMatch,
+  advanceObjectives,
+  finishObjectiveMatch,
+} from "./objectives.js";
+export type {
+  ObjectiveRules,
+  ObjectiveMatchState,
+  ObjectiveResult,
+} from "./objectives.js";

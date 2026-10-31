@@ -1,8 +1,15 @@
+import rawObjectives from "../../../objective_demo.v1.json" with { type: "json" };
 import rawConfig from "../../../battle_config.v1.json" with { type: "json" };
 import {
   createBattle,
   step,
   parseBattleConfig,
+  objectiveRulesSchema,
+  createObjectiveMatch,
+  advanceObjectives,
+  finishObjectiveMatch,
+  type ObjectiveRules,
+  type ObjectiveMatchState,
 } from "../../../packages/battle-core/dist/index.js";
 import type {
   BattleInput,
@@ -16,7 +23,7 @@ const config = parseBattleConfig({
   visibility: { radiusTiles: defaultVisionRadiusTiles },
 });
 export type Seat = "blue" | "red" | `blue-${1 | 2 | 3}` | `red-${1 | 2 | 3}`;
-export type MatchMode = "1v1" | "3v3";
+export type MatchMode = "1v1" | "3v3" | "objectives";
 const teamSlots = [
   "blue-1",
   "red-1",
@@ -104,6 +111,8 @@ export class AuthoritativeMatch {
   readonly visibility = new NationVisibility();
   state: BattleState;
   readonly mode: MatchMode;
+  objectiveMatch: ObjectiveMatchState | null = null;
+  readonly objectiveRules: ObjectiveRules;
   private started = false;
   private aiOrderedSeats = new Set<Seat>();
   private hostSessionId: string | null = null;
@@ -111,9 +120,18 @@ export class AuthoritativeMatch {
   private connected = new Set<string>();
   private pending: BattleInput[] = [];
   private nextSeq = new Map<Seat, number>();
-  constructor(mode: MatchMode = "1v1") {
+  constructor(
+    mode: MatchMode = "1v1",
+    objectiveRules: ObjectiveRules = objectiveRulesSchema.parse(rawObjectives),
+  ) {
+    this.objectiveRules = objectiveRulesSchema.parse(objectiveRules);
     this.mode = mode;
     this.state = mode === "3v3" ? initialTeamBattle() : initialOnlineBattle();
+    if (mode === "objectives")
+      this.objectiveMatch = createObjectiveMatch(this.objectiveRules, [
+        "blue",
+        "red",
+      ]);
     this.visibility.observe(this.state);
   }
   nation(sessionId: string) {
@@ -123,7 +141,10 @@ export class AuthoritativeMatch {
     );
   }
   view(nationId: string) {
-    return this.visibility.view(this.state, nationId);
+    const view = this.visibility.view(this.state, nationId);
+    return this.objectiveMatch
+      ? { ...view, objectiveMatch: structuredClone(this.objectiveMatch) }
+      : view;
   }
   get slots(): readonly Seat[] {
     return this.mode === "3v3" ? teamSlots : ["blue", "red"];
@@ -150,7 +171,7 @@ export class AuthoritativeMatch {
     return this.hostSessionId === sessionId;
   }
   start(sessionId: string): { accepted: boolean; reason?: string } {
-    if (this.mode !== "3v3") return { accepted: false, reason: "INVALID_MODE" };
+    if (this.mode === "1v1") return { accepted: false, reason: "INVALID_MODE" };
     if (this.started) return { accepted: false, reason: "ALREADY_STARTED" };
     if (!this.isHost(sessionId)) return { accepted: false, reason: "NOT_HOST" };
     if (this.connected.size !== this.seats.size)
@@ -168,7 +189,8 @@ export class AuthoritativeMatch {
       this.connected.add(sessionId);
       return this.seats.get(sessionId)!;
     }
-    if (this.mode === "3v3" && this.started) return null;
+    if ((this.mode !== "1v1" && this.started) || this.objectiveMatch?.result)
+      return null;
     const seat = this.slots.find((s) => ![...this.seats.values()].includes(s));
     if (seat) {
       if (!this.hostSessionId) this.hostSessionId = sessionId;
@@ -189,6 +211,11 @@ export class AuthoritativeMatch {
     return true;
   }
   leave(sessionId: string) {
+    if (this.started && this.objectiveMatch && this.seats.has(sessionId))
+      this.objectiveMatch = finishObjectiveMatch(
+        this.objectiveMatch,
+        "abandoned",
+      );
     this.drop(sessionId);
     this.seats.delete(sessionId);
     if (this.hostSessionId === sessionId)
@@ -201,7 +228,7 @@ export class AuthoritativeMatch {
     requester: string,
     targetSeat: unknown,
   ): { accepted: boolean; reason?: string; sessionId?: string } {
-    if (this.mode !== "3v3") return { accepted: false, reason: "INVALID_MODE" };
+    if (this.mode === "1v1") return { accepted: false, reason: "INVALID_MODE" };
     if (!this.isHost(requester)) return { accepted: false, reason: "NOT_HOST" };
     if (this.started) return { accepted: false, reason: "MATCH_STARTED" };
     const target = [...this.seats].find(([, seat]) => seat === targetSeat)?.[0];
@@ -212,7 +239,8 @@ export class AuthoritativeMatch {
     return { accepted: true, sessionId: target };
   }
   get ready() {
-    return this.mode === "3v3"
+    if (this.objectiveMatch?.result) return false;
+    return this.mode !== "1v1"
       ? this.started && this.connected.size === this.seats.size
       : this.seats.size === 2 && this.connected.size === 2;
   }
@@ -226,6 +254,8 @@ export class AuthoritativeMatch {
     const seat = this.seats.get(sessionId);
     if (!seat || !this.connected.has(sessionId))
       return { accepted: false, reason: "NO_SEAT" };
+    if (this.objectiveMatch?.result)
+      return { accepted: false, reason: "MATCH_FINISHED" };
     if (!this.ready) return { accepted: false, reason: "MATCH_PAUSED" };
     if (!payload || typeof payload !== "object" || Array.isArray(payload))
       return { accepted: false, reason: "INVALID_FORMAT" };
@@ -294,6 +324,12 @@ export class AuthoritativeMatch {
     }
     const result = step(this.state, commands);
     this.state = result.state;
+    if (this.objectiveMatch)
+      this.objectiveMatch = advanceObjectives(
+        this.objectiveMatch,
+        this.state,
+        this.objectiveRules,
+      );
     this.visibility.observe(this.state);
     return result;
   }
