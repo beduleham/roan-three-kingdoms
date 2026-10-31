@@ -1,5 +1,7 @@
 # Railway 단일 서비스 게스트 시연
 
+> 현재 배포 대상은 Railway 신규 가입 중단으로 [Render](RENDER_DEMO_v0.1.md)로 변경됐다. 이 문서는 대안 기록이며 실제 Railway 리소스를 생성하지 않았다.
+
 ## 배포 대상
 
 - 저장소: `beduleham/roan-three-kingdoms`, 브랜치 `main`, Root Directory는 저장소 루트.

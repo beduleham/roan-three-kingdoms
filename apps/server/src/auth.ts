@@ -114,15 +114,30 @@ export function publicIdentity(identity: Identity) {
 }
 export const accountAuth = new AccountAuth();
 
-export function registerAccountRoutes(app: Application, auth = accountAuth) {
+function clientOrigins() {
+  if (process.env.CLIENT_ORIGINS !== undefined)
+    return new Set(
+      process.env.CLIENT_ORIGINS.split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
   const origins = new Set(
-    (
-      process.env.CLIENT_ORIGINS ??
-      "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4174,http://127.0.0.1:4174"
-    )
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4174,http://127.0.0.1:4174"
       .split(",")
       .map((value) => value.trim()),
   );
+  // Render assigns this HTTPS URL. Explicit CLIENT_ORIGINS always takes precedence.
+  if (process.env.RENDER_EXTERNAL_URL) {
+    const url = new URL(process.env.RENDER_EXTERNAL_URL);
+    if (url.protocol !== "https:" || url.username || url.password)
+      throw new Error("INVALID_RENDER_EXTERNAL_URL");
+    origins.add(url.origin);
+  }
+  return origins;
+}
+
+export function registerAccountRoutes(app: Application, auth = accountAuth) {
+  const origins = clientOrigins();
   app.use(
     "/auth",
     (req, res, next) => {
