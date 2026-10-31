@@ -31,7 +31,7 @@ export interface VisibleCommander {
   status: string;
   cooldownTicks: { Q: number; W: number; R: number };
 }
-/** Network projection only. Hidden entities, core RNG, orders and private progression never enter it. */
+/** Network projection only. Hidden entities, core RNG, and orders never enter it. Progression is projected only for allied players. */
 export interface BattleView {
   tick: number;
   nationId: string;
@@ -40,6 +40,56 @@ export interface BattleView {
   squads: VisibleSquad[];
   commanders: VisibleCommander[];
   lastSeen: LastSighting[];
+  nationalMatch?: {
+    experimental: true;
+    phase: number;
+    deadline: number;
+    unifyNation: string | null;
+    unifyTicks: number;
+    unifyRequired: number;
+    players: {
+      id: string;
+      nationId: string;
+      xp: number;
+      merit: number;
+      level: number;
+      rank: string;
+      supplyPoints: number;
+      cap: { minMerit: number; squads: number; soldiers: number };
+      nextXp: number | null;
+      offer: { checkpoint: number; candidates: string[] } | null;
+      selected: string[];
+      job: {
+        playerId: string;
+        squadId: string | null;
+        unitType: string;
+        finishAt: number;
+        soldiers: number;
+        cost: number;
+        pointId: string;
+      } | null;
+      feedback: string;
+    }[];
+    ranking: {
+      playerId: string;
+      nationId: string;
+      human: boolean;
+      merit: number;
+      contribution: number;
+      xp: number;
+      level: number;
+      rank: string;
+      place: number;
+    }[];
+    rules: {
+      refillSoldiers: number;
+      costPerSoldier: number;
+      recruitCost: number;
+      recruitSoldiers: number;
+      jobTicks: number;
+      rMinLevel: number;
+    };
+  };
   objectiveMatch?: {
     experimental: true;
     tick: number;
@@ -64,7 +114,7 @@ export interface BattleView {
     }[];
     result: {
       winner: string | null;
-      reason: "score" | "time" | "abandoned";
+      reason: "score" | "time" | "abandoned" | "unification";
       tick: number;
       scores: Record<string, number>;
     } | null;

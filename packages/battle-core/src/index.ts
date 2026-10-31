@@ -37,3 +37,17 @@ export type {
   ObjectiveMatchState,
   ObjectiveResult,
 } from "./objectives.js";
+export {
+  nationalRulesSchema,
+  economyActionSchema,
+  createNationalProgress,
+  queueSupply,
+  advanceNational,
+  finishNationalRanking,
+} from "./national.js";
+export type {
+  NationalRules,
+  NationalProgress,
+  EconomyAction,
+} from "./national.js";
+export { experimentalAugments } from "./data/experimental-v0.1.js";

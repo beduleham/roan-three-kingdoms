@@ -1,3 +1,4 @@
+import rawNational from "../../../national_demo.v1.json" with { type: "json" };
 import { Room, ServerError, CloseCode, type Client } from "colyseus";
 import {
   diffState,
@@ -6,7 +7,10 @@ import {
 } from "@roan/protocol";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
 import rawObjectives from "../../../objective_demo.v1.json" with { type: "json" };
-import { objectiveRulesSchema } from "../../../packages/battle-core/dist/index.js";
+import {
+  nationalRulesSchema,
+  objectiveRulesSchema,
+} from "../../../packages/battle-core/dist/index.js";
 import { AuthoritativeMatch } from "./match.js";
 import { InviteAccess } from "./invite.js";
 import { accountAuth, publicIdentity, type Identity } from "./auth.js";
@@ -239,5 +243,14 @@ export class ObjectiveBattleRoom extends BattleRoom {
   protected override match = new AuthoritativeMatch(
     "objectives",
     objectiveRulesSchema.parse(rawObjectives),
+  );
+}
+
+export class NationalBattleRoom extends BattleRoom {
+  maxClients = 9;
+  protected override match = new AuthoritativeMatch(
+    "national",
+    undefined,
+    nationalRulesSchema.parse(rawNational),
   );
 }

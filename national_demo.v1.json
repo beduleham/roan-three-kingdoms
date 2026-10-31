@@ -1,0 +1,118 @@
+{
+  "experimental": true,
+  "objectives": {
+    "experimental": true,
+    "captureTicks": 30,
+    "radiusUnits": 1500,
+    "scoreEveryTicks": 50,
+    "targetScore": 999999,
+    "limitTicks": 12600,
+    "finishOnTarget": false,
+    "finishOnLimit": false,
+    "points": [
+      {
+        "id": "base-blue",
+        "name": "청국 본영",
+        "position": {
+          "x": 3000,
+          "y": 2500
+        },
+        "opensAtTick": 0,
+        "score": 0
+      },
+      {
+        "id": "base-red",
+        "name": "적국 본영",
+        "position": {
+          "x": 21000,
+          "y": 2500
+        },
+        "opensAtTick": 0,
+        "score": 0
+      },
+      {
+        "id": "base-green",
+        "name": "녹국 본영",
+        "position": {
+          "x": 12000,
+          "y": 11500
+        },
+        "opensAtTick": 0,
+        "score": 0
+      },
+      {
+        "id": "outer-west",
+        "name": "서쪽 외곽",
+        "position": {
+          "x": 7000,
+          "y": 5500
+        },
+        "opensAtTick": 1200,
+        "score": 1
+      },
+      {
+        "id": "outer-east",
+        "name": "동쪽 외곽",
+        "position": {
+          "x": 17000,
+          "y": 5500
+        },
+        "opensAtTick": 1200,
+        "score": 1
+      },
+      {
+        "id": "outer-south",
+        "name": "남쪽 외곽",
+        "position": {
+          "x": 12000,
+          "y": 8500
+        },
+        "opensAtTick": 1200,
+        "score": 1
+      },
+      {
+        "id": "capital",
+        "name": "중앙성",
+        "position": {
+          "x": 12000,
+          "y": 5500
+        },
+        "opensAtTick": 3000,
+        "score": 2
+      }
+    ]
+  },
+  "bases": {
+    "blue": "base-blue",
+    "red": "base-red",
+    "green": "base-green"
+  },
+  "checkpoints": [9000, 10800, 12600],
+  "gapBp": [1000, 500, 0],
+  "unifyAfterTick": 6000,
+  "unifyHoldTicks": 450,
+  "unifyIds": ["outer-west", "outer-east", "outer-south", "capital"],
+  "initialSupply": 50,
+  "supplyEveryTicks": 50,
+  "supplyPerPoint": 2,
+  "supplyCostPerSoldier": 2,
+  "refillSoldiers": 5,
+  "jobTicks": 30,
+  "recruitCost": 40,
+  "recruitSoldiers": 10,
+  "recruitMaxSoldiers": 25,
+  "captureXp": 100,
+  "captureMerit": 600,
+  "holdXp": 20,
+  "holdMerit": 30,
+  "damageXpDivisor": 10000,
+  "damageMeritDivisor": 5000,
+  "xpThresholds": [
+    0, 100, 240, 420, 640, 900, 1200, 1540, 1920, 2340, 2800, 3300, 3840, 4420,
+    5040, 5700, 6400, 7140, 7920, 8740, 9600, 10500, 11440, 12420, 13440, 14500,
+    15600, 16740, 17920, 19140, 20400, 21700, 23040, 24420, 25840, 27300, 28800,
+    30340, 31920, 33540
+  ],
+  "aiEveryTicks": 100,
+  "augmentCopies": 3
+}
