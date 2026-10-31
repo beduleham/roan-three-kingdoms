@@ -20,12 +20,12 @@ const mode =
     : requestedMode === "3v3"
       ? "3v3"
       : "1v1";
-root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "objectives" ? "거점 경기 (실험)" : mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
-<p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> · <a href="/online.html?mode=objectives">거점 경기 (실험)</a> | 서버 10Hz · 동기화 5Hz</p>
+root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "objectives" ? "거점 경기 (시연)" : mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
+<p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> · <a href="/online.html?mode=objectives">거점 경기 (시연)</a> | 서버 10Hz · 동기화 5Hz</p>
 <section id="account-panel" aria-label="로그인"><p id="account-status" role="status">게스트 이용 중</p><div id="google-login" hidden></div><button id="account-logout" hidden>로그아웃 · 게스트로 전환</button><p>로그인 없이 게스트로도 접속할 수 있습니다. 계정 변경은 경기에서 나간 뒤 가능합니다.</p></section>
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>${mode === "objectives" ? "거점 경기 시작" : "빈자리를 AI로 채워 시작"}</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
-<section id="objective-panel" class="online-controls" ${mode === "objectives" ? "" : "hidden"}><h2>거점 경기 · 미확정 실험 규칙</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 양측 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
+<section id="objective-panel" class="online-controls" ${mode === "objectives" ? "" : "hidden"}><h2>거점 경기 · 시연 규칙</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 양측 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
 <p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
 <section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
 <label>목적지 X (타일) <input id="dest-x" type="number" value="10" min="0" max="24"></label>
@@ -88,7 +88,7 @@ function render() {
     const seconds = (ticks: number) =>
       Math.ceil((ticks * state!.config.tickMs) / 1000);
     el("objective-rules").textContent =
-      `중립 거점 ${objective.points.length}개 · 반경 ${objective.radiusUnits / state.config.positionUnitsPerTile}타일 · 단독 ${seconds(objective.captureTicks)}초 점령 · ${seconds(objective.scoreEveryTicks)}초마다 점수 · 목표 ${objective.targetScore}점 · 제한 ${seconds(objective.limitTicks)}초 (실험값)`;
+      `중립 거점 ${objective.points.length}개 · 반경 ${objective.radiusUnits / state.config.positionUnitsPerTile}타일 · 단독 ${seconds(objective.captureTicks)}초 점령 · ${seconds(objective.scoreEveryTicks)}초마다 점수 · 목표 ${objective.targetScore}점 · 제한 ${seconds(objective.limitTicks)}초 (시연 기준)`;
     el("objective-score").textContent =
       `blue ${objective.scores.blue} : ${objective.scores.red} red · 남은 시간 ${seconds(Math.max(0, objective.limitTicks - objective.tick))}초 · ${lobbyStarted ? (objective.status === "finished" ? "종료" : ready ? "진행 중" : "접속 대기") : "시작 대기"}`;
     el("objective-points").textContent = objective.points
