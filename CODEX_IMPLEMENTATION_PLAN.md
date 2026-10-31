@@ -85,7 +85,8 @@
 - [x] 국가 공유 원형 시야·10타일 조절형 실험 반경·마지막 위치/관측 tick 기억, 국가별 관측 상태 전송과 ATTACK/Q·자동 목표 획득 시야 검사. [시야 계약](docs/network/VISIBILITY_v0.1.md).
 - [x] 시야 적용 후 국가별 6연결 900tick 해시·복구 및 실제 브라우저 이탈/재관측 검증. [실행 기록](apps/server/reports/FOG_VALIDATION_2026-10-31.md).
 - [x] 배포 빌드의 같은 원본 HTTP/WS 제공·Docker/Caddy 구성·원격 게스트 인수 검사기·합성 지연/일시 단절/30초 예약 만료 브라우저 검사. [외부 시연 문서](docs/network/EXTERNAL_DEMO_v0.1.md).
-- [ ] 실제 외부 서버 배포·공인 HTTPS·별도 컴퓨터/네트워크의 접속 인수 검사(서버/도메인 필요).
+- [x] Railway 단일 서비스/기본 도메인 배포 방식 선택, Dockerfile·상태 검사·재시작 설정 파일 및 볼륨/변수 절차 준비. [Railway 안내](docs/network/RAILWAY_DEMO_v0.1.md).
+- [ ] Railway 계정 연결·프로젝트/서비스/영구 볼륨·공개 도메인 생성, 실제 외부 HTTPS/WSS 및 두 브라우저 경기 인수 검사.
 - [ ] 지형 차폐·은폐/정찰, Colyseus Schema 채택 여부 검토.
 
 **통과 조건:** 서로 다른 브라우저에서 같은 HP/사기/전열/병력 상태를 관측; 잘못된 명령 거부.
