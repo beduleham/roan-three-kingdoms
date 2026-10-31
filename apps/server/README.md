@@ -14,9 +14,9 @@ node apps/server/dist/index.js
 
 별도 터미널에서 `npm run dev --workspace @roan/client`을 실행하고 표시된 주소의 `/online.html`을 두 브라우저 창에서 엽니다. 서버 기본 포트는 2567이며 `PORT`로 바꿀 수 있습니다. 클라이언트 주소가 다르면 `?server=ws://HOST:PORT`를 사용합니다.
 
-## Railway 배포
+## Render 배포
 
-현재 선택한 배포 대상은 Railway 단일 서비스입니다. [Railway 설정 안내](../../docs/network/RAILWAY_DEMO_v0.1.md)에 따라 저장소 루트의 `railway.json`, `/data` 볼륨과 Railway 전용 쓰기 권한 변수를 사용합니다. Caddy는 Railway에 별도 배포하지 않습니다. 계정 연결과 실제 외부 검증은 아직 완료되지 않았습니다.
+현재 선택한 배포 대상은 Render 단일 네이티브 Node 서비스입니다. [Render 설정 안내](../../docs/network/RENDER_DEMO_v0.1.md)와 루트 `render.yaml`을 사용합니다. 계정 DB는 `/var/data` 영구 디스크에 저장하고, 배정된 HTTPS 원본은 `RENDER_EXTERNAL_URL`에서 자동 허용합니다. 명시적 `CLIENT_ORIGINS`가 있으면 우선합니다. Google 로그인은 보류하며 실제 배포·외부 검증은 계정 연결 후 진행합니다. Railway 설정과 Docker/Caddy 구성은 대안으로 유지합니다.
 
 ## 외부 시연 준비와 장애 검사
 
