@@ -4,6 +4,7 @@
 개발 범위는 CODEX_IMPLEMENTATION_PLAN.md의 단계 번호를 기준으로 합니다.
 
 ## 파일 안내
+
 - `TRD_BATTLE_ENGINE_v1.9.md`: 핵심 전투 로직/상태/계산/AI/이벤트 규칙
 - `AGENTS.md`: Codex가 항상 따라야 할 개발 지침
 - `CODEX_IMPLEMENTATION_PLAN.md`: 개발 Phase별 수락 조건과 최초 프롬프트
@@ -13,7 +14,7 @@
 
 ## 바로 시작하기
 
-Node.js 22 이상에서 저장소 루트의 다음 명령을 실행합니다.
+Node.js 22.13 이상에서 저장소 루트의 다음 명령을 실행합니다.
 
 ```sh
 npm ci
