@@ -275,7 +275,25 @@ export class AuthoritativeMatch {
               supplyPoints: p.supplyPoints,
               cap: { ...this.state.config.rankCaps[p.rank] },
               nextXp: r.xpThresholds[p.level] ?? null,
-              offer: aug?.offer ? structuredClone(aug.offer) : null,
+              offer: aug?.offer
+                ? {
+                    ...structuredClone(aug.offer),
+                    details: aug.offer.candidates.map((id) => {
+                      const d = this.state.augmentDefinitions.find(
+                        (d) => d.id === id,
+                      )!;
+                      return {
+                        id,
+                        trigger: d.trigger,
+                        ...(d.sourceSkill
+                          ? { sourceSkill: d.sourceSkill }
+                          : {}),
+                        effect: { ...d.effect },
+                        durationTicks: d.durationTicks,
+                      };
+                    }),
+                  }
+                : null,
               selected: aug ? [...aug.selected] : [],
               job: structuredClone(
                 n.jobs.find((j) => j.playerId === p.id) ?? null,

@@ -57,7 +57,17 @@ export interface BattleView {
       supplyPoints: number;
       cap: { minMerit: number; squads: number; soldiers: number };
       nextXp: number | null;
-      offer: { checkpoint: number; candidates: string[] } | null;
+      offer: {
+        checkpoint: number;
+        candidates: string[];
+        details?: {
+          id: string;
+          trigger: string;
+          sourceSkill?: string;
+          effect: { stat: string; bonusBp: number };
+          durationTicks: number;
+        }[];
+      } | null;
       selected: string[];
       job: {
         playerId: string;

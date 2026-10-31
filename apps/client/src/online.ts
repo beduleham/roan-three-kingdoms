@@ -1,3 +1,5 @@
+import { remainingMatchTicks } from "./match-clock.js";
+import { describeAugment } from "./augment-description.js";
 import mapSettings from "./map-view.json";
 import {
   createMapCamera,
@@ -257,7 +259,7 @@ function render() {
             .map(([id, score]) => `${id} ${score}`)
             .join(" : ")
         : `blue ${objective.scores.blue} : ${objective.scores.red} red`
-    } · 남은 시간 ${seconds(Math.max(0, objective.limitTicks - objective.tick))}초 · ${lobbyStarted ? (objective.status === "finished" ? "종료" : ready ? "진행 중" : "접속 대기") : "시작 대기"}`;
+    } · 남은 시간 ${seconds(remainingMatchTicks(objective, state.nationalMatch?.deadline))}초 · ${lobbyStarted ? (objective.status === "finished" ? "종료" : ready ? "진행 중" : "접속 대기") : "시작 대기"}`;
     el("objective-points").textContent = objective.points
       .map(
         (p) =>
@@ -321,7 +323,10 @@ function render() {
         ...ids.map((id) => {
           const button = document.createElement("button");
           button.dataset.augment = id;
-          button.textContent = `${id.includes("shock") ? "돌파: Q 충돌 후 공격 강화" : id.includes("gale") ? "기동: Q 충돌 후 이동 강화" : "군율: W 대상 전열 보호"} (실험 ${Number(id.split("-")[1]) + 1})`;
+          const detail = me.offer?.details?.find((d) => d.id === id);
+          button.textContent = detail
+            ? `${describeAugment(detail, state!.config.tickMs)} (실험)`
+            : `${id.includes("shock") ? "돌파: Q 충돌 후 공격 강화" : id.includes("gale") ? "기동: Q 충돌 후 이동 강화" : "군율: W 대상 전열 보호"} (실험)`;
           button.addEventListener("click", () => {
             const offer = state?.nationalMatch?.players.find(
               (p) => p.id === seat,

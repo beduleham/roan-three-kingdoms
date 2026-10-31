@@ -1,0 +1,22 @@
+{
+  "version": "phase7-audit-v1",
+  "experimental": true,
+  "seeds": [41, 42],
+  "assignments": [
+    ["blue", "red", "green"],
+    ["blue", "green", "red"],
+    ["red", "blue", "green"],
+    ["red", "green", "blue"],
+    ["green", "blue", "red"],
+    ["green", "red", "blue"]
+  ],
+  "policies": ["production", "nearest-role"],
+  "sampleTicks": [0, 3000, 6000, 9000, 10800, 12600],
+  "targetLevels": {
+    "ordinary": [33, 35],
+    "top": [38, 40]
+  },
+  "note": "offline only; full clock; factorial base-position assignments x basic movement policy x seeds; no autonomous skill/augment/retreat/formation selection; production values unchanged",
+  "growthAuditUnifyAfterTick": 12601,
+  "growthAuditSeed": 41
+}
