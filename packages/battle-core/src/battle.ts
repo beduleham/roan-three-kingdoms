@@ -20,6 +20,7 @@ import {
 } from "./model.js";
 import { calculateDamage, livingSoldiers, safeInteger } from "./damage.js";
 import { acceptOrder, advanceOrders } from "./orders.js";
+import { visibleSquadIds } from "./visibility.js";
 import {
   contactFor,
   forced,
@@ -282,6 +283,12 @@ export function step(
       (!target || target.hpMilli === 0 || target.nationId === player.nationId)
     )
       reason = "INVALID_TARGET";
+    else if (
+      cmd.type === "ATTACK" &&
+      state.config.visibility &&
+      !visibleSquadIds(state, player.nationId).has(cmd.targetSquadId)
+    )
+      reason = "TARGET_NOT_VISIBLE";
     else if (owned.some((s) => forced(s!))) reason = "FORCED_STATE";
     if (reason) {
       emit({
