@@ -25,6 +25,7 @@
     "test:browser": "npm run build:core && playwright test --config apps/client/playwright.config.mjs",
     "test:browser:online": "npm run build:protocol && playwright test --config apps/client/online.playwright.config.mjs",
     "test:network": "npm run build && playwright test --config apps/client/network.playwright.config.mjs",
+    "test:maps": "npm run build && playwright test --config apps/client/maps.playwright.config.mjs",
     "test:objectives": "npm run build && playwright test --config apps/client/objectives.playwright.config.mjs",
     "test:remote": "npm run build:core && npm run build:protocol && node apps/server/test-support/remote-smoke.mjs"
   },
