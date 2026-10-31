@@ -38,7 +38,9 @@ const tokenKey = () =>
   `roan-online-reconnection-${mode}-${params.get("room") ?? "quick"}`;
 const serverAddress =
   params.get("server") ??
-  `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
+  (import.meta.env.PROD
+    ? location.origin.replace(/^http/, "ws")
+    : `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`);
 const account = createAccountPanel(serverAddress, () =>
   sessionStorage.removeItem(tokenKey()),
 );
@@ -319,11 +321,14 @@ async function connect(createPrivate = false) {
       room = null;
       throw new Error("초대 링크의 경기 종류가 다릅니다");
     }
+    // A drop immediately after joining must still use the server's reservation.
+    room.reconnection.minUptime = 0;
     params.set("room", room.roomId);
     if (createPrivate) inviteKey = null;
     updateInviteLink();
     sessionStorage.setItem(tokenKey(), room.reconnectionToken);
     root.dataset.roomId = room.roomId;
+    let recovering = false;
     el("connection").textContent = `접속됨 · Room ${room.roomId}`;
     room.onMessage("account", account.confirmed);
     room.onMessage("invite-key", ({ key }: { key: string }) => {
@@ -445,14 +450,16 @@ async function connect(createPrivate = false) {
       },
     );
     room.onDrop(() => {
+      recovering = true;
       isReady(false);
       el("connection").textContent = "연결 복구 중 · 전투 일시 중지";
     });
     room.onReconnect(() => {
+      recovering = false;
       sessionStorage.setItem(tokenKey(), room!.reconnectionToken);
       room?.send("hello");
     });
-    room.onLeave((_code, reason) => {
+    room.onLeave((code, reason) => {
       account.setLocked(false);
       account.disconnected();
       room = null;
@@ -469,7 +476,9 @@ async function connect(createPrivate = false) {
       el("connection").textContent =
         reason === "REMOVED_FROM_LOBBY"
           ? "로비에서 내보내졌습니다"
-          : "연결 종료";
+          : code !== 4000 && (recovering || code === 4003)
+            ? "재접속 실패 · 좌석 예약이 만료되었거나 연결을 복구하지 못했습니다. 다시 접속하세요."
+            : "연결 종료";
       el("identity").textContent = "";
       el("clock").textContent = "";
       for (const id of [

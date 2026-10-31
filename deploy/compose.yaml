@@ -1,0 +1,31 @@
+services:
+  game:
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      CLIENT_ORIGINS: https://${DEMO_DOMAIN:?Set DEMO_DOMAIN to your domain}
+    volumes:
+      - accounts:/data
+    expose:
+      - "2567"
+    stop_grace_period: 40s
+  edge:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?Set DEMO_DOMAIN to your domain}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      game:
+        condition: service_healthy
+volumes:
+  accounts:
+  caddy_data:
+  caddy_config:
