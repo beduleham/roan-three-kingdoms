@@ -9,6 +9,8 @@ export const objectiveRulesSchema = z
     radiusUnits: positive,
     scoreEveryTicks: positive,
     targetScore: positive,
+    finishOnTarget: z.boolean().optional(),
+    finishOnLimit: z.boolean().optional(),
     limitTicks: positive,
     points: z
       .array(
@@ -20,7 +22,7 @@ export const objectiveRulesSchema = z
             y: z.number().int().min(0).max(100_000),
           }),
           opensAtTick: z.number().int().nonnegative().max(1_000_000),
-          score: positive,
+          score: z.number().int().nonnegative().max(1000000),
         }),
       )
       .min(1)
@@ -45,7 +47,7 @@ export interface ObjectivePoint {
 }
 export interface ObjectiveResult {
   winner: string | null;
-  reason: "score" | "time" | "abandoned";
+  reason: "score" | "time" | "abandoned" | "unification";
   tick: number;
   scores: Record<string, number>;
 }
@@ -174,9 +176,12 @@ export function advanceObjectives(
     }
   });
   // Apply all nations' income before deciding; simultaneous equal scores draw.
-  if (Object.values(next.scores).some((score) => score >= rules.targetScore))
+  if (
+    rules.finishOnTarget !== false &&
+    Object.values(next.scores).some((score) => score >= rules.targetScore)
+  )
     next = finishObjectiveMatch(next, "score");
-  else if (next.tick >= rules.limitTicks)
+  else if (rules.finishOnLimit !== false && next.tick >= rules.limitTicks)
     next = finishObjectiveMatch(next, "time");
   return next;
 }
