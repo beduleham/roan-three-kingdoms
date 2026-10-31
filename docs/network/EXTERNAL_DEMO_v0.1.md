@@ -6,9 +6,9 @@ Node 서버가 빌드된 클라이언트, `/healthz`, 인증 API, Colyseus 매�
 
 Dockerfile과 Caddy Compose 구성은 **단일 호스트 테스트 배포용**이다. 현재 작업 환경에는 Docker/Caddy 실행 파일 및 외부 서버·도메인이 없어 컨테이너 빌드/실행·공인 HTTPS 인증서·다른 컴퓨터의 실제 인터넷 접속은 검증하지 않았다. 로컬의 실제 Node 서버/빌드된 화면/브라우저/장애 프록시 검증과 외부 배포 완료를 구분한다. Sites의 Cloudflare Worker 환경으로 Colyseus Node/SQLite 서버를 옮기지 않았다.
 
-## Railway 권장 배포
+## Render 권장 배포
 
-사용자가 Railway 단일 서비스와 기본 제공 도메인 방식을 선택했다. [Railway 설정 안내](RAILWAY_DEMO_v0.1.md)를 우선 사용한다. 루트 `railway.json`이 Dockerfile 빌드와 상태 검사를 지정한다. Railway에서는 자체 HTTPS를 사용하며 Caddy를 별도 배포하지 않는다. 아래 Compose 구성은 직접 운영하는 서버용 대안으로 유지한다.
+Railway 신규 가입 중단으로 현재 배포 대상은 Render 단일 Node 서비스와 영구 디스크로 변경했다. [Render 설정 안내](RENDER_DEMO_v0.1.md)와 루트 `render.yaml`을 우선 사용한다. Render가 HTTPS를 처리하므로 Caddy를 별도로 배포하지 않는다. 기존 [Railway 설정](RAILWAY_DEMO_v0.1.md)은 과거 대안으로 유지하며 아래 Compose 구성은 직접 운영하는 서버용이다.
 
 ## 서버와 도메인이 있을 때 배포
 
