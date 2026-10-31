@@ -1,5 +1,126 @@
 import { test, expect } from "@playwright/test";
 
+test("unreachable Google script leaves real guest entry available", async ({
+  page,
+}) => {
+  await page.route("**/auth/config", (route) =>
+    route.fulfill({
+      json: { googleClientId: "test.apps.googleusercontent.com" },
+      headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:4174" },
+    }),
+  );
+  await page.route("https://accounts.google.com/gsi/client", (route) =>
+    route.abort(),
+  );
+  await page.goto("/online.html");
+  await expect(page.locator("#account-status")).toContainText(
+    "Google 로그인에 연결할 수 없습니다",
+  );
+  await page.locator("#create-private").click();
+  await expect(page.locator("#account-status")).toContainText(
+    "게스트 이용 중 · 경기 접속 확인",
+  );
+});
+
+test("Google button exchanges a nonce credential, restores its session, and logs out to a real guest room", async ({
+  page,
+}) => {
+  const sessionToken = "browser-contract-session";
+  const credential = "browser-contract-google-credential";
+  const calls = [];
+  await page.route("https://accounts.google.com/gsi/client", (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: `window.google = {accounts: {id: {
+      initialize(options) { this.options = options; },
+      renderButton(parent) { const button = document.createElement('button');
+        button.textContent = 'Google로 로그인'; button.onclick = () => this.options.callback({credential: '${credential}'}); parent.append(button); },
+      disableAutoSelect() {}
+    }}};`,
+    }),
+  );
+  await page.route("**/auth/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const method = route.request().method();
+    calls.push({ path, method, body: route.request().postData() });
+    const headers = {
+      "Access-Control-Allow-Origin": "http://127.0.0.1:4174",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    };
+    if (method === "OPTIONS" || method === "DELETE") {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+    const identity = { provider: "google", name: "브라우저 계약 테스트" };
+    const result = path.endsWith("/config")
+      ? { googleClientId: "test.apps.googleusercontent.com" }
+      : path.endsWith("/challenge")
+        ? { nonce: "browser-nonce" }
+        : path.endsWith("/google")
+          ? { sessionToken, identity, expiresAt: Date.now() + 3600000 }
+          : identity;
+    await route.fulfill({ json: result, headers });
+  });
+  await page.goto("/online.html");
+  await expect(page.locator("#account-status")).toContainText("게스트");
+  await page.getByRole("button", { name: "Google로 로그인" }).click();
+  await expect(page.locator("#account-status")).toContainText(
+    "Google 로그인 · 브라우저 계약 테스트",
+  );
+  expect(
+    calls.find(
+      (call) => call.path.endsWith("/google") && call.method === "POST",
+    ).body,
+  ).toBe(JSON.stringify({ credential, nonce: "browser-nonce" }));
+  expect(
+    await page.evaluate(() => JSON.stringify(sessionStorage)),
+  ).not.toContain(credential);
+  expect(page.url()).not.toContain(sessionToken);
+  await page.reload();
+  await expect(page.locator("#account-status")).toContainText(
+    "Google 로그인 · 브라우저 계약 테스트",
+  );
+  await page.locator("#account-logout").click();
+  await expect(page.locator("#account-status")).toContainText("게스트 이용 중");
+  expect(calls.some((call) => call.method === "DELETE")).toBe(true);
+  await page.locator("#create-private").click();
+  await expect(page.locator("#account-status")).toContainText(
+    "게스트 이용 중 · 경기 접속 확인",
+  );
+  await expect(page.locator("#google-login")).toBeHidden();
+  await page.locator("#leave").click();
+  await expect(page.locator("#google-login")).toBeVisible();
+});
+
+test("an invalid account session fails room entry instead of silently becoming a guest", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    sessionStorage.setItem(
+      "roan-account-http://127.0.0.1:2567",
+      "invalid-session",
+    ),
+  );
+  // Model a stale browser session display. The real room still validates the credential.
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({
+      json: { provider: "google", name: "만료 계정" },
+      headers: {
+        "Access-Control-Allow-Origin": "http://127.0.0.1:4174",
+        "Access-Control-Allow-Headers": "Authorization",
+      },
+    }),
+  );
+  await page.goto("/online.html");
+  await expect(page.locator("#account-status")).toContainText("만료 계정");
+  await page.locator("#join").click();
+  await expect(page.locator("#connection")).toContainText(
+    "ACCOUNT_SESSION_EXPIRED",
+  );
+  await expect(page.locator("#identity")).toBeEmpty();
+});
+
 async function visibleUnitsAgree(first, second) {
   const read = (page) =>
     page.evaluate(() => ({
