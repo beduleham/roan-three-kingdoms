@@ -1,3 +1,11 @@
+import mapSettings from "./map-view.json";
+import {
+  createMapCamera,
+  worldToMap,
+  mapToWorld,
+  type MapCamera,
+  type MapPosition,
+} from "./map-camera.js";
 import { placeFieldLabels, type FieldLabel } from "./field-labels.js";
 import { Client } from "@colyseus/sdk";
 import { hashReplayValue } from "../../../packages/battle-core/src/index.js";
@@ -26,7 +34,14 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>${mode === "objectives" ? "거점 경기 시작" : "빈자리를 AI로 채워 시작"}</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
 <section id="objective-panel" class="online-controls" ${mode === "objectives" ? "" : "hidden"}><h2>거점 경기 · 시연 규칙</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 양측 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
-<p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
+<p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><section id="map-panel" class="online-controls" ${mode === "objectives" ? "" : "hidden"} aria-label="지도와 시점">
+<h2>전국 지도 · 현재 시연 전역</h2><canvas id="strategic-map" width="300" height="180" aria-label="전국 지도: 클릭한 위치로 전투 시점 이동"></canvas>
+<p>지도 클릭은 시점만 이동합니다. 부대 이동은 전장에서 목적지를 지정한 뒤 이동 버튼을 누르세요.</p>
+<div class="online-actions"><button id="view-overview" aria-pressed="true">전국 보기</button><button id="view-battle" aria-pressed="false">전투 보기 · ${mapSettings.battleZoom}배</button><button id="focus-own">선택 아군으로 이동</button></div>
+<div id="map-points" class="online-actions" aria-label="거점으로 시점 이동"></div>
+<div class="online-actions" aria-label="시점 이동"><button data-pan="0,-1" aria-label="시점 위로">↑</button><button data-pan="-1,0" aria-label="시점 왼쪽으로">←</button><button data-pan="1,0" aria-label="시점 오른쪽으로">→</button><button data-pan="0,1" aria-label="시점 아래로">↓</button></div>
+<p id="map-status" role="status"></p></section>
+<canvas id="field" width="720" height="420" aria-label="전장"></canvas>
 <section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
 <label>목적지 X (타일) <input id="dest-x" type="number" value="10" min="0" max="24"></label>
 <label>Y (타일) <input id="dest-y" type="number" value="6" min="0" max="13"></label>
@@ -71,6 +86,149 @@ let lobbySlots: {
 }[] = [];
 const canvas = el<HTMLCanvasElement>("field"),
   ctx = canvas.getContext("2d")!;
+const strategicMap = el<HTMLCanvasElement>("strategic-map");
+const strategicCtx = strategicMap.getContext("2d")!;
+let mapView: "overview" | "battle" = "overview";
+let mapFocus: MapPosition = {
+  x: mapSettings.widthTiles / 2,
+  y: mapSettings.heightTiles / 2,
+};
+function mapWorld() {
+  const units = state?.config.positionUnitsPerTile ?? 1000;
+  return {
+    x: mapSettings.widthTiles * units,
+    y: mapSettings.heightTiles * units,
+  };
+}
+function fieldCamera(): MapCamera {
+  const units = state?.config.positionUnitsPerTile ?? 1000;
+  if (mode !== "objectives")
+    return {
+      left: 0,
+      top: 0,
+      width: (canvas.width * units) / 30,
+      height: (canvas.height * units) / 30,
+      scale: 30 / units,
+      offsetX: 40,
+      offsetY: 40,
+    };
+  return createMapCamera(
+    mapWorld(),
+    { x: canvas.width, y: canvas.height },
+    mapView === "battle" ? mapSettings.battleZoom : 1,
+    { x: mapFocus.x * units, y: mapFocus.y * units },
+    mapSettings.paddingPixels,
+  );
+}
+function miniCamera() {
+  return createMapCamera(
+    mapWorld(),
+    { x: strategicMap.width, y: strategicMap.height },
+    1,
+    { x: 0, y: 0 },
+    mapSettings.miniPaddingPixels,
+  );
+}
+function setMapView(view: "overview" | "battle", focus?: MapPosition) {
+  mapView = view;
+  if (focus) {
+    const units = state?.config.positionUnitsPerTile ?? 1000;
+    mapFocus = { x: focus.x / units, y: focus.y / units };
+  }
+  const camera = fieldCamera(),
+    units = state?.config.positionUnitsPerTile ?? 1000;
+  // Store the clamped center so directional panning can immediately move back from an edge.
+  if (view === "battle")
+    mapFocus = {
+      x: (camera.left + camera.width / 2) / units,
+      y: (camera.top + camera.height / 2) / units,
+    };
+  render();
+}
+function updateMapControls() {
+  if (mode !== "objectives") return;
+  const camera = fieldCamera();
+  for (const id of ["view-overview", "view-battle"])
+    el<HTMLButtonElement>(id).disabled = !state;
+  for (const button of document.querySelectorAll<HTMLButtonElement>(
+    "[data-pan]",
+  ))
+    button.disabled = !state;
+  root.dataset.mapView = mapView;
+  for (const [key, value] of Object.entries({
+    left: camera.left,
+    top: camera.top,
+    width: camera.width,
+    height: camera.height,
+  }))
+    canvas.dataset[key] = String(value);
+  el("view-overview").setAttribute(
+    "aria-pressed",
+    String(mapView === "overview"),
+  );
+  el("view-battle").setAttribute("aria-pressed", String(mapView === "battle"));
+  el<HTMLButtonElement>("focus-own").disabled = !state?.squads.some(
+    (s) => s.ownerPlayerId === seat && s.hpMilli > 0,
+  );
+  const units = state?.config.positionUnitsPerTile ?? 1000;
+  el("map-status").textContent = state
+    ? `${mapView === "overview" ? "전국 보기" : "전투 보기"} · 국가 공유 시야 · 범위 X ${(camera.left / units).toFixed(1)}–${((camera.left + camera.width) / units).toFixed(1)}, Y ${(camera.top / units).toFixed(1)}–${((camera.top + camera.height) / units).toFixed(1)} 타일`
+    : "경기에 접속하면 같은 전장을 두 시점으로 볼 수 있습니다.";
+  const points = state?.objectiveMatch?.points ?? [],
+    buttons = el("map-points");
+  if (
+    [...buttons.children].map((b) => b.getAttribute("data-point")).join() !==
+    points.map((p) => p.id).join()
+  ) {
+    buttons.replaceChildren(
+      ...points.map((point) => {
+        const button = document.createElement("button");
+        button.dataset.point = point.id;
+        button.textContent = `${point.name} 보기`;
+        button.addEventListener("click", () => {
+          const current = state?.objectiveMatch?.points.find(
+            (p) => p.id === point.id,
+          );
+          if (current) setMapView("battle", current.position);
+        });
+        return button;
+      }),
+    );
+  }
+}
+el("view-overview").addEventListener("click", () => setMapView("overview"));
+el("view-battle").addEventListener("click", () => setMapView("battle"));
+el("focus-own").addEventListener("click", () => {
+  const own = state?.squads.filter(
+    (s) => s.ownerPlayerId === seat && s.hpMilli > 0,
+  );
+  const unit =
+    own?.find((s) => s.id === el<HTMLSelectElement>("squad").value) ?? own?.[0];
+  if (unit) setMapView("battle", unit.position);
+});
+for (const button of document.querySelectorAll<HTMLButtonElement>("[data-pan]"))
+  button.addEventListener("click", () => {
+    if (!state) return;
+    const [x, y] = button.dataset.pan!.split(",").map(Number);
+    const c = fieldCamera(),
+      units = state.config.positionUnitsPerTile;
+    setMapView("battle", {
+      x: mapFocus.x * units + ((x ?? 0) * c.width) / 4,
+      y: mapFocus.y * units + ((y ?? 0) * c.height) / 4,
+    });
+  });
+strategicMap.addEventListener("click", (event) => {
+  if (!state) return;
+  const rect = strategicMap.getBoundingClientRect();
+  const world = mapToWorld(
+    {
+      x: ((event.clientX - rect.left) * strategicMap.width) / rect.width,
+      y: ((event.clientY - rect.top) * strategicMap.height) / rect.height,
+    },
+    miniCamera(),
+  );
+  if (world) setMapView("battle", world);
+});
 function render() {
   if (!state) return;
   el("clock").textContent =
@@ -130,6 +288,7 @@ function render() {
       select.replaceChildren(...squads.map((s) => new Option(s.id, s.id)));
     if (squads.some((s) => s.id === previous)) select.value = previous;
   }
+  updateMapControls();
   const commander = state.commanders.find((c) => c.ownerPlayerId === seat);
   el("commander").textContent = commander
     ? `장수 ${commander.status} · HP ${commander.hpMilli} · 본대 ${commander.assignedSquadId ?? "없음"} · Q/W/R 대기 ${["Q", "W", "R"].map((skill) => commander.cooldownTicks[skill as "Q" | "W" | "R"]).join("/")} tick`
@@ -219,33 +378,45 @@ function destination() {
     y: Number(el<HTMLInputElement>("dest-y").value) * scale,
   };
 }
-function draw() {
+function drawView(
+  ctx: CanvasRenderingContext2D,
+  camera: MapCamera,
+  alpha: number,
+  mini = false,
+) {
   if (!state) return;
-  const alpha = Math.min(1, (performance.now() - receivedAt) / 200);
+  const size = ctx.canvas;
+  size.dataset.tick = String(state.tick);
   ctx.fillStyle = "#61594b";
-  ctx.fillRect(0, 0, 720, 420);
+  ctx.fillRect(0, 0, size.width, size.height);
   ctx.save();
+  ctx.beginPath();
+  if (mode === "objectives") {
+    ctx.rect(
+      camera.offsetX,
+      camera.offsetY,
+      camera.width * camera.scale,
+      camera.height * camera.scale,
+    );
+    ctx.clip();
+  }
   ctx.beginPath();
   for (const observer of state.squads.filter(
     (s) => s.nationId === state!.nationId && s.hpMilli > 0,
   )) {
-    const x =
-        40 + (observer.position.x / state.config.positionUnitsPerTile) * 30,
-      y = 40 + (observer.position.y / state.config.positionUnitsPerTile) * 30;
-    const radius =
-      (state.visionRadiusUnits / state.config.positionUnitsPerTile) * 30;
+    const { x, y } = worldToMap(observer.position, camera);
+    const radius = state.visionRadiusUnits * camera.scale;
     ctx.moveTo(x + radius, y);
     ctx.arc(x, y, radius, 0, Math.PI * 2);
   }
   ctx.clip();
   ctx.fillStyle = "#efe3c8";
-  ctx.fillRect(0, 0, 720, 420);
+  ctx.fillRect(0, 0, size.width, size.height);
   ctx.restore();
   ctx.font = '14px "Noto Sans KR", sans-serif';
   const labels: FieldLabel[] = [];
   for (const point of state.objectiveMatch?.points ?? []) {
-    const x = 40 + (point.position.x / state.config.positionUnitsPerTile) * 30;
-    const y = 40 + (point.position.y / state.config.positionUnitsPerTile) * 30;
+    const { x, y } = worldToMap(point.position, camera);
     ctx.save();
     ctx.strokeStyle = !point.open
       ? "#aaa"
@@ -262,39 +433,41 @@ function draw() {
     ctx.arc(
       x,
       y,
-      (state.objectiveMatch!.radiusUnits / state.config.positionUnitsPerTile) *
-        30,
+      state.objectiveMatch!.radiusUnits * camera.scale,
       0,
       Math.PI * 2,
     );
     ctx.stroke();
     ctx.restore();
-    labels.push({
-      text: point.name,
-      x,
-      y,
-      width: ctx.measureText(point.name).width,
-    });
+    if (!mini && x >= 0 && y >= 0 && x <= size.width && y <= size.height)
+      labels.push({
+        text: point.name,
+        x,
+        y,
+        width: ctx.measureText(point.name).width,
+      });
   }
   for (const entry of state.lastSeen) {
-    const x = 40 + (entry.position.x / state.config.positionUnitsPerTile) * 30,
-      y = 40 + (entry.position.y / state.config.positionUnitsPerTile) * 30;
+    const { x, y } = worldToMap(entry.position, camera);
+    if (x < -18 || y < -18 || x > size.width + 18 || y > size.height + 18)
+      continue;
     ctx.save();
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = "#e5d8b7";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.arc(x, y, mini ? 4 : 16, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
     const text = `? ${entry.id} · ${entry.observedTick}tick`;
-    labels.push({
-      text,
-      x,
-      y,
-      width: ctx.measureText(text).width,
-      memory: true,
-    });
+    if (!mini)
+      labels.push({
+        text,
+        x,
+        y,
+        width: ctx.measureText(text).width,
+        memory: true,
+      });
   }
   for (const s of state.squads) {
     const old = previousState?.squads.find((p) => p.id === s.id);
@@ -304,12 +477,13 @@ function draw() {
     const yUnits = old
       ? old.position.y + (s.position.y - old.position.y) * alpha
       : s.position.y;
-    const x = 40 + (xUnits / state.config.positionUnitsPerTile) * 30;
-    const y = 40 + (yUnits / state.config.positionUnitsPerTile) * 30;
-    if (s.id === (mode === "3v3" ? "blue-1-1" : "blue-1"))
+    const { x, y } = worldToMap({ x: xUnits, y: yUnits }, camera);
+    if (x < -18 || y < -18 || x > size.width + 18 || y > size.height + 18)
+      continue;
+    if (!mini && s.id === (mode === "3v3" ? "blue-1-1" : "blue-1"))
       root.dataset.renderX = String(x);
     ctx.beginPath();
-    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.arc(x, y, mini ? 4 : 16, 0, Math.PI * 2);
     ctx.fillStyle = s.nationId === "blue" ? "#286b9a" : "#ae4a36";
     ctx.fill();
     if (
@@ -320,9 +494,10 @@ function draw() {
       ctx.lineWidth = 3;
       ctx.stroke();
     }
-    labels.push({ text: s.id, x, y, width: ctx.measureText(s.id).width });
+    if (!mini)
+      labels.push({ text: s.id, x, y, width: ctx.measureText(s.id).width });
   }
-  for (const label of placeFieldLabels(labels, canvas.width, canvas.height)) {
+  for (const label of placeFieldLabels(labels, size.width, size.height)) {
     const { box } = label;
     ctx.strokeStyle = label.memory ? "#c1b49c" : "#514331";
     ctx.beginPath();
@@ -334,6 +509,25 @@ function draw() {
     ctx.fillStyle = label.memory ? "#f4e9d0" : "#222";
     ctx.fillText(label.text, box.x + 4, box.y + 15, box.width - 8);
   }
+}
+function draw() {
+  if (!state) return;
+  const alpha = Math.min(1, (performance.now() - receivedAt) / 200),
+    camera = fieldCamera();
+  drawView(ctx, camera, alpha);
+  if (mode === "objectives") {
+    const mini = miniCamera();
+    drawView(strategicCtx, mini, alpha, true);
+    const corner = worldToMap({ x: camera.left, y: camera.top }, mini);
+    strategicCtx.strokeStyle = "#fff4ad";
+    strategicCtx.lineWidth = 2;
+    strategicCtx.strokeRect(
+      corner.x,
+      corner.y,
+      camera.width * mini.scale,
+      camera.height * mini.scale,
+    );
+  }
   drawFrame = requestAnimationFrame(draw);
 }
 canvas.addEventListener("click", (event) => {
@@ -341,15 +535,21 @@ canvas.addEventListener("click", (event) => {
   const rect = canvas.getBoundingClientRect();
   const x = ((event.clientX - rect.left) * canvas.width) / rect.width;
   const y = ((event.clientY - rect.top) * canvas.height) / rect.height;
+  const camera = fieldCamera();
   const hit = state.squads
     .filter((s) => s.hpMilli > 0)
-    .map((s) => ({
-      s,
-      distance: Math.hypot(
-        x - (40 + (s.position.x / state!.config.positionUnitsPerTile) * 30),
-        y - (40 + (s.position.y / state!.config.positionUnitsPerTile) * 30),
-      ),
-    }))
+    .map((s) => {
+      const old = previousState?.squads.find((p) => p.id === s.id),
+        alpha = Math.min(1, (performance.now() - receivedAt) / 200);
+      const position = old
+        ? {
+            x: old.position.x + (s.position.x - old.position.x) * alpha,
+            y: old.position.y + (s.position.y - old.position.y) * alpha,
+          }
+        : s.position;
+      const pixel = worldToMap(position, camera);
+      return { s, distance: Math.hypot(x - pixel.x, y - pixel.y) };
+    })
     .sort((a, b) => a.distance - b.distance)[0];
   if (hit && hit.distance <= 25) {
     if (hit.s.ownerPlayerId === seat)
@@ -358,12 +558,24 @@ canvas.addEventListener("click", (event) => {
       el<HTMLSelectElement>("target").value = hit.s.id;
     render();
   } else {
-    el<HTMLInputElement>("dest-x").value = String(
-      Math.max(0, Math.round((x - 40) / 30)),
-    );
-    el<HTMLInputElement>("dest-y").value = String(
-      Math.max(0, Math.round((y - 40) / 30)),
-    );
+    if (mode === "objectives") {
+      const world = mapToWorld({ x, y }, camera);
+      if (!world) return;
+      const units = state.config.positionUnitsPerTile;
+      el<HTMLInputElement>("dest-x").value = String(
+        Math.round((world.x / units) * 10) / 10,
+      );
+      el<HTMLInputElement>("dest-y").value = String(
+        Math.round((world.y / units) * 10) / 10,
+      );
+    } else {
+      el<HTMLInputElement>("dest-x").value = String(
+        Math.max(0, Math.round((x - 40) / 30)),
+      );
+      el<HTMLInputElement>("dest-y").value = String(
+        Math.max(0, Math.round((y - 40) / 30)),
+      );
+    }
   }
 });
 async function connect(createPrivate = false) {
@@ -566,6 +778,16 @@ async function connect(createPrivate = false) {
       drawing = false;
       cancelAnimationFrame(drawFrame);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strategicCtx.clearRect(0, 0, strategicMap.width, strategicMap.height);
+      delete strategicMap.dataset.tick;
+      delete canvas.dataset.tick;
+      mapView = "overview";
+      mapFocus = {
+        x: mapSettings.widthTiles / 2,
+        y: mapSettings.heightTiles / 2,
+      };
+      el("map-points").replaceChildren();
+      updateMapControls();
       lobbySlots = [];
       sessionStorage.removeItem(tokenKey());
       el("connection").textContent =
@@ -685,3 +907,5 @@ for (const skill of ["Q", "W", "R"] as const)
         : {}),
     }),
   );
+
+updateMapControls();
