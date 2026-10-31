@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: roan-three-kingdoms-demo
+    runtime: node
+    plan: 0.5c-512mb
+    region: singapore
+    branch: main
+    numInstances: 1
+    autoDeployTrigger: "off"
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node apps/server/dist/index.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_DIST_PATH
+        value: apps/client/dist
+      - key: ACCOUNT_DB_PATH
+        value: /var/data/accounts.sqlite
+    disk:
+      name: roan-accounts
+      mountPath: /var/data
+      sizeGB: 1
