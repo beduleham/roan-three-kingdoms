@@ -34,6 +34,8 @@ test("three browsers supply, grow, select augments, recruit and agree on overtim
     await expect(blue.locator("#national-player")).toContainText("xiaowei");
     const first = blue.locator("#augment-offer button").first();
     await expect(first).toBeVisible();
+    await expect(first).toContainText("%");
+    await expect(first).toContainText("초");
     await first.click();
     await expect(blue.locator("#augment-progress")).toContainText("1/7");
     await blue.locator("#recruit").click();
@@ -49,6 +51,9 @@ test("three browsers supply, grow, select augments, recruit and agree on overtim
     await expect(blue.locator("#match-result")).toContainText("무승부", {
       timeout: 15000,
     });
+    await expect(blue.locator("#objective-score")).toContainText(
+      "남은 시간 0초",
+    );
     const result = await blue.locator("#match-result").textContent(),
       ranking = await blue.locator("#national-ranking").textContent();
     for (const p of [red, green]) {
@@ -85,6 +90,9 @@ test("nine browser seats share a lobby, reconnect and pause all nations before a
     expect(
       (await blue.locator("#national-ranking").textContent()).split("\n"),
     ).toHaveLength(9);
+    await expect(blue.locator("#objective-score")).toContainText(
+      "남은 시간 0초",
+    );
     const ranking = await blue.locator("#national-ranking").textContent();
     for (const i of [1, 3, 4, 5, 6, 7, 8]) {
       await expect(pages[i].locator("#match-result")).toContainText(
