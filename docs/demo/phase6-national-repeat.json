@@ -1,0 +1,158 @@
+{
+  "profile": "accelerated test clock (1/10 open/deadline/unification, 3-tick capture)",
+  "runs": 10,
+  "replays": 10,
+  "deterministic": true,
+  "results": [
+    {
+      "seed": 41,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "419ee674f410269129de001be237c750c785d3bca1ca315aa2fe1601ba003d7b"
+    },
+    {
+      "seed": 42,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "19b0736264c210195c57928f2ecac386fd1ce6d9ce5e473094e643807cbca5a2"
+    },
+    {
+      "seed": 43,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "66b620b8a00f09785b9dab1107cb78521a186d4b4a20114a48d3da19f3b8dfa0"
+    },
+    {
+      "seed": 44,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "78feff54fca9fcffc3f4c04542b706a5b4123cea73c476213b9464fd151c892f"
+    },
+    {
+      "seed": 45,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "c9b7738ef9b99aee1b5e961da9dbf562aaa88b0fc9d431548782b1e10b8d1afa"
+    },
+    {
+      "seed": 46,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "a4b9fcc1a1c67f6898520b005b1b3c505da9cf787c50ab21915b08a978a26611"
+    },
+    {
+      "seed": 47,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "12f5568bbc9d9f5e7ec67a7e4ecf901b1e2cbff928784eb46c0cd99bffdef037"
+    },
+    {
+      "seed": 48,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "3b2481607d7df756c5ac0a9e650afe4b0f69850ed3b924070f8025932b97c167"
+    },
+    {
+      "seed": 49,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "f7bf136f22d33497b571077ed49f98624a25ebf18933817200e06f94b3a9bde6"
+    },
+    {
+      "seed": 50,
+      "tick": 1080,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 1080,
+        "scores": {
+          "blue": 42,
+          "red": 35,
+          "green": 0
+        }
+      },
+      "hash": "fb20c64f6daea7a4bdf7ec7c590c7fa1b6fffd610e6435ddd71101170f30c2b8"
+    }
+  ]
+}
