@@ -27,7 +27,9 @@
     "test:network": "npm run build && playwright test --config apps/client/network.playwright.config.mjs",
     "test:maps": "npm run build && playwright test --config apps/client/maps.playwright.config.mjs",
     "test:objectives": "npm run build && playwright test --config apps/client/objectives.playwright.config.mjs",
-    "test:remote": "npm run build:core && npm run build:protocol && node apps/server/test-support/remote-smoke.mjs"
+    "test:remote": "npm run build:core && npm run build:protocol && node apps/server/test-support/remote-smoke.mjs",
+    "test:national": "npm run build && playwright test --config apps/client/national.playwright.config.mjs",
+    "sim:national": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && node apps/server/test-support/national-repeat.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
