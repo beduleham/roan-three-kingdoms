@@ -1,3 +1,11 @@
+export type {
+  BattleView,
+  VisibleSquad,
+  VisibleCommander,
+  LastSighting,
+  VisibleBattleEvent,
+} from "./view.js";
+
 export type Path = (string | number)[];
 export type Change =
   { path: Path; value: unknown } | { path: Path; remove: true };

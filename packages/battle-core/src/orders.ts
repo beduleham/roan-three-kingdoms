@@ -1,6 +1,7 @@
 import type { BasicCommand, BattleState, Squad } from "./model.js";
 import { advanceCharge } from "./warrior.js";
 import { skillMultiplier } from "./effects.js";
+import { visibleSquadIds } from "./visibility.js";
 import {
   chaseRadius,
   compareIds,
@@ -114,8 +115,14 @@ export function advanceOrders(state: BattleState): void {
     }
     const radius = chaseRadius(s, state.config);
     const range = rangeUnits(s, state.config);
+    const visible = state.config.visibility
+      ? visibleSquadIds(snapshot, s.nationId)
+      : null;
     const enemies = snapshot.squads.filter(
-      (e) => e.hpMilli > 0 && e.nationId !== s.nationId,
+      (e) =>
+        e.hpMilli > 0 &&
+        e.nationId !== s.nationId &&
+        (!visible || visible.has(e.id)),
     );
     const reachable = (e: Squad) =>
       within(s.position, e.position, range) ||
@@ -190,6 +197,8 @@ export function advanceOrders(state: BattleState): void {
     );
     if (
       target &&
+      (!state.config.visibility ||
+        visibleSquadIds(state, s.nationId).has(target.id)) &&
       within(s.position, target.position, rangeUnits(s, state.config))
     )
       s.fsmState = "ENGAGE";

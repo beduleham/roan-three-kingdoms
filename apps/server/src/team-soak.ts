@@ -2,9 +2,12 @@ import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import assert from "node:assert/strict";
 import { Client } from "@colyseus/sdk";
-import { applyVerifiedDelta, type StateDelta } from "@roan/protocol";
+import {
+  applyVerifiedDelta,
+  type StateDelta,
+  type BattleView,
+} from "@roan/protocol";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
-import type { BattleState } from "../../../packages/battle-core/dist/index.js";
 
 const targetTick = Number(process.env.ONLINE_SOAK_TICKS ?? 900);
 assert(
@@ -23,7 +26,7 @@ const child = spawn(
 type Peer = {
   room: Awaited<ReturnType<Client["joinOrCreate"]>>;
   seat: string;
-  state: BattleState | null;
+  state: BattleView | null;
   hashes: Map<number, string>;
   ready: boolean;
   connected: boolean;
@@ -107,7 +110,7 @@ try {
           );
       },
     );
-    room.onMessage("snapshot", ({ state }: { state: BattleState }) => {
+    room.onMessage("snapshot", ({ state }: { state: BattleView }) => {
       peer.state = state;
       peer.hashes.set(state.tick, hashReplayValue(state));
       peer.awaitingSnapshot = false;
@@ -206,11 +209,14 @@ try {
     "too few ticks shared by all six clients",
   );
   for (const tick of common) {
-    const hash = peers[0]!.hashes.get(tick);
-    assert(
-      peers.every((peer) => peer.hashes.get(tick) === hash),
-      `state mismatch at tick ${tick}`,
-    );
+    for (const nation of ["blue", "red"]) {
+      const team = peers.filter((peer) => peer.seat.startsWith(nation));
+      const hash = team[0]!.hashes.get(tick);
+      assert(
+        team.every((peer) => peer.hashes.get(tick) === hash),
+        `nation view mismatch at tick ${tick}`,
+      );
+    }
   }
   assert(
     skippedTick >= 20 && peers[2]!.resyncs >= 1 && peers[2]!.snapshots >= 2,
@@ -240,7 +246,10 @@ try {
       accepted: peers.map((peer) => peer.accepted),
       rejected: Object.fromEntries(peers[0]!.rejected),
       averageDeltaBytes: Math.round(deltaBytes / deltas),
-      finalHash: peers[0]!.hashes.get(common.at(-1)!),
+      finalHashes: {
+        blue: peers[0]!.hashes.get(common.at(-1)!),
+        red: peers[1]!.hashes.get(common.at(-1)!),
+      },
     }),
   );
 } finally {

@@ -9,8 +9,12 @@ import type {
   BattleState,
 } from "../../../packages/battle-core/dist/index.js";
 import { commandSchema } from "../../../packages/battle-core/dist/model.js";
+import { NationVisibility, defaultVisionRadiusTiles } from "./visibility.js";
 
-const config = parseBattleConfig(rawConfig);
+const config = parseBattleConfig({
+  ...rawConfig,
+  visibility: { radiusTiles: defaultVisionRadiusTiles },
+});
 export type Seat = "blue" | "red" | `blue-${1 | 2 | 3}` | `red-${1 | 2 | 3}`;
 export type MatchMode = "1v1" | "3v3";
 const teamSlots = [
@@ -97,6 +101,7 @@ export function initialTeamBattle(): BattleState {
 
 /** Session ID is the sole seat authority. Untrusted payload never supplies identity, seq or tick. */
 export class AuthoritativeMatch {
+  readonly visibility = new NationVisibility();
   state: BattleState;
   readonly mode: MatchMode;
   private started = false;
@@ -109,6 +114,16 @@ export class AuthoritativeMatch {
   constructor(mode: MatchMode = "1v1") {
     this.mode = mode;
     this.state = mode === "3v3" ? initialTeamBattle() : initialOnlineBattle();
+    this.visibility.observe(this.state);
+  }
+  nation(sessionId: string) {
+    const seat = this.seats.get(sessionId);
+    return (
+      this.state.players.find((player) => player.id === seat)?.nationId ?? null
+    );
+  }
+  view(nationId: string) {
+    return this.visibility.view(this.state, nationId);
   }
   get slots(): readonly Seat[] {
     return this.mode === "3v3" ? teamSlots : ["blue", "red"];
@@ -234,6 +249,16 @@ export class AuthoritativeMatch {
           ?.ownerPlayerId !== seat)
     )
       return { accepted: false, reason: "NOT_OWNER" };
+    const targetId =
+      cmd.type === "ATTACK" || cmd.type === "CAST_SKILL"
+        ? cmd.targetSquadId
+        : undefined;
+    const nation = this.nation(sessionId)!;
+    if (
+      targetId &&
+      !this.visibility.visibleIds(this.state, nation).has(targetId)
+    )
+      return { accepted: false, reason: "TARGET_NOT_VISIBLE" };
     this.pending.push(input.data);
     this.nextSeq.set(seat, this.nextSeq.get(seat)! + 1);
     return { accepted: true };
@@ -269,6 +294,7 @@ export class AuthoritativeMatch {
     }
     const result = step(this.state, commands);
     this.state = result.state;
+    this.visibility.observe(this.state);
     return result;
   }
 }

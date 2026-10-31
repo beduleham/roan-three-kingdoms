@@ -1,10 +1,11 @@
 import { Client } from "@colyseus/sdk";
+import { hashReplayValue } from "../../../packages/battle-core/src/index.js";
 import {
-  hashReplayValue,
-  livingSoldiers,
-} from "../../../packages/battle-core/src/index.js";
-import type { BattleState } from "../../../packages/battle-core/src/index.js";
-import { applyVerifiedDelta, type StateDelta } from "@roan/protocol";
+  applyVerifiedDelta,
+  type StateDelta,
+  type BattleView,
+  type VisibleBattleEvent,
+} from "@roan/protocol";
 import "@fontsource/noto-sans-kr/400.css";
 import "./style.css";
 import "./online.css";
@@ -16,7 +17,7 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> | 서버 10Hz · 동기화 5Hz</p>
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
-<p id="identity"></p><p id="clock"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
+<p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
 <section class="online-controls"><h2>전술 명령</h2><label>내 부대 <select id="squad"></select></label> <label>적 대상 <select id="target"></select></label>
 <label>목적지 X (타일) <input id="dest-x" type="number" value="10" min="0" max="24"></label>
 <label>Y (타일) <input id="dest-y" type="number" value="6" min="0" max="13"></label>
@@ -25,7 +26,7 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <label>진형 <select id="formation"><option value="normal">기본</option><option value="defense">방어진</option><option value="offense">공격진</option></select></label><button id="applyFormation" data-command disabled>진형 변경</button>
 <button id="reassign" data-command disabled>장수 재배속</button>
 <div class="online-actions"><button id="Q" data-command disabled>Q 돌격</button><button id="W" data-command disabled>W 함성</button><button id="R" data-command disabled>R 파죽지세</button></div></section>
-<p id="result" role="status"></p><h2>서버 상태</h2><p id="selected"></p><p id="commander"></p><pre id="units"></pre><h2>최근 전투 사건</h2><pre id="events"></pre>
+<p id="result" role="status"></p><h2>현재 관측 상태</h2><p id="selected"></p><p id="commander"></p><pre id="units"></pre><h2>마지막 적 관측</h2><pre id="last-seen"></pre><h2>최근 전투 사건</h2><pre id="events"></pre>
 <p>명령은 서버에서 검증됩니다. 화면 위치만 두 서버 상태 사이에서 보간합니다.</p>`;
 const el = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -38,8 +39,9 @@ let host = false;
 let ready = false;
 let lobbyStarted = mode === "1v1";
 let room: Awaited<ReturnType<Client["joinOrCreate"]>> | null = null;
-let state: BattleState | null = null;
-let previousState: BattleState | null = null;
+let state: BattleView | null = null;
+let previousState: BattleView | null = null;
+let lastEvents: VisibleBattleEvent[] = [];
 let receivedAt = 0;
 let awaitingSnapshot = false;
 let drawing = false;
@@ -56,21 +58,30 @@ function render() {
   if (!state) return;
   el("clock").textContent =
     `${state.tick} tick · 상태 해시 ${hashReplayValue(state)}`;
+  el("vision-info").textContent =
+    `${state.nationId} 국가 공유 시야 · 반경 ${state.visionRadiusUnits / state.config.positionUnitsPerTile}타일 (시연값)`;
   el("units").textContent = state.squads
     .map(
       (s) =>
-        `${s.id}: ${livingSoldiers(s, state!.config)}명 · HP ${s.hpMilli} · 사기 ${s.morale} · 전열 ${s.cohesion} · ${s.fsmState} · ${s.stance}/${s.formation}`,
+        `${s.id}: ${s.soldiers}명 · HP ${s.hpMilli} · 사기 ${s.morale} · 전열 ${s.cohesion} · ${s.fsmState} · ${s.stance}/${s.formation}`,
     )
     .join("\n");
   const own = state.squads.filter((s) => s.ownerPlayerId === seat);
-  const enemy = state.squads.filter((s) => s.nationId !== seat?.split("-")[0]);
+  const enemy = state.squads.filter(
+    (s) => s.nationId !== state!.nationId && s.hpMilli > 0,
+  );
   for (const [id, squads] of [
     ["squad", own],
     ["target", enemy],
   ] as const) {
     const select = el<HTMLSelectElement>(id),
       previous = select.value;
-    if (select.options.length !== squads.length)
+    if (
+      select.options.length !== squads.length ||
+      [...select.options].some(
+        (option, index) => option.value !== squads[index]?.id,
+      )
+    )
       select.replaceChildren(...squads.map((s) => new Option(s.id, s.id)));
     if (squads.some((s) => s.id === previous)) select.value = previous;
   }
@@ -82,19 +93,43 @@ function render() {
     (s) => s.id === el<HTMLSelectElement>("squad").value,
   );
   el("selected").textContent = selected
-    ? `선택 ${selected.id} · 병력 ${livingSoldiers(selected, state.config)}/${selected.maxSoldiers} · HP ${selected.hpMilli} · 사기 ${selected.morale} · 전열 ${selected.cohesion} · ${selected.fsmState}`
+    ? `선택 ${selected.id} · 병력 ${selected.soldiers}/${selected.maxSoldiers} · HP ${selected.hpMilli} · 사기 ${selected.morale} · 전열 ${selected.cohesion} · ${selected.fsmState}`
     : "";
+  el("last-seen").textContent =
+    state.lastSeen
+      .map(
+        (entry) =>
+          `${entry.id}: 마지막 위치 (${entry.position.x / state!.config.positionUnitsPerTile}, ${entry.position.y / state!.config.positionUnitsPerTile}) · 관측 ${entry.observedTick} tick`,
+      )
+      .join("\n") || "시야 밖 마지막 관측 없음";
+  const knownIds = new Set(
+    [...state.squads, ...state.commanders].map((entity) => entity.id),
+  );
+  state.squads
+    .filter((s) => s.nationId === state!.nationId)
+    .forEach((s) => knownIds.add(s.ownerPlayerId));
+  el("events").textContent = lastEvents
+    .filter(
+      (event) =>
+        knownIds.has(event.actorId) &&
+        (!event.targetId || knownIds.has(event.targetId)),
+    )
+    .slice(-8)
+    .map((event) => `${event.type} ${event.actorId} ${event.reason ?? ""}`)
+    .join("\n");
   for (const skill of ["Q", "W", "R"] as const) {
     const button = el<HTMLButtonElement>(skill);
     button.disabled =
       !ready ||
       !commander ||
       commander.status !== "ACTIVE" ||
-      commander.cooldownTicks[skill] > 0;
+      commander.cooldownTicks[skill] > 0 ||
+      (skill === "Q" && enemy.length === 0);
     button.title = commander?.cooldownTicks[skill]
       ? `대기 ${commander.cooldownTicks[skill]} tick`
       : "";
   }
+  el<HTMLButtonElement>("attack").disabled = !ready || enemy.length === 0;
 }
 function refreshControls() {
   for (const button of document.querySelectorAll<HTMLButtonElement>(
@@ -142,8 +177,39 @@ function destination() {
 function draw() {
   if (!state) return;
   const alpha = Math.min(1, (performance.now() - receivedAt) / 200);
+  ctx.fillStyle = "#61594b";
+  ctx.fillRect(0, 0, 720, 420);
+  ctx.save();
+  ctx.beginPath();
+  for (const observer of state.squads.filter(
+    (s) => s.nationId === state!.nationId && s.hpMilli > 0,
+  )) {
+    const x =
+        40 + (observer.position.x / state.config.positionUnitsPerTile) * 30,
+      y = 40 + (observer.position.y / state.config.positionUnitsPerTile) * 30;
+    const radius =
+      (state.visionRadiusUnits / state.config.positionUnitsPerTile) * 30;
+    ctx.moveTo(x + radius, y);
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+  }
+  ctx.clip();
   ctx.fillStyle = "#efe3c8";
   ctx.fillRect(0, 0, 720, 420);
+  ctx.restore();
+  for (const entry of state.lastSeen) {
+    const x = 40 + (entry.position.x / state.config.positionUnitsPerTile) * 30,
+      y = 40 + (entry.position.y / state.config.positionUnitsPerTile) * 30;
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "#e5d8b7";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = "#f4e9d0";
+    ctx.fillText(`? ${entry.id} · ${entry.observedTick}tick`, x + 20, y + 4);
+  }
   for (const s of state.squads) {
     const old = previousState?.squads.find((p) => p.id === s.id);
     const xUnits = old
@@ -326,8 +392,9 @@ async function connect(createPrivate = false) {
           ? "로비 대기"
           : "상대 접속 대기";
     });
-    room.onMessage("snapshot", ({ state: next }: { state: BattleState }) => {
+    room.onMessage("snapshot", ({ state: next }: { state: BattleView }) => {
       state = next;
+      lastEvents = [];
       previousState = null;
       receivedAt = performance.now();
       awaitingSnapshot = false;
@@ -339,11 +406,7 @@ async function connect(createPrivate = false) {
     });
     room.onMessage(
       "delta",
-      (
-        delta: StateDelta & {
-          events?: { type: string; actorId?: string; reason?: string }[];
-        },
-      ) => {
+      (delta: StateDelta & { events?: VisibleBattleEvent[] }) => {
         if (!state || awaitingSnapshot) return;
         const next = applyVerifiedDelta(state, delta, hashReplayValue);
         if (!next) {
@@ -353,19 +416,12 @@ async function connect(createPrivate = false) {
         }
         previousState = state;
         state = next;
+        lastEvents = delta.events ?? [];
         receivedAt = performance.now();
         root.dataset.deltaCount = String(
           Number(root.dataset.deltaCount ?? 0) + 1,
         );
         render();
-        if (delta.events?.length)
-          el("events").textContent = delta.events
-            .slice(-8)
-            .map(
-              (event) =>
-                `${event.type} ${event.actorId ?? ""} ${event.reason ?? ""}`,
-            )
-            .join("\n");
       },
     );
     room.onMessage(
@@ -402,7 +458,15 @@ async function connect(createPrivate = false) {
           : "연결 종료";
       el("identity").textContent = "";
       el("clock").textContent = "";
-      for (const id of ["lobby", "selected", "commander", "units", "events"])
+      for (const id of [
+        "lobby",
+        "selected",
+        "commander",
+        "units",
+        "events",
+        "vision-info",
+        "last-seen",
+      ])
         el(id).textContent = "";
       el<HTMLSelectElement>("remove-seat").replaceChildren();
       el("invite").hidden = true;

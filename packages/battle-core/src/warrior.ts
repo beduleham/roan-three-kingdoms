@@ -7,6 +7,7 @@ import type {
   Squad,
 } from "./model.js";
 import { commanderEnabled, skillMultiplier } from "./effects.js";
+import { visibleSquadIds } from "./visibility.js";
 import { applyBp, livingSoldiers, safeInteger } from "./damage.js";
 import {
   directionFrom,
@@ -209,6 +210,11 @@ export function validateWarriorCommand(
       target = state.squads.find((s) => s.id === cmd.targetSquadId);
     if (!target || target.hpMilli === 0 || target.nationId === player.nationId)
       return "INVALID_TARGET";
+    if (
+      state.config.visibility &&
+      !visibleSquadIds(state, player.nationId).has(target.id)
+    )
+      return "TARGET_NOT_VISIBLE";
     const rules = state.config.warriorAssumptions;
     const min = rules.chargePreparationUnits + rules.chargeCollisionRadiusUnits;
     if (distanceSquared(s.position, target.position) < BigInt(min) ** 2n)

@@ -1,0 +1,6 @@
+{
+  "designStatus": "experimental-not-balance-validated",
+  "sharing": "nation",
+  "radiusTiles": 10,
+  "memory": "last-position-and-observed-tick"
+}

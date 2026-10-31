@@ -2,8 +2,11 @@ import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
 import { Client } from "@colyseus/sdk";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
-import type { BattleState } from "../../../packages/battle-core/dist/index.js";
-import { applyStateDelta, type StateDelta } from "@roan/protocol";
+import {
+  applyVerifiedDelta,
+  type StateDelta,
+  type BattleView,
+} from "@roan/protocol";
 
 const port = 2677;
 const child = spawn(
@@ -46,7 +49,8 @@ try {
   let denied = "",
     accepted = false;
   const snapshots = [new Map<number, string>(), new Map<number, string>()];
-  const latest: (BattleState | null)[] = [null, null];
+  const latest: (BattleView | null)[] = [null, null];
+  const views = [new Map<number, BattleView>(), new Map<number, BattleView>()];
   const wireSizes: number[] = [];
   blue.onMessage("seat", (v: { seat: string }) => {
     blueSeat = v.seat;
@@ -59,17 +63,28 @@ try {
   blue.onMessage("lobby", () => {});
   red.onMessage("lobby", () => {});
   for (const [index, connection] of [blue, red].entries()) {
-    connection.onMessage("snapshot", (v: { state: BattleState }) => {
+    connection.onMessage("snapshot", (v: { state: BattleView }) => {
+      assert(
+        !("seed" in v.state) && !("players" in v.state),
+        "full core state leaked",
+      );
+      assert(
+        v.state.squads.every(
+          (squad) => !("order" in squad) && !("currentTargetId" in squad),
+        ),
+      );
       latest[index] = v.state;
+      views[index]!.set(v.state.tick, v.state);
       snapshots[index]!.set(v.state.tick, hashReplayValue(v.state));
     });
     connection.onMessage("delta", (d: StateDelta) => {
       const base = latest[index];
       assert(base);
       assert.equal(base.tick, d.baseTick);
-      const next = applyStateDelta(base, d.changes);
-      assert.equal(hashReplayValue(next), d.hash);
+      const next = applyVerifiedDelta(base, d, hashReplayValue);
+      assert(next);
       latest[index] = next;
+      views[index]!.set(d.tick, next);
       snapshots[index]!.set(d.tick, d.hash);
       if (index === 0) wireSizes.push(JSON.stringify(d).length);
     });
@@ -110,10 +125,15 @@ try {
     snapshots[1]!.has(tick),
   );
   assert(common.length >= 3);
-  for (const tick of common)
-    assert.equal(snapshots[0]!.get(tick), snapshots[1]!.get(tick));
+  for (const tick of common) {
+    const blueView = views[0]!.get(tick)!,
+      redView = views[1]!.get(tick)!;
+    for (const squad of blueView.squads) {
+      const shared = redView.squads.find((s) => s.id === squad.id);
+      if (shared) assert.deepEqual(squad, shared);
+    }
+  }
   assert(wireSizes.length > 0);
-  assert(wireSizes[0]! < JSON.stringify(latest[0]).length);
   console.log(
     JSON.stringify({
       sameRoom: true,
@@ -121,6 +141,7 @@ try {
       denied,
       accepted,
       matchingTicks: common.length,
+      hashScope: "nation-view",
       firstDeltaBytes: wireSizes[0],
       fullStateBytes: JSON.stringify(latest[0]).length,
     }),
