@@ -14,6 +14,10 @@ node apps/server/dist/index.js
 
 별도 터미널에서 `npm run dev --workspace @roan/client`을 실행하고 표시된 주소의 `/online.html`을 두 브라우저 창에서 엽니다. 서버 기본 포트는 2567이며 `PORT`로 바꿀 수 있습니다. 클라이언트 주소가 다르면 `?server=ws://HOST:PORT`를 사용합니다.
 
+## Railway 배포
+
+현재 선택한 배포 대상은 Railway 단일 서비스입니다. [Railway 설정 안내](../../docs/network/RAILWAY_DEMO_v0.1.md)에 따라 저장소 루트의 `railway.json`, `/data` 볼륨과 Railway 전용 쓰기 권한 변수를 사용합니다. Caddy는 Railway에 별도 배포하지 않습니다. 계정 연결과 실제 외부 검증은 아직 완료되지 않았습니다.
+
 ## 외부 시연 준비와 장애 검사
 
 [외부 시연 문서](../../docs/network/EXTERNAL_DEMO_v0.1.md)의 Docker/Caddy 구성과 같은 원본 정적 제공을 추가했습니다. `npm run test:network`는 빌드된 화면에서 지연·일시 단절·실제 30초 예약 만료를 검사합니다. 외부 배포 이후에는 `DEMO_URL=https://도메인 npm run test:remote`로 실제 원격 SDK 접속을 검사할 수 있습니다. 외부 서버·도메인이 없어 실제 배포 및 공인 HTTPS는 아직 미검증입니다.
