@@ -26,7 +26,6 @@ No balance confirmation, terrain/strategic map, supply, progression integration,
 
 User supplied Render UI and Shell outputs confirming 1GB mounted at `/var/data`, SQLite account files present, and an independent UUID marker retained across a manual redeployment to a different instance. This proves file persistence for that check, not actual Google-account restoration. Real Google login remains deferred.
 
-
 ## Public Render acceptance after deployment — completed 2026-11-01 (Korea)
 
 URL: https://roan-three-kingdoms.onrender.com/online.html?mode=objectives
