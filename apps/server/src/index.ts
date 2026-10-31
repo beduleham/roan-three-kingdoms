@@ -1,7 +1,9 @@
 import { defineRoom, defineServer } from "colyseus";
 import { BattleRoom, Battle3v3Room } from "./room.js";
+import { registerAccountRoutes } from "./auth.js";
 
 const server = defineServer({
+  express: registerAccountRoutes,
   rooms: {
     battle_1v1: defineRoom(BattleRoom),
     battle_3v3: defineRoom(Battle3v3Room),
