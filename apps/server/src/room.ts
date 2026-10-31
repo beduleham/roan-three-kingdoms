@@ -7,12 +7,15 @@ import {
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
 import { AuthoritativeMatch } from "./match.js";
 import { InviteAccess } from "./invite.js";
+import { accountAuth, publicIdentity, type Identity } from "./auth.js";
 
 export class BattleRoom extends Room {
   maxClients = 2;
   maxMessagesPerSecond = 20;
   patchRate = 200;
   protected match = new AuthoritativeMatch();
+  protected accounts = accountAuth;
+  private accountSeats = new Map<string, string>();
   private sentViews = new Map<string, BattleView>();
   private accumulatedEvents = new Map<string, VisibleBattleEvent[]>();
   private inviteAccess: InviteAccess | null = null;
@@ -23,6 +26,7 @@ export class BattleRoom extends Room {
   messages = {
     hello: (client: Client) => {
       if (!this.match.seat(client.sessionId)) return;
+      client.send("account", publicIdentity(client.auth as Identity));
       if (this.inviteAccess)
         client.send("invite-key", { key: this.inviteAccess.key });
       client.send("seat", {
@@ -142,16 +146,31 @@ export class BattleRoom extends Room {
     }, 100);
   }
   onAuth(_client: Client, options: unknown) {
+    let identity: Identity;
+    try {
+      identity = this.accounts.authenticate(options);
+    } catch {
+      throw new ServerError(401, "ACCOUNT_SESSION_EXPIRED");
+    }
     if (this.inviteAccess && !this.inviteAccess.authorize(options))
       throw new ServerError(403, "INVITE_REQUIRED");
-    return true;
+    if (
+      identity.provider === "google" &&
+      this.accountSeats.has(identity.accountId)
+    )
+      throw new ServerError(403, "ACCOUNT_ALREADY_IN_ROOM");
+    return identity;
   }
   onJoin(client: Client) {
+    const identity = client.auth as Identity;
     const seat = this.match.join(client.sessionId);
     if (!seat) throw new Error("ROOM_FULL");
+    if (identity.provider === "google")
+      this.accountSeats.set(identity.accountId, client.sessionId);
     this.broadcast("lobby", this.match.lobby, { except: client });
   }
   onDrop(client: Client) {
+    if (!this.match.seat(client.sessionId)) return;
     this.match.drop(client.sessionId);
     this.broadcastLobby();
     this.reconnectReservations.set(
@@ -171,6 +190,12 @@ export class BattleRoom extends Room {
     this.broadcastLobby();
   }
   onLeave(client: Client) {
+    const identity = client.auth as Identity | undefined;
+    if (
+      identity?.provider === "google" &&
+      this.accountSeats.get(identity.accountId) === client.sessionId
+    )
+      this.accountSeats.delete(identity.accountId);
     this.reconnectReservations.delete(client.sessionId);
     this.match.leave(client.sessionId);
     this.broadcastLobby();
