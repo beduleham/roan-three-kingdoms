@@ -1,4 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+
+test("client dev server refuses access to the account database", async ({
+  request,
+}) => {
+  const path = fileURLToPath(
+    new URL("../../../data/accounts.sqlite", import.meta.url),
+  );
+  for (const suffix of ["", "?raw", "-wal", "-shm"])
+    expect((await request.get(`/@fs/${path}${suffix}`)).status()).toBe(403);
+  expect((await request.get("/online.html")).ok()).toBe(true);
+});
 
 test("unreachable Google script leaves real guest entry available", async ({
   page,

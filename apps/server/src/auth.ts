@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { OAuth2Client } from "google-auth-library";
 import express, { type Application } from "express";
+import { MemoryAccountRepository, type AccountRepository } from "./accounts.js";
 
 const CHALLENGE_MS = 5 * 60_000;
 const SESSION_MS = 60 * 60_000;
@@ -9,6 +10,11 @@ export type Identity =
   | { provider: "guest" }
   | { provider: "google"; accountId: string; name: string };
 type Session = { identity: Identity; expiresAt: number };
+export class AccountStorageUnavailable extends Error {
+  constructor(cause: unknown) {
+    super("ACCOUNT_STORAGE_UNAVAILABLE", { cause });
+  }
+}
 
 /** Process-local demo sessions. Never use browser claims as an account identity. */
 export class AccountAuth {
@@ -18,7 +24,13 @@ export class AccountAuth {
     readonly clientId = process.env.GOOGLE_CLIENT_ID?.trim() || null,
     private verifier: Pick<OAuth2Client, "verifyIdToken"> = new OAuth2Client(),
     private now = () => Date.now(),
+    private accounts: AccountRepository = new MemoryAccountRepository(),
   ) {}
+  initializeAccounts(accounts: AccountRepository) {
+    if (this.sessions.size || this.challenges.size)
+      throw new Error("AUTH_ALREADY_STARTED");
+    this.accounts = accounts;
+  }
   private prune() {
     for (const [key, expires] of this.challenges)
       if (expires <= this.now()) this.challenges.delete(key);
@@ -61,10 +73,20 @@ export class AccountAuth {
     this.prune();
     if (this.sessions.size >= MAX_ENTRIES) throw new Error("AUTH_BUSY");
     const sessionToken = randomBytes(32).toString("hex");
+    let account;
+    try {
+      account = this.accounts.resolveGoogle(
+        payload.sub,
+        payload.name?.slice(0, 80) || "Google 플레이어",
+        this.now(),
+      );
+    } catch (error) {
+      throw new AccountStorageUnavailable(error);
+    }
     const identity: Identity = {
       provider: "google",
-      accountId: `google:${payload.sub}`,
-      name: payload.name?.slice(0, 80) || "Google 플레이어",
+      accountId: account.id,
+      name: account.name,
     };
     const expiresAt = Math.min(payload.exp * 1000, this.now() + SESSION_MS);
     this.sessions.set(sessionToken, { identity, expiresAt });
@@ -143,8 +165,10 @@ export function registerAccountRoutes(app: Application, auth = accountAuth) {
   app.post("/auth/google", async (req, res) => {
     try {
       res.json(await auth.login(req.body));
-    } catch {
-      res.status(401).json({ error: "INVALID_GOOGLE_LOGIN" });
+    } catch (error) {
+      if (error instanceof AccountStorageUnavailable)
+        res.status(503).json({ error: "ACCOUNT_STORAGE_UNAVAILABLE" });
+      else res.status(401).json({ error: "INVALID_GOOGLE_LOGIN" });
     }
   });
   const bearer = (header?: string) =>
