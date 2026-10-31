@@ -23,7 +23,9 @@
     "build:core": "tsc -p packages/battle-core/tsconfig.build.json",
     "build:protocol": "tsc -p packages/protocol/tsconfig.build.json",
     "test:browser": "npm run build:core && playwright test --config apps/client/playwright.config.mjs",
-    "test:browser:online": "npm run build:protocol && playwright test --config apps/client/online.playwright.config.mjs"
+    "test:browser:online": "npm run build:protocol && playwright test --config apps/client/online.playwright.config.mjs",
+    "test:network": "npm run build && playwright test --config apps/client/network.playwright.config.mjs",
+    "test:remote": "npm run build:core && npm run build:protocol && node apps/server/test-support/remote-smoke.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
