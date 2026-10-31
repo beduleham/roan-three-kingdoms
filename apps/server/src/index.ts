@@ -1,5 +1,10 @@
 import { defineRoom, defineServer } from "colyseus";
-import { BattleRoom, Battle3v3Room, ObjectiveBattleRoom } from "./room.js";
+import {
+  BattleRoom,
+  Battle3v3Room,
+  ObjectiveBattleRoom,
+  NationalBattleRoom,
+} from "./room.js";
 import { accountAuth } from "./auth.js";
 import { registerHttp } from "./http.js";
 import { SqliteAccountRepository } from "./accounts.js";
@@ -13,6 +18,7 @@ accountAuth.initializeAccounts(accounts);
 const server = defineServer({
   express: (app) => registerHttp(app),
   rooms: {
+    battle_national: defineRoom(NationalBattleRoom),
     battle_objectives: defineRoom(ObjectiveBattleRoom),
     battle_1v1: defineRoom(BattleRoom),
     battle_3v3: defineRoom(Battle3v3Room),
