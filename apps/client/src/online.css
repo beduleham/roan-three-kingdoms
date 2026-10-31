@@ -12,6 +12,7 @@
   border: 1px solid #89734a;
 }
 .online-controls,
+#account-panel,
 #lobby-panel {
   max-width: 720px;
   padding: 16px;
