@@ -9,12 +9,14 @@ import {
 import "@fontsource/noto-sans-kr/400.css";
 import "./style.css";
 import "./online.css";
+import { createAccountPanel } from "./account.js";
 
 const root = document.querySelector<HTMLElement>("#online")!;
 const mode =
   new URLSearchParams(location.search).get("mode") === "3v3" ? "3v3" : "1v1";
 root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode === "3v3" ? "3대3" : "1대1"}</h1><span>서버 권위 전투 시연</span></header>
 <p><a href="/online.html">1대1</a> · <a href="/online.html?mode=3v3">3대3 로비</a> | 서버 10Hz · 동기화 5Hz</p>
+<section id="account-panel" aria-label="로그인"><p id="account-status" role="status">게스트 이용 중</p><div id="google-login" hidden></div><button id="account-logout" hidden>로그아웃 · 게스트로 전환</button><p>로그인 없이 게스트로도 접속할 수 있습니다. 계정 변경은 경기에서 나간 뒤 가능합니다.</p></section>
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>빈자리를 AI로 채워 시작</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
 <p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><canvas id="field" width="720" height="420"></canvas>
@@ -34,6 +36,12 @@ const params = new URLSearchParams(location.search);
 let inviteKey = new URLSearchParams(location.hash.slice(1)).get("invite");
 const tokenKey = () =>
   `roan-online-reconnection-${mode}-${params.get("room") ?? "quick"}`;
+const serverAddress =
+  params.get("server") ??
+  `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
+const account = createAccountPanel(serverAddress, () =>
+  sessionStorage.removeItem(tokenKey()),
+);
 let seat: string | null = null;
 let host = false;
 let ready = false;
@@ -274,13 +282,12 @@ async function connect(createPrivate = false) {
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
   el<HTMLButtonElement>("create-private").setAttribute("disabled", "");
   el("connection").textContent = "접속 중";
+  account.setLocked(true);
   if (!createPrivate)
     inviteKey = new URLSearchParams(location.hash.slice(1)).get("invite");
   try {
-    const address =
-      new URLSearchParams(location.search).get("server") ??
-      `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
-    const client = new Client(address);
+    const options = await account.joinOptions();
+    const client = new Client(serverAddress);
     const token = createPrivate ? null : sessionStorage.getItem(tokenKey());
     if (token) {
       try {
@@ -293,6 +300,7 @@ async function connect(createPrivate = false) {
     if (!room) {
       room = createPrivate
         ? await client.create(roomName, {
+            ...options,
             inviteOnly: true,
             creatorProof: Array.from(
               crypto.getRandomValues(new Uint8Array(32)),
@@ -300,8 +308,11 @@ async function connect(createPrivate = false) {
             ).join(""),
           })
         : params.get("room")
-          ? await client.joinById(params.get("room")!, { inviteKey })
-          : await client.joinOrCreate(roomName);
+          ? await client.joinById(params.get("room")!, {
+              inviteKey,
+              ...options,
+            })
+          : await client.joinOrCreate(roomName, options);
     }
     if (room.name !== roomName) {
       await room.leave();
@@ -314,6 +325,7 @@ async function connect(createPrivate = false) {
     sessionStorage.setItem(tokenKey(), room.reconnectionToken);
     root.dataset.roomId = room.roomId;
     el("connection").textContent = `접속됨 · Room ${room.roomId}`;
+    room.onMessage("account", account.confirmed);
     room.onMessage("invite-key", ({ key }: { key: string }) => {
       inviteKey = key;
       updateInviteLink();
@@ -441,6 +453,8 @@ async function connect(createPrivate = false) {
       room?.send("hello");
     });
     room.onLeave((_code, reason) => {
+      account.setLocked(false);
+      account.disconnected();
       room = null;
       seat = null;
       host = false;
@@ -476,6 +490,7 @@ async function connect(createPrivate = false) {
     });
     room.send("hello");
   } catch (error) {
+    account.setLocked(false);
     el("connection").textContent = `접속 실패: ${String(error)}`;
     el<HTMLButtonElement>("join").disabled = false;
     el<HTMLButtonElement>("create-private").disabled = false;
