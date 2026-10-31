@@ -45,3 +45,17 @@
 #invite {
   overflow-wrap: anywhere;
 }
+
+#strategic-map {
+  display: block;
+  width: 300px;
+  max-width: 100%;
+  border: 1px solid #89734a;
+  cursor: crosshair;
+}
+#map-panel button[aria-pressed="true"] {
+  outline: 2px solid #e8bd51;
+}
+#map-panel p {
+  line-height: 1.7;
+}
