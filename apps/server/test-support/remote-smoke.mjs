@@ -30,6 +30,9 @@ function observe(room) {
     state: null,
     history: new Map(),
     denied: "",
+    awaitingSnapshot: false,
+    resyncs: 0,
+    skippedDelta: false,
   };
   peers.push(peer);
   room.onMessage("*", () => {});
@@ -40,14 +43,30 @@ function observe(room) {
     peer.key = key;
   });
   room.onMessage("snapshot", ({ state }) => {
+    peer.awaitingSnapshot = false;
     peer.state = state;
     peer.history.set(state.tick, state);
   });
   room.onMessage("delta", (delta) => {
+    if (
+      process.env.REMOTE_SMOKE_SKIP_ONE_DELTA === "1" &&
+      !peer.skippedDelta &&
+      peer.state
+    ) {
+      peer.skippedDelta = true;
+      return;
+    }
+    if (peer.awaitingSnapshot) return;
     const next =
       peer.state && applyVerifiedDelta(peer.state, delta, hashReplayValue);
     if (!next) {
-      failure = new Error("Invalid remote view delta");
+      if (peer.state?.tick === delta.baseTick) {
+        failure = new Error("Invalid remote view delta hash");
+      } else {
+        peer.awaitingSnapshot = true;
+        peer.resyncs++;
+        room.send("hello");
+      }
       return;
     }
     peer.state = next;
@@ -125,6 +144,7 @@ try {
       sameRoom: blue.room.roomId === red.room.roomId,
       seats: [blue.seat, red.seat],
       matchingTick,
+      resyncs: peers.map((peer) => peer.resyncs),
       denied: blue.denied,
     }),
   );
