@@ -1,7 +1,10 @@
 import { Room, ServerError, CloseCode, type Client } from "colyseus";
-import { diffState } from "@roan/protocol";
+import {
+  diffState,
+  type BattleView,
+  type VisibleBattleEvent,
+} from "@roan/protocol";
 import { hashReplayValue } from "../../../packages/battle-core/dist/index.js";
-import type { BattleState } from "../../../packages/battle-core/dist/index.js";
 import { AuthoritativeMatch } from "./match.js";
 import { InviteAccess } from "./invite.js";
 
@@ -10,8 +13,8 @@ export class BattleRoom extends Room {
   maxMessagesPerSecond = 20;
   patchRate = 200;
   protected match = new AuthoritativeMatch();
-  private sentState!: BattleState;
-  private accumulatedEvents: unknown[] = [];
+  private sentViews = new Map<string, BattleView>();
+  private accumulatedEvents = new Map<string, VisibleBattleEvent[]>();
   private inviteAccess: InviteAccess | null = null;
   private reconnectReservations = new Map<
     string,
@@ -26,7 +29,7 @@ export class BattleRoom extends Room {
         seat: this.match.seat(client.sessionId),
         host: this.match.isHost(client.sessionId),
       });
-      client.send("snapshot", { state: this.match.state, events: [] });
+      this.sendSnapshot(client);
       client.send("lobby", this.match.lobby);
       this.broadcast("ready", { ready: this.match.ready });
     },
@@ -86,21 +89,56 @@ export class BattleRoom extends Room {
       this.inviteAccess = new InviteAccess(options.creatorProof);
       await this.setPrivate(true);
     }
-    this.sentState = this.match.state;
+    const nations = [
+      ...new Set(this.match.state.players.map((player) => player.nationId)),
+    ];
+    for (const nation of nations) {
+      this.sentViews.set(nation, this.match.view(nation));
+      this.accumulatedEvents.set(nation, []);
+    }
     this.setTimestep(() => {
       const result = this.match.advance();
       if (!result) return;
-      this.accumulatedEvents.push(...result.events);
+      for (const nation of nations)
+        this.accumulatedEvents
+          .get(nation)!
+          .push(
+            ...this.match.visibility.events(
+              result.state,
+              nation,
+              result.events,
+            ),
+          );
       if (result.state.tick % 2 !== 0) return;
-      this.broadcast("delta", {
-        baseTick: this.sentState.tick,
-        tick: result.state.tick,
-        hash: hashReplayValue(result.state),
-        changes: diffState(this.sentState, result.state),
-        events: this.accumulatedEvents,
-      });
-      this.sentState = result.state;
-      this.accumulatedEvents = [];
+      for (const nation of nations) {
+        const view = this.match.view(nation),
+          before = this.sentViews.get(nation)!;
+        const knownIds = new Set(
+          [...view.squads, ...view.commanders].map((entity) => entity.id),
+        );
+        result.state.players
+          .filter((player) => player.nationId === nation)
+          .forEach((player) => knownIds.add(player.id));
+        const events = this.accumulatedEvents
+          .get(nation)!
+          .filter(
+            (event) =>
+              knownIds.has(event.actorId) &&
+              (!event.targetId || knownIds.has(event.targetId)),
+          );
+        const delta = {
+          baseTick: before.tick,
+          tick: view.tick,
+          hash: hashReplayValue(view),
+          changes: diffState(before, view),
+          events,
+        };
+        for (const client of this.clients)
+          if (this.match.nation(client.sessionId) === nation)
+            client.send("delta", delta);
+        this.sentViews.set(nation, view);
+        this.accumulatedEvents.set(nation, []);
+      }
     }, 100);
   }
   onAuth(_client: Client, options: unknown) {
@@ -129,7 +167,7 @@ export class BattleRoom extends Room {
       seat: this.match.seat(client.sessionId),
       host: this.match.isHost(client.sessionId),
     });
-    client.send("snapshot", { state: this.match.state, events: [] });
+    this.sendSnapshot(client);
     this.broadcastLobby();
   }
   onLeave(client: Client) {
@@ -146,6 +184,11 @@ export class BattleRoom extends Room {
         });
     this.broadcast("lobby", this.match.lobby);
     this.broadcast("ready", { ready: this.match.ready });
+  }
+  private sendSnapshot(client: Client) {
+    const nation = this.match.nation(client.sessionId);
+    if (nation)
+      client.send("snapshot", { state: this.match.view(nation), events: [] });
   }
 }
 
