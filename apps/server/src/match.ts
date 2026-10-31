@@ -1,6 +1,17 @@
+import rawNational from "../../../national_demo.v1.json" with { type: "json" };
 import rawObjectives from "../../../objective_demo.v1.json" with { type: "json" };
 import rawConfig from "../../../battle_config.v1.json" with { type: "json" };
 import {
+  nationalRulesSchema,
+  economyActionSchema,
+  createNationalProgress,
+  queueSupply,
+  advanceNational,
+  finishNationalRanking,
+  experimentalAugments,
+  type NationalRules,
+  type NationalProgress,
+  type EconomyAction,
   createBattle,
   step,
   parseBattleConfig,
@@ -22,8 +33,13 @@ const config = parseBattleConfig({
   ...rawConfig,
   visibility: { radiusTiles: defaultVisionRadiusTiles },
 });
-export type Seat = "blue" | "red" | `blue-${1 | 2 | 3}` | `red-${1 | 2 | 3}`;
-export type MatchMode = "1v1" | "3v3" | "objectives";
+export type Seat =
+  | "blue"
+  | "red"
+  | `blue-${1 | 2 | 3}`
+  | `red-${1 | 2 | 3}`
+  | `green-${1 | 2 | 3}`;
+export type MatchMode = "1v1" | "3v3" | "objectives" | "national";
 const teamSlots = [
   "blue-1",
   "red-1",
@@ -106,12 +122,78 @@ export function initialTeamBattle(): BattleState {
   });
 }
 
+export const nationalSlots = [
+  "blue-1",
+  "red-1",
+  "green-1",
+  "blue-2",
+  "red-2",
+  "green-2",
+  "blue-3",
+  "red-3",
+  "green-3",
+] as const;
+export function initialNationalBattle(
+  rules: NationalRules,
+  seed = 41,
+): BattleState {
+  const bases = rules.bases;
+  const base = (nation: string) =>
+    rules.objectives.points.find((p) => p.id === bases[nation])!.position;
+  const defs = Array.from({ length: rules.augmentCopies }, (_, i) =>
+    experimentalAugments.map((d) => ({
+      ...structuredClone(d),
+      id: `national-${i}-${d.id}`,
+    })),
+  ).flat();
+  return createBattle(config, seed, {
+    augmentDefinitions: defs,
+    players: nationalSlots.map((id) => ({
+      id,
+      nationId: id.split("-")[0]!,
+      level: 1,
+      supplyPoints: rules.initialSupply,
+    })),
+    squads: nationalSlots.flatMap((owner) => {
+      const nation = owner.split("-")[0]!,
+        origin = base(nation),
+        slot = Number(owner.at(-1)) - 1;
+      return (["spears", "archers"] as const).map((unitType, i) => ({
+        id: `${owner}-${i + 1}`,
+        ownerPlayerId: owner,
+        nationId: nation,
+        unitType,
+        maxSoldiers: 20,
+        hpMilli: 20 * config.soldierHp * config.hpMilliPerHp,
+        position: { x: origin.x + (slot - 1) * 500, y: origin.y + i * 500 },
+        stance: "balanced" as const,
+      }));
+    }),
+    commanders: nationalSlots.map((owner) => ({
+      id: `${owner}-commander`,
+      ownerPlayerId: owner,
+      assignedSquadId: `${owner}-1`,
+      hpMilli: config.commander.baseHp * config.hpMilliPerHp,
+      maxHpMilli: config.commander.baseHp * config.hpMilliPerHp,
+      respawnZoneIndex: ["blue", "red", "green"].indexOf(owner.split("-")[0]!),
+    })),
+    safeZones: ["blue", "red", "green"].map((nationId) => ({
+      nationId,
+      position: { ...base(nationId) },
+      radiusUnits: rules.objectives.radiusUnits,
+    })),
+  });
+}
+
 /** Session ID is the sole seat authority. Untrusted payload never supplies identity, seq or tick. */
 export class AuthoritativeMatch {
   readonly visibility = new NationVisibility();
   state: BattleState;
   readonly mode: MatchMode;
   objectiveMatch: ObjectiveMatchState | null = null;
+  national: NationalProgress | null = null;
+  readonly nationalRules: NationalRules;
+  private pendingEconomy: { playerId: string; action: EconomyAction }[] = [];
   readonly objectiveRules: ObjectiveRules;
   private started = false;
   private aiOrderedSeats = new Set<Seat>();
@@ -123,10 +205,29 @@ export class AuthoritativeMatch {
   constructor(
     mode: MatchMode = "1v1",
     objectiveRules: ObjectiveRules = objectiveRulesSchema.parse(rawObjectives),
+    nationalRules: NationalRules = nationalRulesSchema.parse(rawNational),
   ) {
-    this.objectiveRules = objectiveRulesSchema.parse(objectiveRules);
+    this.nationalRules = nationalRulesSchema.parse(nationalRules);
+    this.objectiveRules = objectiveRulesSchema.parse(
+      mode === "national" ? this.nationalRules.objectives : objectiveRules,
+    );
     this.mode = mode;
-    this.state = mode === "3v3" ? initialTeamBattle() : initialOnlineBattle();
+    this.state =
+      mode === "national"
+        ? initialNationalBattle(this.nationalRules)
+        : mode === "3v3"
+          ? initialTeamBattle()
+          : initialOnlineBattle();
+    if (mode === "national") {
+      this.national = createNationalProgress(this.state);
+      this.objectiveMatch = createObjectiveMatch(this.objectiveRules, [
+        "blue",
+        "red",
+        "green",
+      ]);
+      for (const [nation, id] of Object.entries(this.nationalRules.bases))
+        this.objectiveMatch.points.find((p) => p.id === id)!.owner = nation;
+    }
     if (mode === "objectives")
       this.objectiveMatch = createObjectiveMatch(this.objectiveRules, [
         "blue",
@@ -142,12 +243,64 @@ export class AuthoritativeMatch {
   }
   view(nationId: string) {
     const view = this.visibility.view(this.state, nationId);
-    return this.objectiveMatch
-      ? { ...view, objectiveMatch: structuredClone(this.objectiveMatch) }
-      : view;
+    const objective = this.objectiveMatch
+      ? { objectiveMatch: structuredClone(this.objectiveMatch) }
+      : {};
+    if (!this.national) return { ...view, ...objective };
+    const n = this.national,
+      r = this.nationalRules;
+    return {
+      ...view,
+      ...objective,
+      nationalMatch: {
+        experimental: true as const,
+        phase: n.phase,
+        deadline: r.checkpoints[n.phase]!,
+        unifyNation: n.unifyNation,
+        unifyTicks: n.unifyTicks,
+        unifyRequired: r.unifyHoldTicks,
+        players: this.state.players
+          .filter((p) => p.nationId === nationId)
+          .map((p) => {
+            const aug = this.state.augmentProgress.find(
+              (a) => a.playerId === p.id,
+            );
+            return {
+              id: p.id,
+              nationId: p.nationId,
+              xp: p.xp,
+              merit: p.merit,
+              level: p.level,
+              rank: p.rank,
+              supplyPoints: p.supplyPoints,
+              cap: { ...this.state.config.rankCaps[p.rank] },
+              nextXp: r.xpThresholds[p.level] ?? null,
+              offer: aug?.offer ? structuredClone(aug.offer) : null,
+              selected: aug ? [...aug.selected] : [],
+              job: structuredClone(
+                n.jobs.find((j) => j.playerId === p.id) ?? null,
+              ),
+              feedback: n.stats[p.id]!.feedback,
+            };
+          }),
+        ranking: structuredClone(n.ranking),
+        rules: {
+          refillSoldiers: r.refillSoldiers,
+          costPerSoldier: r.supplyCostPerSoldier,
+          recruitCost: r.recruitCost,
+          recruitSoldiers: r.recruitSoldiers,
+          jobTicks: r.jobTicks,
+          rMinLevel: this.state.config.warriorSkills.R.minLevel,
+        },
+      },
+    };
   }
   get slots(): readonly Seat[] {
-    return this.mode === "3v3" ? teamSlots : ["blue", "red"];
+    return this.mode === "national"
+      ? nationalSlots
+      : this.mode === "3v3"
+        ? teamSlots
+        : ["blue", "red"];
   }
   get lobby() {
     return {
@@ -181,7 +334,15 @@ export class AuthoritativeMatch {
     );
     if (!sides.includes("blue") || !sides.includes("red"))
       return { accepted: false, reason: "NEED_OPPONENT" };
+    if (
+      this.mode === "national" &&
+      !["blue", "red", "green"].every((n) =>
+        [...this.seats.values()].some((s) => s.startsWith(n)),
+      )
+    )
+      return { accepted: false, reason: "NEED_THREE_NATIONS" };
     this.started = true;
+    if (this.national) this.national.humanIds = [...this.seats.values()];
     return { accepted: true };
   }
   join(sessionId: string): Seat | null {
@@ -202,6 +363,10 @@ export class AuthoritativeMatch {
   }
   drop(sessionId: string) {
     this.connected.delete(sessionId);
+    const removedSeat = this.seats.get(sessionId);
+    this.pendingEconomy = this.pendingEconomy.filter(
+      (p) => p.playerId !== removedSeat,
+    );
     const seat = this.seats.get(sessionId);
     if (seat) this.pending = this.pending.filter((p) => p.playerId !== seat);
   }
@@ -216,6 +381,8 @@ export class AuthoritativeMatch {
         this.objectiveMatch,
         "abandoned",
       );
+    if (this.national && this.objectiveMatch?.result)
+      finishNationalRanking(this.state, this.national);
     this.drop(sessionId);
     this.seats.delete(sessionId);
     if (this.hostSessionId === sessionId)
@@ -259,6 +426,23 @@ export class AuthoritativeMatch {
     if (!this.ready) return { accepted: false, reason: "MATCH_PAUSED" };
     if (!payload || typeof payload !== "object" || Array.isArray(payload))
       return { accepted: false, reason: "INVALID_FORMAT" };
+    if (
+      this.national &&
+      ["RESUPPLY", "RECRUIT"].includes((payload as { type: string }).type)
+    ) {
+      const parsed = economyActionSchema.safeParse(payload);
+      if (!parsed.success) return { accepted: false, reason: "INVALID_FORMAT" };
+      if (
+        parsed.data.type === "RESUPPLY" &&
+        this.state.squads.find((s) => s.id === parsed.data.squadIds[0])
+          ?.ownerPlayerId !== seat
+      )
+        return { accepted: false, reason: "NOT_OWNER" };
+      if (this.pendingEconomy.some((p) => p.playerId === seat))
+        return { accepted: false, reason: "SUPPLY_BUSY" };
+      this.pendingEconomy.push({ playerId: seat, action: parsed.data });
+      return { accepted: true };
+    }
     const input = commandSchema.safeParse({
       playerId: seat,
       command: {
@@ -293,6 +477,31 @@ export class AuthoritativeMatch {
     this.nextSeq.set(seat, this.nextSeq.get(seat)! + 1);
     return { accepted: true };
   }
+  nationalAICommand(owner: Seat) {
+    if (!this.national || !this.objectiveMatch) return null;
+    const nation = owner.split("-")[0]!,
+      slot = Number(owner.at(-1)) - 1;
+    const options = this.objectiveMatch.points.filter(
+      (p) => !Object.values(this.nationalRules.bases).includes(p.id),
+    );
+    const preferred =
+      options[
+        (slot + ["blue", "red", "green"].indexOf(nation)) % options.length
+      ]!;
+    const target =
+      preferred.owner === nation
+        ? (options.find((p) => p.open && p.owner !== nation) ?? preferred)
+        : preferred;
+    const squads = this.state.squads.filter(
+      (s) => s.ownerPlayerId === owner && s.hpMilli > 0,
+    );
+    if (!squads.length) return null;
+    return {
+      type: "ATTACK_MOVE" as const,
+      squadIds: squads.map((s) => s.id),
+      destination: { ...target.position },
+    };
+  }
   advance() {
     if (!this.ready) return null;
     const commands = this.pending.splice(0);
@@ -322,6 +531,33 @@ export class AuthoritativeMatch {
         this.nextSeq.set(owner, (this.nextSeq.get(owner) ?? 0) + 1);
       }
     }
+    if (
+      this.national &&
+      this.state.tick % this.nationalRules.aiEveryTicks === 0
+    ) {
+      for (const owner of this.slots.filter(
+        (s) => ![...this.seats.values()].includes(s),
+      )) {
+        const command = this.nationalAICommand(owner);
+        if (command) {
+          commands.push({
+            playerId: owner,
+            command: {
+              ...command,
+              seq: this.nextSeq.get(owner) ?? 0,
+              requestedTick: this.state.tick,
+            },
+          });
+          this.nextSeq.set(owner, (this.nextSeq.get(owner) ?? 0) + 1);
+        }
+      }
+    }
+    const previousOwners = Object.fromEntries(
+      (this.objectiveMatch?.points ?? []).map((p) => [p.id, p.owner]),
+    );
+    const damageBefore = Object.fromEntries(
+      this.state.squads.map((s) => [s.id, s.hpMilli]),
+    );
     const result = step(this.state, commands);
     this.state = result.state;
     if (this.objectiveMatch)
@@ -330,6 +566,26 @@ export class AuthoritativeMatch {
         this.state,
         this.objectiveRules,
       );
+    if (this.national && this.objectiveMatch) {
+      for (const pending of this.pendingEconomy.splice(0))
+        this.national.stats[pending.playerId]!.feedback = queueSupply(
+          this.state,
+          this.national,
+          this.objectiveMatch,
+          this.nationalRules,
+          pending.playerId,
+          pending.action,
+        );
+      this.objectiveMatch = advanceNational(
+        this.state,
+        this.national,
+        this.objectiveMatch,
+        this.nationalRules,
+        result.events,
+        previousOwners,
+        damageBefore,
+      );
+    }
     this.visibility.observe(this.state);
     return result;
   }
