@@ -1,3 +1,5 @@
+> 후속 공개 인수: Render의 client bundle과 로컬 빌드 바이트/SHA256 일치 및 실제3브라우저 짧은 UI 검증을 완료했다. 아래는 당시 로컬 검사 근거이며 [공개 기록](phase8-public-acceptance.md)을 함께 읽는다.
+
 # Phase8 presentation v1 — completion validation, 2026-11-01 Korea
 
 ## Evidence boundary
