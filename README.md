@@ -41,3 +41,7 @@ npm ci 후 npm run dev로 Phaser 클라이언트를 실행합니다. 편성·조
 증강은 기본 꺼짐이고 실제 서버 권위/멀티플레이가 아닙니다. Phase 3 운영 콘텐츠와 Phase 4 전체는 미완료입니다. 이전 버전의 실제 브라우저 검증 기록은 있으나 최신 로그 재생·명령 탐색을 포함한 전체 브라우저 검사는 아직 실행되지 않았습니다.
 
 외부 게스트 시연 준비와 네트워크 장애 검사는 [배포/검증 안내](docs/network/EXTERNAL_DEMO_v0.1.md)를 참고하세요. Docker/Caddy 파일은 준비했으며 실제 외부 배포는 서버와 도메인 설정이 필요합니다.
+
+## Phase7 국가 경기 기준 v1
+
+승인된 제안을 실제 국가 경기에 통합했다. [규칙](docs/network/PHASE7_POLICY_v1.md)·[검증 결과](docs/demo/phase7-policy-v1-validation.md)를 먼저 확인한다. `npm run sim:policy`는 정상 시계12경기와 재실행12회의 재현성을 검사한다. 배포 후 `DEMO_URL=https://roan-three-kingdoms.onrender.com npm run test:policy:public`로 짧은 권한/종료 smoke를 실행한다. 지도 공정성과 인간 성장·전략 밀도 인수는 아직 남아 있다.
