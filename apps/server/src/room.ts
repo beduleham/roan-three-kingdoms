@@ -81,6 +81,26 @@ export class BattleRoom extends Room {
       client.send("invite-key", { key: this.inviteAccess.rotate() });
       client.send("invite-result", { accepted: true });
     },
+    "change-seat": (client: Client, payload: unknown) => {
+      const target =
+        payload &&
+        typeof payload === "object" &&
+        !Array.isArray(payload) &&
+        Object.keys(payload).length === 1
+          ? (payload as Record<string, unknown>).seat
+          : undefined;
+      const result = this.match.changeSeat(client.sessionId, target);
+      client.send("seat-result", result);
+      if (result.accepted) {
+        this.accumulatedEvents.clear();
+        for (const nation of new Set(
+          this.match.state.players.map((p) => p.nationId),
+        ))
+          this.accumulatedEvents.set(nation, []);
+        this.broadcastLobby();
+        this.sendSnapshot(client);
+      }
+    },
     command: (client: Client, payload: unknown) => {
       const response = this.match.submit(client.sessionId, payload);
       client.send("command-result", response);

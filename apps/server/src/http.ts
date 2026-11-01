@@ -15,10 +15,10 @@ export function registerHttp(
   });
   if (!clientDirectory) return;
   const root = resolve(clientDirectory);
-  for (const page of ["index.html", "online.html"])
+  for (const page of ["index.html", "online.html", "play.html"])
     if (!statSync(resolve(root, page)).isFile())
       throw new Error("CLIENT_BUILD_REQUIRED");
-  app.get("/", (_req, res) => res.redirect("/online.html"));
+  app.get("/", (_req, res) => res.redirect("/play.html"));
   app.use((req, res, next) => {
     if (
       req.path

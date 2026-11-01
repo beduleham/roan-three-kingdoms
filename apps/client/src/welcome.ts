@@ -1,0 +1,12 @@
+import "@fontsource/noto-sans-kr/400.css";
+import "./welcome.css";
+const root = document.querySelector<HTMLElement>("#welcome")!;
+root.innerHTML = `<header><a class="brand" href="/play.html">STRATELIER <span>ROAN BAE’S THREE KINGDOMS</span></a><a href="#how">처음 오셨나요?</a></header>
+<main><section class="hero"><div><span class="seal" aria-hidden="true">군<br>략</span><p class="eyebrow">로언 베이의 삼국지 · 온라인 시연판</p><h1>한 판의 전장,<br>당신의 전략.</h1><p class="lead">부대의 기본 교전은 AI에게 맡기고, 목표·진형·돌격과 후퇴의 순간을 결정하세요.</p><div class="actions"><a class="primary" id="enter-national" href="/online.html?mode=national&guide=1">국가전 로비 열기</a><a id="practice" href="/index.html?guide=1">혼자 조작 연습</a></div><p class="note">게스트로 시작할 수 있습니다. 국가전은 각 국가 1명 이상, 총 3명 이상이 모여 시작합니다.</p></div><div class="battle-mark" aria-hidden="true"><span>청</span><span>적</span><span>녹</span><b>천하를 향한<br>세 개의 군기</b></div></section>
+<section id="modes"><p class="eyebrow">전장을 고르세요</p><h2>지금 함께할 인원에 맞춰 시작하세요.</h2><div class="mode-grid">
+<article><span>01 · 권장</span><h3>3국가 경기</h3><p>3~9명 · 국가별 최소 1명</p><p>거점 점령, 보급, 성장과 증강 선택. 기본 15분 판정이며 접전 시 18·21분까지 이어집니다.</p><a href="/online.html?mode=national&guide=1">국가전 입장 →</a></article>
+<article><span>02 · 짧은 목표전</span><h3>거점 경기</h3><p>2명 · 국가별 1명</p><p>중립 거점을 두고 싸우며 점령과 득점, 경기 결과를 익힙니다.</p><a href="/online.html?mode=objectives&guide=1">거점전 입장 →</a></article>
+<article><span>03 · 전술 집중</span><h3>온라인 전투</h3><p>1대1: 2명 · 3대3: 2~6명</p><p>이동·진형·장수 스킬을 시험하는 전투 시연입니다. 국가전의 거점 승리·성장과는 별도입니다.</p><a href="/online.html?guide=1">1대1 입장 →</a> <a href="/online.html?mode=3v3&guide=1">3대3 로비 →</a></article>
+<article><span>04 · 혼자 시작</span><h3>조작 연습</h3><p>나 혼자 · 브라우저 안에서 실행</p><p>기존 로컬 전투 데모에서 AI 상대 이동·진형·Q/W/R을 익힙니다. 연습 레벨과 결과는 온라인 성장·순위에 반영되지 않습니다.</p><a href="/index.html?guide=1">혼자 연습하기 →</a></article>
+</div></section>
+<section id="how"><p class="eyebrow">처음 플레이하는 순서</p><h2>초대하고, 지휘하고, 결과를 확인하세요.</h2><ol><li><strong>혼자 조작 익히기</strong><p>조작 연습의 단계별 안내에서 시작·이동·W 함성·진형 전환을 따라 해보세요.</p></li><li><strong>친구들과 경기 준비</strong><p>온라인에서 새 초대 전용 경기를 만들고 링크를 공유하세요. 시작 전 빈 국가·좌석을 고를 수 있습니다.</p></li><li><strong>로비장이 경기 시작</strong><p>국가전은 세 국가에 참가자가 있어야 합니다. 남은 좌석은 기존 기본 AI가 채웁니다. 대기 안내가 부족한 국가를 알려 줍니다.</p></li><li><strong>전략과 결과</strong><p>아군을 고르고 목표를 지시하세요. Q/W/R·진형·보급은 직접 선택합니다. 국가전 종료 후 승패·전체 인간 공적 순위·내 경기 기록을 확인할 수 있습니다.</p></li></ol><p class="note">진행 중 새로고침은 기존 재접속을 시도합니다. 나가기나 예약 만료는 경기를 중단시킬 수 있습니다.</p></section></main><footer>ROAN BAE’S THREE KINGDOMS · STRATELIER<br>한 판의 판단이 이야기가 되는 전장.</footer>`;

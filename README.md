@@ -3,6 +3,12 @@
 기술 명세와 Phase 0/1/2 및 Phase 3 장수·무장 스킬 부분의 순수 TypeScript headless 전투 코어를 포함합니다.
 개발 범위는 CODEX_IMPLEMENTATION_PLAN.md의 단계 번호를 기준으로 합니다.
 
+## 현재 게임 진입 (Phase9 v1)
+
+프로덕션 서버의 `/`는 `/play.html` 시작 화면으로 연결됩니다. 국가전·거점전·1대1/3대3 전투 시연·혼자 연습을 선택할 수 있습니다. 국가전은 국가마다 참가자1명 이상, 총3명 이상이 필요하며 나머지 좌석은 기존 AI가 맡습니다. 로비에서 시작 전 빈 국가·좌석을 선택하고, ‘처음 하는 분’ 안내로 실제 이동·W·진형·결과 흐름을 따라갈 수 있습니다.
+
+`npm run build` 후 기존 서버를 실행하거나, 개발 서버에서 `/play.html`을 여세요. `/index.html`은 기존 로컬 연습, `/online.html?mode=national`은 국가전입니다. [Phase9 범위](docs/network/PHASE9_ENTRY_LOBBY_v1.md)·[검증 결과](docs/demo/phase9-entry-validation.md). 로컬 자동479개/브라우저56개를 통과했으며 Phase9의 Render 공개 인수는 최신 커밋 배포 후 진행합니다.
+
 ## 파일 안내
 
 - `TRD_BATTLE_ENGINE_v1.9.md`: 핵심 전투 로직/상태/계산/AI/이벤트 규칙

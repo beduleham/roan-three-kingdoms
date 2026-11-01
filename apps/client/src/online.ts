@@ -1,3 +1,10 @@
+import {
+  lobbyReadiness,
+  seatName,
+  connectionErrorMessage,
+} from "./lobby-guide.js";
+import { mountBeginnerGuide, type GuideSignal } from "./beginner-guide.js";
+import "./beginner-guide.css";
 import { BattlePresentation } from "./battle-presentation.js";
 import { BattleAudio } from "./battle-audio.js";
 import { RenderPerformance } from "./render-performance.js";
@@ -69,6 +76,27 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <p id="result" role="status"></p><h2>현재 관측 상태</h2><p id="selected"></p><p id="commander"></p><pre id="units"></pre><h2>마지막 적 관측</h2><pre id="last-seen"></pre><h2>최근 전투 사건</h2><pre id="events"></pre>
 <p>명령은 서버에서 검증됩니다. 화면 위치만 두 서버 상태 사이에서 보간합니다.</p>`;
 mountOnlineShell(root);
+root
+  .querySelector(".war-nav")!
+  .insertAdjacentHTML(
+    "afterbegin",
+    '<a id="home-link" href="/play.html" target="_blank" rel="noopener">시작 화면 (새 탭)</a> · ',
+  );
+const lobbyDetail = document.createElement("details");
+lobbyDetail.className = "lobby-detail";
+lobbyDetail.innerHTML = "<summary>참가 좌석 상세</summary>";
+const rawLobby = root.querySelector("#lobby")!;
+rawLobby.before(lobbyDetail);
+lobbyDetail.append(rawLobby);
+const guideHost = document.createElement("section");
+root.querySelector(".battle-stage")!.prepend(guideHost);
+const beginnerGuide = mountBeginnerGuide(guideHost, false, hasObjectives);
+root
+  .querySelector("#lobby-panel")!
+  .insertAdjacentHTML(
+    "beforeend",
+    '<p id="lobby-readiness" role="status"></p><div id="lobby-seat-controls"><h3>국가·좌석 선택</h3><p>시작 전 빈 좌석만 선택할 수 있습니다. 재접속 대기 좌석은 예약되어 있습니다.</p><div id="seat-grid" aria-label="국가와 좌석"></div><p id="seat-feedback" role="status"></p></div>',
+  );
 root.querySelector("#war-commands")!.append(root.querySelector("#result")!);
 const armyArt = new OnlineArmyArt();
 const presentation = new BattlePresentation(),
@@ -284,6 +312,33 @@ function render() {
       playtest.firstTick === null;
   }
   if (!state) return;
+  if (seat && room) {
+    const own = state.squads.filter((s) => s.ownerPlayerId === seat),
+      ids = new Set([
+        ...own.map((s) => s.id),
+        ...state.commanders
+          .filter((c) => c.ownerPlayerId === seat)
+          .map((c) => c.id),
+      ]),
+      signals: GuideSignal[] = ["connected"];
+    if (lobbyStarted && state.tick > 0) signals.push("started");
+    if (own.some((s) => s.fsmState === "MOVE" || s.fsmState === "RETREAT"))
+      signals.push("moved");
+    if (
+      lastEvents.some(
+        (e) => e.type === "SKILL_CAST" && e.skill === "W" && ids.has(e.actorId),
+      )
+    )
+      signals.push("skill");
+    if (
+      lastEvents.some(
+        (e) => e.type === "FORMATION_COMPLETED" && ids.has(e.actorId),
+      )
+    )
+      signals.push("formation");
+    if (state.objectiveMatch?.result) signals.push("finished");
+    beginnerGuide.observe(`${room.roomId}:${seat}`, signals);
+  }
   el("clock").textContent =
     `${state.tick} tick · 상태 해시 ${hashReplayValue(state)}`;
   el("vision-info").textContent =
@@ -489,7 +544,27 @@ function refreshControls() {
     "[data-command]",
   ))
     button.disabled = !ready;
-  el<HTMLButtonElement>("start").disabled = !host || lobbyStarted;
+  const status = lobbyReadiness(mode, lobbySlots, lobbyStarted);
+  el<HTMLButtonElement>("start").disabled = !host || !status.canStart;
+  el("lobby-readiness").textContent = room
+    ? `${status.counts.map((c) => `${seatName(c.nation)} ${c.count}명`).join(" · ")} · ${status.reason}`
+    : "경기에 입장하면 참가 조건과 빈 좌석을 확인할 수 있습니다.";
+  el("lobby-seat-controls").hidden = !room || lobbyStarted || mode === "1v1";
+  el("seat-grid").replaceChildren(
+    ...lobbySlots.map((slot) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.seat = slot.id;
+      b.dataset.nation = slot.id.split("-")[0];
+      b.setAttribute("aria-pressed", String(slot.id === seat));
+      b.textContent = `${seatName(slot.id)} · ${slot.id === seat ? "내 좌석" : slot.occupant === "empty" ? "선택 가능" : slot.connected ? "참가 중" : "재접속 예약"}`;
+      b.disabled = !room || lobbyStarted || slot.occupant !== "empty";
+      b.addEventListener("click", () =>
+        room?.send("change-seat", { seat: slot.id }),
+      );
+      return b;
+    }),
+  );
   el<HTMLButtonElement>("rotate-invite").disabled =
     !host || !inviteKey || !room;
   el<HTMLButtonElement>("leave").disabled = !room;
@@ -839,6 +914,7 @@ canvas.addEventListener("click", (event) => {
 });
 async function connect(createPrivate = false) {
   armyArt.reset();
+  el("seat-feedback").textContent = "";
   presentation.reset();
   miniSignature = "";
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
@@ -912,6 +988,23 @@ async function connect(createPrivate = false) {
       },
     );
     room.onMessage(
+      "seat-result",
+      ({ accepted, reason }: { accepted: boolean; reason?: string }) => {
+        const reasons: Record<string, string> = {
+          SEAT_OCCUPIED:
+            "다른 참가자가 먼저 선택했거나 재접속 예약 중인 좌석입니다.",
+          MATCH_STARTED: "시작한 경기에서는 좌석을 바꿀 수 없습니다.",
+          NO_SEAT: "먼저 경기에 입장하세요.",
+          INVALID_SEAT: "선택할 수 없는 좌석입니다.",
+          INVALID_MODE: "이 모드는 좌석 변경을 지원하지 않습니다.",
+        };
+        el("seat-feedback").textContent = accepted
+          ? "국가·좌석을 변경했습니다."
+          : (reasons[reason ?? ""] ??
+            "좌석을 바꾸지 못했습니다. 빈 좌석을 다시 확인하세요.");
+      },
+    );
+    room.onMessage(
       "lobby-result",
       ({ accepted, reason }: { accepted: boolean; reason?: string }) => {
         el("result").textContent = accepted
@@ -922,6 +1015,35 @@ async function connect(createPrivate = false) {
     room.onMessage(
       "seat",
       ({ seat: assigned, host: isHost }: { seat: string; host: boolean }) => {
+        if (seat && seat !== assigned) {
+          state = null;
+          drawing = false;
+          cancelAnimationFrame(drawFrame);
+          delete root.dataset.renderX;
+          previousState = null;
+          lastEvents = [];
+          miniSignature = "";
+          armyArt.reset();
+          presentation.reset();
+          beginnerGuide.reset();
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          strategicCtx.clearRect(0, 0, strategicMap.width, strategicMap.height);
+          for (const id of [
+            "selected",
+            "commander",
+            "units",
+            "events",
+            "last-seen",
+            "national-player",
+            "national-economy",
+            "supply-feedback",
+            "augment-progress",
+          ])
+            el(id).textContent = "";
+          el("augment-offer").replaceChildren();
+          el<HTMLSelectElement>("squad").replaceChildren();
+          el<HTMLSelectElement>("target").replaceChildren();
+        }
         seat = assigned;
         host = isHost;
         el("identity").textContent = `내 진영: ${assigned}`;
@@ -952,7 +1074,7 @@ async function connect(createPrivate = false) {
         select.replaceChildren(
           ...lobbySlots
             .filter((slot) => slot.occupant === "human" && slot.id !== seat)
-            .map((slot) => new Option(slot.id, slot.id)),
+            .map((slot) => new Option(seatName(slot.id), slot.id)),
         );
         if ([...select.options].some((option) => option.value === previous))
           select.value = previous;
@@ -1051,6 +1173,7 @@ async function connect(createPrivate = false) {
       audio.mute();
       syncSoundControls();
       presentation.reset();
+      beginnerGuide.reset();
       cancelAnimationFrame(drawFrame);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       strategicCtx.clearRect(0, 0, strategicMap.width, strategicMap.height);
@@ -1105,7 +1228,8 @@ async function connect(createPrivate = false) {
     room.send("hello");
   } catch (error) {
     account.setLocked(false);
-    el("connection").textContent = `접속 실패: ${String(error)}`;
+    el("connection").textContent =
+      `접속 실패: ${connectionErrorMessage(error)}`;
     el<HTMLButtonElement>("join").disabled = false;
     el<HTMLButtonElement>("create-private").disabled = false;
   }
@@ -1259,3 +1383,5 @@ document.addEventListener("visibilitychange", () => {
     renderPerformance.pause();
   }
 });
+
+refreshControls();

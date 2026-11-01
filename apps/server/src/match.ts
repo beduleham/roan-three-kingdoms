@@ -398,6 +398,29 @@ export class AuthoritativeMatch {
     }
     return seat ?? null;
   }
+  changeSeat(
+    sessionId: string,
+    target: unknown,
+  ): { accepted: boolean; reason?: string } {
+    if (this.mode === "1v1") return { accepted: false, reason: "INVALID_MODE" };
+    if (this.started || this.objectiveMatch?.result)
+      return { accepted: false, reason: "MATCH_STARTED" };
+    if (!this.connected.has(sessionId) || !this.seats.has(sessionId))
+      return { accepted: false, reason: "NO_SEAT" };
+    if (typeof target !== "string" || !this.slots.includes(target as Seat))
+      return { accepted: false, reason: "INVALID_SEAT" };
+    const current = this.seats.get(sessionId)!;
+    if (current === target) return { accepted: true };
+    if ([...this.seats.values()].includes(target as Seat))
+      return { accepted: false, reason: "SEAT_OCCUPIED" };
+    this.pending = this.pending.filter((c) => c.playerId !== current);
+    this.pendingEconomy = this.pendingEconomy.filter(
+      (c) => c.playerId !== current,
+    );
+    this.seats.set(sessionId, target as Seat);
+    if (!this.nextSeq.has(target as Seat)) this.nextSeq.set(target as Seat, 0);
+    return { accepted: true };
+  }
   drop(sessionId: string) {
     this.connected.delete(sessionId);
     const removedSeat = this.seats.get(sessionId);

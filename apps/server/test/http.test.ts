@@ -12,7 +12,7 @@ describe("production static boundary", () => {
     const app = express(),
       server = createServer(app);
     try {
-      for (const name of ["index.html", "online.html"])
+      for (const name of ["index.html", "online.html", "play.html"])
         writeFileSync(join(directory, name), `<h1>${name}</h1>`);
       writeFileSync(join(directory, ".env"), "PRIVATE");
       writeFileSync(join(directory, "accounts.sqlite"), "PRIVATE");
@@ -28,7 +28,10 @@ describe("production static boundary", () => {
       const base = `http://127.0.0.1:${address.port}`;
       expect(
         (await fetch(base, { redirect: "manual" })).headers.get("location"),
-      ).toBe("/online.html");
+      ).toBe("/play.html");
+      expect(await (await fetch(`${base}/play.html`)).text()).toContain(
+        "play.html",
+      );
       expect(await (await fetch(`${base}/online.html`)).text()).toContain(
         "online.html",
       );
