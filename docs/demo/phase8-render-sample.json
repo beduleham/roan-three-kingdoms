@@ -1,0 +1,39 @@
+{
+  "environment": "local Chromium headless, three accelerated national clients, no GPU/device certification",
+  "initialArtRequests": 3,
+  "reports": [
+    {
+      "frames": 240,
+      "minimapPaints": 37,
+      "samples": 180,
+      "paintP50Ms": 0.6999999955296516,
+      "paintP95Ms": 1,
+      "observedFps": 29.349421164193707,
+      "targetFrameMs": 33
+    },
+    {
+      "frames": 210,
+      "minimapPaints": 34,
+      "samples": 180,
+      "paintP50Ms": 0.7000000029802322,
+      "paintP95Ms": 1,
+      "observedFps": 29.032726334302694,
+      "targetFrameMs": 33
+    },
+    {
+      "frames": 210,
+      "minimapPaints": 36,
+      "samples": 180,
+      "paintP50Ms": 0.7000000029802322,
+      "paintP95Ms": 1.1000000014901161,
+      "observedFps": 29.031321570257973,
+      "targetFrameMs": 33
+    }
+  ],
+  "profile": "phase8-presentation-v1",
+  "resourceSourceBytes": {
+    "initial3": 5928494,
+    "all9": 17675543,
+    "note": "uncompressed source asset sums; not measured HTTP transfer bytes; later attacks/recruits request additional cached atlases"
+  }
+}

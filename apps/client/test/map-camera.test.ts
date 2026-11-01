@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createMapCamera, worldToMap, mapToWorld } from "../src/map-camera.js";
+import {
+  createMapCamera,
+  createIsometricCamera,
+  projectedRadius,
+  viewportCorners,
+  worldToMap,
+  mapToWorld,
+} from "../src/map-camera.js";
 const world = { x: 24000, y: 13000 };
 describe("shared world camera", () => {
   it.each([
@@ -75,5 +82,57 @@ describe("shared world camera", () => {
     expect(() =>
       createMapCamera(world, { x: 720, y: 420 }, 2, { x: NaN, y: 0 }, 24),
     ).toThrow();
+  });
+});
+
+describe("online isometric camera", () => {
+  it.each([1, 2, 3])(
+    "round trips world corners and interior through zoom %i without changing world bounds",
+    (zoom) => {
+      const c = createIsometricCamera(
+        world,
+        { x: 720, y: 420 },
+        zoom,
+        { x: 13000, y: 8000 },
+        24,
+      );
+      const points = [
+        { x: c.left, y: c.top },
+        { x: c.left + c.width, y: c.top + c.height },
+        { x: c.left + c.width / 2, y: c.top + c.height / 2 },
+        { x: c.left + c.width * 0.2, y: c.top + c.height * 0.7 },
+      ];
+      for (const p of points) {
+        const back = mapToWorld(worldToMap(p, c), c)!;
+        expect(back.x).toBeCloseTo(p.x, 6);
+        expect(back.y).toBeCloseTo(p.y, 6);
+      }
+      for (const p of viewportCorners(c)) {
+        expect(p.x).toBeGreaterThanOrEqual(23.99);
+        expect(p.x).toBeLessThanOrEqual(696.01);
+        expect(p.y).toBeGreaterThanOrEqual(23.99);
+        expect(p.y).toBeLessThanOrEqual(396.01);
+      }
+    },
+  );
+  it("rejects diamond margins and non-finite clicks, and projects circular ranges to an ellipse", () => {
+    const c = createIsometricCamera(
+      world,
+      { x: 720, y: 420 },
+      1,
+      { x: 12000, y: 6500 },
+      24,
+    );
+    expect(mapToWorld({ x: 24, y: 24 }, c)).toBeNull();
+    expect(mapToWorld({ x: NaN, y: 24 }, c)).toBeNull();
+    const r = projectedRadius(1000, c);
+    expect(r.x / r.y).toBeCloseTo(2);
+    const center = worldToMap({ x: 12000, y: 6500 }, c),
+      edge = worldToMap(
+        { x: 12000 + 1000 / Math.SQRT2, y: 6500 - 1000 / Math.SQRT2 },
+        c,
+      );
+    expect(edge.x - center.x).toBeCloseTo(r.x);
+    expect(edge.y).toBeCloseTo(center.y);
   });
 });

@@ -1,3 +1,7 @@
+import { BattlePresentation } from "./battle-presentation.js";
+import { BattleAudio } from "./battle-audio.js";
+import { RenderPerformance } from "./render-performance.js";
+import presentationSettings from "./presentation-settings.json";
 import { mountOnlineShell } from "./online-shell.js";
 import { OnlineArmyArt, armyHit } from "./online-army-art.js";
 import { PlaytestRecord } from "./playtest-record.js";
@@ -6,6 +10,9 @@ import { describeAugment } from "./augment-description.js";
 import mapSettings from "./map-view.json";
 import {
   createMapCamera,
+  createIsometricCamera,
+  projectedRadius,
+  viewportCorners,
   worldToMap,
   mapToWorld,
   type MapCamera,
@@ -64,6 +71,21 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 mountOnlineShell(root);
 root.querySelector("#war-commands")!.append(root.querySelector("#result")!);
 const armyArt = new OnlineArmyArt();
+const presentation = new BattlePresentation(),
+  audio = new BattleAudio(),
+  renderPerformance = new RenderPerformance();
+let lastPaint = -Infinity,
+  miniSignature = "";
+const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
+root
+  .querySelector(".war-entry")!
+  .insertAdjacentHTML(
+    "beforeend",
+    '<div class="presentation-controls"><button id="sound-toggle" aria-pressed="false">효과음 켜기</button><label>음량 <input id="sound-volume" aria-label="효과음 음량" type="range" min="0" max="100" value="25"></label><label><input id="reduce-effects" type="checkbox"> 연출 줄이기</label><label><input id="all-unit-labels" type="checkbox"> 모든 부대 이름</label><span id="sound-status" role="status"></span></div>',
+  );
+root
+  .querySelector(".war-diagnostics")!
+  .insertAdjacentHTML("beforeend", '<p id="render-performance"></p>');
 const el = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
@@ -125,7 +147,7 @@ function fieldCamera(): MapCamera {
       offsetX: 40,
       offsetY: 40,
     };
-  return createMapCamera(
+  return createIsometricCamera(
     mapWorld(),
     { x: canvas.width, y: canvas.height },
     mapView === "battle" ? mapSettings.battleZoom : 1,
@@ -168,11 +190,15 @@ function updateMapControls() {
   ))
     button.disabled = !state;
   root.dataset.mapView = mapView;
+  canvas.dataset.projection = camera.projection ?? "flat";
   for (const [key, value] of Object.entries({
     left: camera.left,
     top: camera.top,
     width: camera.width,
     height: camera.height,
+    scale: camera.scale,
+    offsetX: camera.offsetX,
+    offsetY: camera.offsetY,
   }))
     canvas.dataset[key] = String(value);
   el("view-overview").setAttribute(
@@ -516,12 +542,10 @@ function drawView(
   ctx.save();
   ctx.beginPath();
   if (hasObjectives) {
-    ctx.rect(
-      camera.offsetX,
-      camera.offsetY,
-      camera.width * camera.scale,
-      camera.height * camera.scale,
-    );
+    const corners = viewportCorners(camera);
+    ctx.moveTo(corners[0]!.x, corners[0]!.y);
+    for (const p of corners.slice(1)) ctx.lineTo(p.x, p.y);
+    ctx.closePath();
     ctx.clip();
   }
   ctx.beginPath();
@@ -529,13 +553,40 @@ function drawView(
     (s) => s.nationId === state!.nationId && s.hpMilli > 0,
   )) {
     const { x, y } = worldToMap(observer.position, camera);
-    const radius = state.visionRadiusUnits * camera.scale;
-    ctx.moveTo(x + radius, y);
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    const radius = projectedRadius(state.visionRadiusUnits, camera);
+    ctx.moveTo(x + radius.x, y);
+    ctx.ellipse(x, y, radius.x, radius.y, 0, 0, Math.PI * 2);
   }
   ctx.clip();
-  ctx.fillStyle = "#efe3c8";
+  ctx.fillStyle = "#dfd1ae";
   ctx.fillRect(0, 0, size.width, size.height);
+  if (!mini) {
+    ctx.strokeStyle = "#a9926633";
+    ctx.lineWidth = 0.6;
+    const step = state.config.positionUnitsPerTile * 2;
+    ctx.beginPath();
+    for (
+      let x = Math.ceil(camera.left / step) * step;
+      x <= camera.left + camera.width;
+      x += step
+    ) {
+      const a = worldToMap({ x, y: camera.top }, camera),
+        b = worldToMap({ x, y: camera.top + camera.height }, camera);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+    }
+    for (
+      let y = Math.ceil(camera.top / step) * step;
+      y <= camera.top + camera.height;
+      y += step
+    ) {
+      const a = worldToMap({ x: camera.left, y }, camera),
+        b = worldToMap({ x: camera.left + camera.width, y }, camera);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+    }
+    ctx.stroke();
+  }
   ctx.restore();
   ctx.font = '14px "Noto Sans KR", sans-serif';
   const labels: FieldLabel[] = [];
@@ -556,13 +607,8 @@ function drawView(
     ctx.lineWidth = 2;
     ctx.setLineDash(point.open ? [] : [4, 4]);
     ctx.beginPath();
-    ctx.arc(
-      x,
-      y,
-      state.objectiveMatch!.radiusUnits * camera.scale,
-      0,
-      Math.PI * 2,
-    );
+    const radius = projectedRadius(state.objectiveMatch!.radiusUnits, camera);
+    ctx.ellipse(x, y, radius.x, radius.y, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
     if (!mini && x >= 0 && y >= 0 && x <= size.width && y <= size.height)
@@ -597,7 +643,12 @@ function drawView(
   }
   for (const s of state.squads
     .filter((s) => s.hpMilli > 0)
-    .sort((a, b) => a.position.y - b.position.y || a.id.localeCompare(b.id))) {
+    .sort(
+      (a, b) =>
+        (camera.projection === "isometric"
+          ? a.position.x + a.position.y - b.position.x - b.position.y
+          : a.position.y - b.position.y) || a.id.localeCompare(b.id),
+    )) {
     const old = previousState?.squads.find((p) => p.id === s.id);
     const xUnits = old
       ? old.position.x + (s.position.x - old.position.x) * alpha
@@ -656,12 +707,19 @@ function drawView(
       );
       ctx.stroke();
     }
-    if (!mini)
+    if (
+      !mini &&
+      (camera.projection !== "isometric" ||
+        el<HTMLInputElement>("all-unit-labels").checked ||
+        s.ownerPlayerId === seat ||
+        s.id === el<HTMLSelectElement>("target").value)
+    )
       labels.push({ text: s.id, x, y, width: ctx.measureText(s.id).width });
   }
   for (const label of placeFieldLabels(labels, size.width, size.height)) {
     const { box } = label;
     ctx.strokeStyle = label.memory ? "#c1b49c" : "#514331";
+    ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(label.x, label.y);
     ctx.lineTo(box.x, box.y + box.height / 2);
@@ -674,11 +732,38 @@ function drawView(
 }
 function draw() {
   if (!state) return;
+  const paintStart = performance.now();
+  if (
+    document.hidden ||
+    paintStart - lastPaint < presentationSettings.frameMs
+  ) {
+    if (document.hidden) renderPerformance.pause();
+    drawFrame = requestAnimationFrame(draw);
+    return;
+  }
+  lastPaint = paintStart;
   root.dataset.armyArt = armyArt.status;
+  root.dataset.artRequests = String(armyArt.requestedAssets);
   const alpha = Math.min(1, (performance.now() - receivedAt) / 200),
     camera = fieldCamera();
   drawView(ctx, camera, alpha);
-  if (hasObjectives) {
+  presentation.draw(
+    ctx,
+    camera,
+    state,
+    armyArt.reducedMotion,
+    (x, y, t, reduced) => armyArt.drawWounded(ctx, x, y, t, reduced),
+  );
+  const signature = JSON.stringify([
+    state.tick,
+    camera.left,
+    camera.top,
+    camera.width,
+    camera.height,
+  ]);
+  if (hasObjectives && signature !== miniSignature) {
+    miniSignature = signature;
+    renderPerformance.minimapPaints++;
     const mini = miniCamera();
     drawView(strategicCtx, mini, alpha, true);
     const corner = worldToMap({ x: camera.left, y: camera.top }, mini);
@@ -690,6 +775,13 @@ function draw() {
       camera.width * mini.scale,
       camera.height * mini.scale,
     );
+  }
+  renderPerformance.record(paintStart, performance.now());
+  if (renderPerformance.frames % 30 === 0) {
+    const report = renderPerformance.summary();
+    root.dataset.performance = JSON.stringify(report);
+    el("render-performance").textContent =
+      `표현 성능 · ${report.observedFps.toFixed(1)}fps · paint p95 ${report.paintP95Ms.toFixed(2)}ms · ${report.samples}표본`;
   }
   drawFrame = requestAnimationFrame(draw);
 }
@@ -747,6 +839,8 @@ canvas.addEventListener("click", (event) => {
 });
 async function connect(createPrivate = false) {
   armyArt.reset();
+  presentation.reset();
+  miniSignature = "";
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
   el<HTMLButtonElement>("create-private").setAttribute("disabled", "");
   el("connection").textContent = "접속 중";
@@ -890,6 +984,7 @@ async function connect(createPrivate = false) {
     });
     room.onMessage("snapshot", ({ state: next }: { state: BattleView }) => {
       state = next;
+      presentation.baseline(next);
       lastEvents = [];
       previousState = null;
       receivedAt = performance.now();
@@ -913,6 +1008,10 @@ async function connect(createPrivate = false) {
         previousState = state;
         state = next;
         lastEvents = delta.events ?? [];
+        audio.play(
+          presentation.ingest(next, lastEvents),
+          !document.hidden && (ready || !!next.objectiveMatch?.result),
+        );
         receivedAt = performance.now();
         root.dataset.deltaCount = String(
           Number(root.dataset.deltaCount ?? 0) + 1,
@@ -949,6 +1048,9 @@ async function connect(createPrivate = false) {
       state = null;
       previousState = null;
       drawing = false;
+      audio.mute();
+      syncSoundControls();
+      presentation.reset();
       cancelAnimationFrame(drawFrame);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       strategicCtx.clearRect(0, 0, strategicMap.width, strategicMap.height);
@@ -1112,4 +1214,48 @@ el("export-playtest").addEventListener("click", () => {
   link.download = `phase7-playtest-${playtest.seat}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+function syncSoundControls() {
+  el("sound-toggle").textContent = audio.enabled
+    ? "효과음 끄기"
+    : "효과음 켜기";
+  el("sound-toggle").setAttribute("aria-pressed", String(audio.enabled));
+}
+el("sound-toggle").addEventListener("click", async () => {
+  el<HTMLButtonElement>("sound-toggle").disabled = true;
+  try {
+    if (audio.enabled) audio.mute();
+    else await audio.enable();
+    if (document.hidden) audio.mute();
+    el("sound-status").textContent = audio.enabled ? "효과음 켜짐" : "음소거";
+  } catch {
+    el("sound-status").textContent =
+      "이 브라우저에서 소리를 시작하지 못했습니다.";
+  }
+  syncSoundControls();
+  el<HTMLButtonElement>("sound-toggle").disabled = false;
+});
+el("sound-volume").addEventListener(
+  "input",
+  () =>
+    (audio.volume = Number(el<HTMLInputElement>("sound-volume").value) / 100),
+);
+const reduced = el<HTMLInputElement>("reduce-effects");
+reduced.checked = motionPreference.matches;
+armyArt.reducedMotion = reduced.checked;
+reduced.addEventListener(
+  "change",
+  () => (armyArt.reducedMotion = reduced.checked),
+);
+motionPreference.addEventListener("change", (e) => {
+  reduced.checked = e.matches;
+  armyArt.reducedMotion = e.matches;
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    audio.mute();
+    syncSoundControls();
+    renderPerformance.pause();
+  }
 });

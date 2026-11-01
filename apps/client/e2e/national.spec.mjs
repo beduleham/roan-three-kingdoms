@@ -221,3 +221,118 @@ test("Phase8 HUD keeps battlefield commands accessible on desktop and narrow scr
     await Promise.all(pages.map((p) => p.close()));
   }
 });
+
+test("Phase8 verified skill cues honor default mute and explicit audio/reduced-motion controls", async ({
+  browser,
+}) => {
+  const { pages, errors } = await guests(browser),
+    blue = pages[0];
+  try {
+    // Reload before starting to install observation hooks without injecting game state.
+    await blue.addInitScript(() => {
+      window.cueLabels = [];
+      window.voiceStarts = 0;
+      const text = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (t, ...args) {
+        if (["Q", "W", "R"].includes(String(t)))
+          window.cueLabels.push(String(t));
+        return text.call(this, t, ...args);
+      };
+      const start = OscillatorNode.prototype.start;
+      OscillatorNode.prototype.start = function (...a) {
+        window.voiceStarts++;
+        return start.apply(this, a);
+      };
+    });
+    await blue.reload();
+    await blue.locator("#join").click();
+    await blue.locator("#start").click();
+    await expect(blue.locator("#W")).toBeEnabled();
+    await blue.locator("#W").click();
+    await expect
+      .poll(() => blue.evaluate(() => window.cueLabels.includes("W")))
+      .toBe(true);
+    expect(await blue.evaluate(() => window.voiceStarts)).toBe(0);
+    await blue.bringToFront();
+    await blue.locator("#sound-toggle").click();
+    await expect(blue.locator("#sound-toggle")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(blue.locator("#R")).toBeEnabled();
+    await blue.locator("#R").click();
+    await expect
+      .poll(() => blue.evaluate(() => window.voiceStarts))
+      .toBeGreaterThan(0);
+    await expect
+      .poll(() => blue.evaluate(() => window.cueLabels.includes("R")))
+      .toBe(true);
+    await blue.locator("#reduce-effects").check();
+    await expect(blue.locator("#reduce-effects")).toBeChecked();
+    await blue.locator("#sound-toggle").click();
+    await expect(blue.locator("#sound-toggle")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(errors).toEqual([]);
+  } finally {
+    await Promise.all(pages.map((p) => p.close()));
+  }
+});
+
+test("Phase8 three-client render sample bounds paint history and avoids frame-rate minimap redraw", async ({
+  browser,
+}) => {
+  const { pages, errors } = await guests(browser);
+  try {
+    await expect(pages[0].locator("#online")).toHaveAttribute(
+      "data-army-art",
+      "ready",
+    );
+    const initialArtRequests = Number(
+      await pages[0].locator("#online").getAttribute("data-art-requests"),
+    );
+    expect(initialArtRequests).toBe(3);
+    await pages[0].locator("#start").click();
+    for (const p of pages)
+      await expect(p.locator("#online")).toHaveAttribute(
+        "data-performance",
+        /.+/,
+      );
+    // Gather an explicit short local render sample, not a hardware certification.
+    await pages[0].waitForTimeout(6500);
+    const reports = await Promise.all(
+      pages.map((p) =>
+        p.locator("#online").evaluate((e) => JSON.parse(e.dataset.performance)),
+      ),
+    );
+    for (const r of reports) {
+      expect(r.samples).toBeLessThanOrEqual(180);
+      expect(r.frames).toBeGreaterThanOrEqual(30);
+      expect(r.minimapPaints).toBeLessThan(r.frames);
+      expect(r.paintP95Ms).toBeGreaterThanOrEqual(0);
+    }
+    await import("node:fs/promises").then((fs) =>
+      fs.writeFile(
+        "/tmp/phase8-render-sample.json",
+        JSON.stringify(
+          {
+            environment:
+              "local Chromium headless, three accelerated national clients, no GPU/device certification",
+            initialArtRequests,
+            reports,
+          },
+          null,
+          2,
+        ),
+      ),
+    );
+    await pages[0].screenshot({
+      path: "/tmp/phase8-isometric-desktop.png",
+      fullPage: true,
+    });
+    expect(errors).toEqual([]);
+  } finally {
+    await Promise.all(pages.map((p) => p.close()));
+  }
+});

@@ -42,11 +42,15 @@ async function fieldPoint(p, x, y) {
         top = Number(c.dataset.top),
         w = Number(c.dataset.width),
         h = Number(c.dataset.height);
-      const scale = Math.min((720 - 48) / w, (420 - 48) / h);
-      return {
-        x: (720 - w * scale) / 2 + (x - left) * scale,
-        y: (420 - h * scale) / 2 + (y - top) * scale,
-      };
+      const scale = Number(c.dataset.scale),
+        ox = Number(c.dataset.offsetX),
+        oy = Number(c.dataset.offsetY);
+      return c.dataset.projection === "isometric"
+        ? {
+            x: ox + (x - left - (y - top)) * scale,
+            y: oy + ((x - left + (y - top)) * scale) / 2,
+          }
+        : { x: ox + (x - left) * scale, y: oy + (y - top) * scale };
     },
     { x, y },
   );

@@ -46,15 +46,27 @@ export class OnlineArmyArt {
   private attacks = new Map<string, AttackSample>();
   private damage = new Map<string, number>();
   private failed = false;
+  reducedMotion = false;
   constructor() {
-    for (const [key, url] of Object.entries(urls)) {
-      const img = new Image();
+    for (const key of ["spear-walk", "archer-walk", "commander-canter"])
+      this.image(key);
+  }
+  get requestedAssets() {
+    return this.images.size;
+  }
+  private image(key: string) {
+    let img = this.images.get(key);
+    if (!img) {
+      const url = urls[key as keyof typeof urls];
+      if (!url) return undefined;
+      img = new Image();
       img.onerror = () => {
         this.failed = true;
       };
       img.src = url;
       this.images.set(key, img);
     }
+    return img;
   }
   get status() {
     return this.failed
@@ -76,8 +88,15 @@ export class OnlineArmyArt {
     y: number,
     height: number,
   ) {
-    const img = this.images.get(texture),
-      sheet = atlas[texture as keyof typeof atlas],
+    let img = this.image(texture);
+    if ((!img?.complete || !img.naturalWidth) && texture.endsWith("-attack")) {
+      texture =
+        texture === "cavalry-attack"
+          ? "cavalry-canter"
+          : texture.replace("-attack", "-walk");
+      img = this.image(texture);
+    }
+    const sheet = atlas[texture as keyof typeof atlas],
       rect = sheet?.frames[frame];
     if (!img?.complete || !img.naturalWidth || !rect) return false;
     const h =
@@ -95,6 +114,21 @@ export class OnlineArmyArt {
       h,
     );
     return true;
+  }
+  /** Observed injury transition only; a fading display clip, never a replacement commander entity. */
+  drawWounded(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    progress: number,
+    reduced: boolean,
+  ) {
+    ctx.save();
+    ctx.translate(x, y - 7);
+    ctx.rotate(reduced ? 0 : Math.min(0.8, progress * 0.8));
+    ctx.globalAlpha = 1 - progress;
+    this.sprite(ctx, "commander-canter", 0, 0, 0, 34);
+    ctx.restore();
   }
   draw(
     ctx: CanvasRenderingContext2D,
@@ -127,7 +161,7 @@ export class OnlineArmyArt {
       s.unitType === "cavalry"
         ? mountedPose(
             s.facing,
-            tick,
+            s.fsmState === "ROUTED" ? tick * 2 : tick,
             motion.moving,
             false,
             "cavalry",
@@ -142,7 +176,7 @@ export class OnlineArmyArt {
                 ? "archers"
                 : "spears",
             s.facing,
-            tick,
+            s.fsmState === "ROUTED" ? tick * 2 : tick,
             motion.moving,
             feedback.attackAllowed
               ? this.attacks.get(s.id)?.startTick
@@ -168,13 +202,30 @@ export class OnlineArmyArt {
     const count = compact
       ? 1
       : Math.min(4, Math.max(1, Math.ceil(s.soldiers / 5)));
+    // Procedural display clips: hit recoil, broken sway, and routed stride. Never move the server foot.
+    ctx.save();
+    if (!this.reducedMotion) {
+      const age = tick - (this.damage.get(s.id) ?? -100),
+        hit = age >= 0 && age < 3 ? (3 - age) * 1.5 : 0;
+      ctx.translate(
+        -Math.sign(s.facing.x - s.facing.y) * hit,
+        s.fsmState === "BROKEN"
+          ? Math.sin(tick) * 2
+          : s.fsmState === "IDLE"
+            ? Math.sin(tick * 0.3) * 0.7
+            : 0,
+      );
+    }
+    const frame = this.reducedMotion
+      ? Math.floor(pose.frame / 4) * 4
+      : pose.frame;
     let painted = false;
     for (let i = 0; i < count; i++)
       painted =
         this.sprite(
           ctx,
           pose.texture,
-          pose.frame,
+          frame,
           x + (compact ? 0 : i % 2 ? 9 : -9),
           y + (i < 2 ? -5 : 5),
           compact ? 26 : s.unitType === "cavalry" ? 38 : 32,
@@ -185,11 +236,20 @@ export class OnlineArmyArt {
     }
     if (commander) {
       const p = mountedPose(s.facing, tick, motion.moving, false, "commander");
-      if (!compact) this.sprite(ctx, p.texture, p.frame, x + 17, y - 6, 42);
+      if (!compact)
+        this.sprite(
+          ctx,
+          p.texture,
+          this.reducedMotion ? Math.floor(p.frame / 4) * 4 : p.frame,
+          x + 17,
+          y - 6,
+          42,
+        );
       ctx.fillStyle = "#f5d589";
       ctx.font = 'bold 10px "Noto Sans KR", sans-serif';
       ctx.fillText("장", x + 12, y - (compact ? 24 : 46));
     }
+    ctx.restore();
     ctx.globalAlpha = 1;
     ctx.fillStyle = "#18231d";
     ctx.fillRect(x - 22, y + 14, 44, 4);

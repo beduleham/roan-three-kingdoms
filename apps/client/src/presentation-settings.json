@@ -1,0 +1,9 @@
+{
+  "frameMs": 33,
+  "maxEffects": 48,
+  "maxSeenEvents": 2048,
+  "maxVoices": 6,
+  "cueSpacingMs": 80,
+  "effectTicks": 18,
+  "performanceSamples": 180
+}

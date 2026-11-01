@@ -386,3 +386,20 @@ body:has(#online) {
 #online[data-battle-started="true"] #lobby-panel > label {
   display: none;
 }
+.presentation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 12px;
+}
+.presentation-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#online .presentation-controls input[type="range"] {
+  width: 100px;
+  padding: 0;
+}
