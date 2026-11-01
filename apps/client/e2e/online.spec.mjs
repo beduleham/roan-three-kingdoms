@@ -127,9 +127,7 @@ test("an invalid account session fails room entry instead of silently becoming a
   await page.goto("/online.html");
   await expect(page.locator("#account-status")).toContainText("만료 계정");
   await page.locator("#join").click();
-  await expect(page.locator("#connection")).toContainText(
-    "ACCOUNT_SESSION_EXPIRED",
-  );
+  await expect(page.locator("#connection")).toContainText("로그인 세션이 만료");
   await expect(page.locator("#identity")).toBeEmpty();
 });
 
@@ -481,7 +479,7 @@ test("private room rejects missing or revoked keys and only the host rotates inv
     await outsider.goto(missing.href);
     await outsider.locator("#join").click();
     await expect(outsider.locator("#connection")).toContainText(
-      "INVITE_REQUIRED",
+      "초대 링크가 필요",
     );
     await expect(outsider.locator("#clock")).toBeEmpty();
     const tampered = new URL(original);
@@ -489,7 +487,7 @@ test("private room rejects missing or revoked keys and only the host rotates inv
     await outsider.goto(tampered.href);
     await outsider.locator("#join").click();
     await expect(outsider.locator("#connection")).toContainText(
-      "INVITE_REQUIRED",
+      "초대 링크가 필요",
     );
     await guest.goto(original);
     await guest.locator("#join").click();
@@ -506,7 +504,7 @@ test("private room rejects missing or revoked keys and only the host rotates inv
     await outsider.goto(original);
     await outsider.locator("#join").click();
     await expect(outsider.locator("#connection")).toContainText(
-      "INVITE_REQUIRED",
+      "초대 링크가 필요",
     );
     await outsider.goto(current);
     await outsider.locator("#join").click();
@@ -566,7 +564,9 @@ test("host removes a lobby guest, revokes its admission, and hands off on leave"
       saved,
     );
     await guest.locator("#join").click();
-    await expect(guest.locator("#connection")).toContainText("INVITE_REQUIRED");
+    await expect(guest.locator("#connection")).toContainText(
+      "초대 링크가 필요",
+    );
     await guest.goto(current);
     await guest.locator("#join").click();
     await expect(guest.locator("#identity")).toContainText("red-1");
@@ -600,7 +600,9 @@ test("host can revoke a disconnected lobby seat before its reconnect window expi
     await host.locator("#remove-player").click();
     await expect(host.locator("#lobby")).toContainText("red-1: empty");
     await guest.locator("#join").click();
-    await expect(guest.locator("#connection")).toContainText("INVITE_REQUIRED");
+    await expect(guest.locator("#connection")).toContainText(
+      "초대 링크가 필요",
+    );
     await expect(guest.locator("#identity")).toBeEmpty();
   } finally {
     await host.close();

@@ -403,3 +403,49 @@ body:has(#online) {
   width: 100px;
   padding: 0;
 }
+#seat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  max-width: 900px;
+}
+#seat-grid button {
+  text-align: left;
+  white-space: normal;
+  border-left: 3px solid #768679;
+  margin: 0;
+  font-size: 12px;
+  min-height: 44px;
+}
+#seat-grid button[data-nation="blue"] {
+  border-left-color: #66a9ce;
+}
+#seat-grid button[data-nation="red"] {
+  border-left-color: #cf7d66;
+}
+#seat-grid button[data-nation="green"] {
+  border-left-color: #88b77e;
+}
+#seat-grid button[aria-pressed="true"] {
+  outline: 1px solid #e5c172;
+  opacity: 1;
+}
+#lobby-seat-controls p,
+#lobby-readiness {
+  font-size: 12px;
+  line-height: 1.8;
+}
+@media (max-width: 600px) {
+  #seat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+#online .lobby-detail {
+  font-size: 12px;
+  margin: 8px 0;
+  color: #b9c6b4;
+}
+#online .lobby-detail #lobby {
+  display: block;
+  overflow-wrap: anywhere;
+}

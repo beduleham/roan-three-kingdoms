@@ -51,6 +51,29 @@ test("three browsers supply, grow, select augments, recruit and agree on overtim
     await expect(
       blue.locator("#squad option[value^='blue-1-recruit']"),
     ).toHaveCount(1);
+    await blue.locator("#beginner-guide > summary").click();
+    await expect(blue.locator('[data-step="connected"]')).toHaveAttribute(
+      "data-done",
+      "true",
+    );
+    await blue.locator("#W").click();
+    await expect(blue.locator('[data-step="skill"]')).toHaveAttribute(
+      "data-done",
+      "true",
+    );
+    await blue.locator("#formation").selectOption("defense");
+    await blue.locator("#applyFormation").click();
+    await expect(blue.locator('[data-step="formation"]')).toHaveAttribute(
+      "data-done",
+      "true",
+    );
+    await blue.locator("#dest-x").fill("1");
+    await blue.locator("#dest-y").fill("7");
+    await blue.locator("#move").click();
+    await expect(blue.locator('[data-step="moved"]')).toHaveAttribute(
+      "data-done",
+      "true",
+    );
     await expect(blue.locator("#national-clock")).toContainText("18분 연장", {
       timeout: 15000,
     });
@@ -74,6 +97,13 @@ test("three browsers supply, grow, select augments, recruit and agree on overtim
     expect(ranking).toContain("red-1");
     expect(ranking).toContain("green-1");
     expect(ranking).not.toContain("blue-2");
+    await expect(blue.locator('[data-step="finished"]')).toHaveAttribute(
+      "data-done",
+      "true",
+    );
+    await expect(blue.locator(".guide-status")).toContainText(
+      "이번 경기의 입장·조작·종료 흐름",
+    );
     await expect(blue.locator("#move")).toBeDisabled();
     await blue
       .locator("#playtest-notes")
@@ -333,6 +363,104 @@ test("Phase8 three-client render sample bounds paint history and avoids frame-ra
     });
     expect(errors).toEqual([]);
   } finally {
+    await Promise.all(pages.map((p) => p.close()));
+  }
+});
+
+test("Phase9 welcome, mode routes and narrow start screen work before admission", async ({
+  browser,
+}) => {
+  const p = await browser.newPage();
+  try {
+    await p.goto("/");
+    await expect(p).toHaveURL(/\/play\.html$/);
+    await expect(p.locator("h1")).toContainText("당신의 전략");
+    await expect(p.locator("#enter-national")).toHaveAttribute(
+      "href",
+      "/online.html?mode=national&guide=1",
+    );
+    await expect(p.locator("#practice")).toHaveAttribute(
+      "href",
+      "/index.html?guide=1",
+    );
+    await expect(p.locator("#modes article")).toHaveCount(4);
+    await p.screenshot({
+      path: "/tmp/phase9-welcome-desktop.png",
+      fullPage: true,
+    });
+    await p.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await p.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await p.screenshot({
+      path: "/tmp/phase9-welcome-mobile.png",
+      fullPage: true,
+    });
+    await p.locator("#enter-national").click();
+    await expect(p.locator("#beginner-guide")).toHaveAttribute("open", "");
+    await expect(p.locator("#lobby-readiness")).toContainText("입장");
+  } finally {
+    await p.close();
+  }
+});
+
+test("Phase9 national seat changes use new nation snapshots, preserve host and enforce quorum/reservations", async ({
+  browser,
+}) => {
+  const { pages, errors } = await guests(browser),
+    [blue, red, green] = pages;
+  let wire;
+  try {
+    await expect(blue.locator("#start")).toBeEnabled();
+    await blue.locator('[data-seat="green-2"]').click();
+    await expect(blue.locator("#identity")).toContainText("green-2");
+    await expect(blue.locator("#squad option[value='green-2-1']")).toHaveCount(
+      1,
+    );
+    await expect(blue.locator("#squad option[value^='blue']")).toHaveCount(0);
+    await expect(blue.locator("#start")).toBeDisabled();
+    await expect(blue.locator("#lobby-readiness")).toContainText("청국 참가자");
+    await expect(blue.locator('[data-seat="red-1"]')).toBeDisabled();
+    await blue.locator('[data-seat="blue-2"]').click();
+    await expect(blue.locator("#identity")).toContainText("blue-2");
+    await expect(blue.locator("#start")).toBeEnabled();
+    const roomId = await blue.locator("#online").getAttribute("data-room-id");
+    const key = new URLSearchParams(
+      new URL(
+        await blue.locator("#invite-link").getAttribute("href"),
+      ).hash.slice(1),
+    ).get("invite");
+    wire = await new Client("ws://127.0.0.1:4188").joinById(roomId, {
+      inviteKey: key,
+    });
+    wire.onMessage("*", () => {});
+    let reply = null;
+    wire.onMessage("seat-result", (r) => (reply = r));
+    wire.send("change-seat", { seat: "blue-2" });
+    await expect.poll(() => reply?.reason).toBe("SEAT_OCCUPIED");
+    reply = null;
+    wire.send("change-seat", { seat: "red-2", sessionId: "spoof" });
+    await expect.poll(() => reply?.reason).toBe("INVALID_SEAT");
+    await blue.locator("#start").click();
+    await expect(blue.locator("#move")).toBeEnabled();
+    reply = null;
+    wire.send("change-seat", { seat: "green-3" });
+    await expect.poll(() => reply?.reason).toBe("MATCH_STARTED");
+    await expect(blue.locator("#lobby-seat-controls")).toBeHidden();
+    const tick = Number(await blue.locator("#field").getAttribute("data-tick"));
+    await expect
+      .poll(async () =>
+        Number(await blue.locator("#field").getAttribute("data-tick")),
+      )
+      .toBeGreaterThan(tick);
+    await green.locator("#leave").click();
+    await expect(blue.locator("#match-result")).toContainText("경기 중단");
+    await expect(red.locator("#national-ranking")).toContainText("blue-2");
+    expect(errors).toEqual([]);
+  } finally {
+    if (wire) await wire.leave();
     await Promise.all(pages.map((p) => p.close()));
   }
 });

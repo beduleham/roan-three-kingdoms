@@ -1132,3 +1132,41 @@ test("replay verification cancels and replaces long jobs without stale output", 
   );
   expect(await page.evaluate(() => window.battleDemo.log())).toEqual(small);
 });
+
+test("Phase9 solo guide marks only actual start, movement, W and completed formation", async ({
+  page,
+}) => {
+  await page.goto("/index.html?guide=1");
+  await expect(page.locator("#arena canvas")).toBeVisible();
+  await expect(page.locator("#beginner-guide")).toHaveAttribute("open", "");
+  await expect(page.locator('[data-step="skill"]')).toHaveAttribute(
+    "data-done",
+    "false",
+  );
+  await page.locator("#engage").click();
+  await expect(page.locator('[data-step="started"]')).toHaveAttribute(
+    "data-done",
+    "true",
+  );
+  await expect(page.locator('[data-step="moved"]')).toHaveAttribute(
+    "data-done",
+    "true",
+  );
+  await page.locator("#W").click();
+  await clickSquad(page, "human-1");
+  await page.locator("#confirm").click();
+  await expect(page.locator('[data-step="skill"]')).toHaveAttribute(
+    "data-done",
+    "true",
+  );
+  await page.locator("details.tactics > summary").click();
+  await page.locator("#formation").selectOption("defense");
+  await page.locator("#applyFormation").click();
+  await expect(page.locator('[data-step="formation"]')).toHaveAttribute(
+    "data-done",
+    "true",
+  );
+  await expect(page.locator(".guide-status")).toContainText(
+    "기본 조작 연습 목표",
+  );
+});

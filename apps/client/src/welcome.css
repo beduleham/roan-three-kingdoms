@@ -1,0 +1,248 @@
+:root {
+  font-family: "Noto Sans KR", sans-serif;
+  color: #eadfc6;
+  background: #18221d;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:focus-visible {
+  outline: 3px solid #e9bd64;
+  outline-offset: 5px;
+}
+header,
+main,
+footer {
+  max-width: 1240px;
+  margin: auto;
+  padding: 26px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #a58a4a55;
+  font-size: 13px;
+}
+.brand {
+  letter-spacing: 0.12em;
+  color: #e5c88a;
+}
+.brand span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #b2b39b;
+  margin-top: 5px;
+}
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 70px;
+  align-items: center;
+  padding: 70px 0;
+}
+.seal {
+  display: inline-block;
+  background: #913e30;
+  border: 1px solid #e6b881;
+  padding: 8px 13px;
+  line-height: 1.2;
+  color: #f8dfb6;
+}
+.eyebrow {
+  color: #bba36c;
+  font-size: 12px;
+  letter-spacing: 0.13em;
+}
+h1 {
+  font-size: clamp(38px, 5.6vw, 72px);
+  line-height: 1.3;
+  font-weight: 400;
+  margin: 18px 0 22px;
+}
+h2 {
+  font-size: 24px;
+  font-weight: 400;
+}
+h3 {
+  font-size: 21px;
+  font-weight: 400;
+  margin: 12px 0;
+}
+.lead {
+  max-width: 490px;
+  line-height: 1.9;
+  color: #c6c9b8;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 28px 0;
+}
+.actions a {
+  padding: 13px 20px;
+  border: 1px solid #b19b63;
+  min-height: 48px;
+}
+.primary {
+  background: #984635;
+}
+.note {
+  color: #aab29e;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.battle-mark {
+  height: 350px;
+  position: relative;
+  background: linear-gradient(135deg, #293b2a, #14221a);
+  border: 1px solid #b29a5b66;
+  transform: rotate(-3deg);
+}
+.battle-mark:before {
+  content: "";
+  position: absolute;
+  inset: 30px;
+  border: 1px solid #c1ac6b44;
+  background: repeating-linear-gradient(
+    35deg,
+    transparent 0 40px,
+    #a7ae7330 41px 42px
+  );
+}
+.battle-mark span {
+  position: absolute;
+  padding: 18px;
+  border: 1px solid #d2b46c;
+  font-size: 30px;
+  background: #31566a;
+  left: 15%;
+  top: 18%;
+  transform: rotate(3deg);
+}
+.battle-mark span:nth-child(2) {
+  background: #844738;
+  left: 67%;
+  top: 28%;
+}
+.battle-mark span:nth-child(3) {
+  background: #4a704d;
+  left: 39%;
+  top: 65%;
+}
+.battle-mark b {
+  position: absolute;
+  left: 39%;
+  top: 33%;
+  font-weight: 400;
+  line-height: 1.8;
+  font-size: 21px;
+  transform: rotate(3deg);
+}
+#modes,
+#how {
+  padding: 40px 0;
+  border-top: 1px solid #ad985744;
+}
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 30px;
+}
+article {
+  background: #26332a;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #9d8b5344;
+}
+article > span {
+  font-size: 11px;
+  color: #c2a970;
+}
+article p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #b9c0ad;
+}
+article a {
+  font-size: 13px;
+  color: #eed193;
+  margin-top: auto;
+  padding-top: 16px;
+  min-height: 44px;
+}
+ol {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px 42px;
+  padding-left: 25px;
+}
+li {
+  padding: 10px;
+  line-height: 1.8;
+}
+li strong {
+  font-size: 16px;
+  font-weight: 400;
+}
+li p {
+  font-size: 13px;
+  color: #bdc5b3;
+}
+footer {
+  font-size: 11px;
+  color: #9fa990;
+  border-top: 1px solid #a58a4a55;
+  line-height: 1.8;
+}
+@media (max-width: 900px) {
+  .hero {
+    gap: 26px;
+  }
+  .battle-mark {
+    height: 300px;
+  }
+  .mode-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  header,
+  main,
+  footer {
+    padding: 18px;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 34px 0;
+  }
+  .battle-mark {
+    height: 240px;
+  }
+  .mode-grid,
+  ol {
+    grid-template-columns: 1fr;
+  }
+  .hero h1 {
+    font-size: 43px;
+  }
+  h2 {
+    font-size: 21px;
+  }
+  .actions a {
+    text-align: center;
+    flex: 1 0 100%;
+  }
+}

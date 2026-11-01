@@ -1,3 +1,5 @@
+import { mountBeginnerGuide, type GuideSignal } from "./beginner-guide.js";
+import "./beginner-guide.css";
 import { mountReplayVerifier } from "./replay-ui.js";
 import commanderCommandUrl from "./commander-command.svg?url";
 import { commanderPose } from "./unit-motion.js";
@@ -134,6 +136,10 @@ resultPanel.innerHTML =
   '<div class="result-heading"><span class="seal" aria-hidden="true">終</span><div><small>전멸 기준 · 로컬 시험 결과</small><h2 id="result-title" role="status"></h2></div></div><div id="result-content"></div><div class="buttons"><button id="result-retry">같은 편성으로 재시험</button><button id="result-edit">편성 변경</button><button id="result-log">전투 로그 저장</button></div><p class="result-note">국가 점수·거점에 따른 정식 승리 판정과 별도의 전멸 테스트입니다.</p>';
 allGone.after(resultPanel);
 let renderedResult: typeof session.result = null;
+const localGuideHost = document.createElement("section");
+document.querySelector("#app header")!.after(localGuideHost);
+const localGuide = mountBeginnerGuide(localGuideHost, true);
+let practiceGeneration = 0;
 
 function el<T extends HTMLElement = HTMLElement>(id: string) {
   return document.getElementById(id) as T;
@@ -173,6 +179,8 @@ function setupChanged(): boolean {
 for (const id of ["human1", "human2", "enemy1", "enemy2", "experimental"])
   el(id).addEventListener("change", () => hud());
 function resetSession(options: Options) {
+  practiceGeneration++;
+  localGuide.reset();
   session.reset(options);
   for (const side of ["human", "enemy"] as const)
     session.options[side].forEach((unit, i) => {
@@ -315,6 +323,41 @@ const rejection: Record<string, string> = {
   LEVEL_REQUIRED: "레벨 부족",
 };
 function hud() {
+  const own = session.state.squads.filter((s) => s.ownerPlayerId === HUMAN),
+    ids = new Set([
+      ...own.map((s) => s.id),
+      ...session.state.commanders
+        .filter((c) => c.ownerPlayerId === HUMAN)
+        .map((c) => c.id),
+    ]);
+  const signals: GuideSignal[] = [];
+  if (session.state.tick > 0) signals.push("started");
+  if (
+    own.some((s) => {
+      const initial = session.initial.squads.find((p) => p.id === s.id);
+      return (
+        initial &&
+        (initial.position.x !== s.position.x ||
+          initial.position.y !== s.position.y)
+      );
+    })
+  )
+    signals.push("moved");
+  if (
+    session.events
+      .slice(-64)
+      .some(
+        (e) => e.type === "SKILL_CAST" && e.skill === "W" && ids.has(e.actorId),
+      )
+  )
+    signals.push("skill");
+  if (
+    session.events
+      .slice(-64)
+      .some((e) => e.type === "FORMATION_COMPLETED" && ids.has(e.actorId))
+  )
+    signals.push("formation");
+  localGuide.observe(`local:${practiceGeneration}`, signals);
   const selected = session.state.squads.filter((s) =>
     session.selected.includes(s.id),
   );

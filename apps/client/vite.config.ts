@@ -22,6 +22,7 @@ export default defineConfig({
       input: {
         index: resolve(import.meta.dirname, "index.html"),
         online: resolve(import.meta.dirname, "online.html"),
+        play: resolve(import.meta.dirname, "play.html"),
       },
     },
   },
