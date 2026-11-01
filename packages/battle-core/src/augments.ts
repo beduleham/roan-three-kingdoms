@@ -1,3 +1,4 @@
+import { seededChoiceKey } from "./seeded-choice.js";
 import { applyBp } from "./damage.js";
 import { augmentPolicy } from "./augment-policy.js";
 import { canonicalJson } from "./canonical.js";
@@ -76,7 +77,26 @@ export function offerAugments(state: BattleState, emit: Emit): void {
     const candidates = state.augmentDefinitions
       .filter((d) => d.minLevel <= p.level && !progress.selected.includes(d.id))
       .map((d) => d.id)
-      .sort()
+      .sort((a, b) =>
+        state.choicePolicy?.augmentOffers === "seeded"
+          ? seededChoiceKey(
+              state.seed,
+              p.id,
+              progress!.earned[progress!.spent]!,
+              a,
+            ) -
+              seededChoiceKey(
+                state.seed,
+                p.id,
+                progress!.earned[progress!.spent]!,
+                b,
+              ) || (a < b ? -1 : a > b ? 1 : 0)
+          : a < b
+            ? -1
+            : a > b
+              ? 1
+              : 0,
+      )
       .slice(0, augmentPolicy.candidateCount);
     if (candidates.length < augmentPolicy.candidateCount) continue;
     progress.offer = {

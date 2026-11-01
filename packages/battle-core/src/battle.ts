@@ -51,6 +51,7 @@ function validate(state: BattleState): void {
   natural.parse(state.seed);
   parseBattleConfig(state.config);
   scenarioSchema.parse({
+    choicePolicy: state.choicePolicy,
     players: state.players,
     squads: state.squads,
     commanders: state.commanders,

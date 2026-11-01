@@ -81,6 +81,19 @@ test("nine browser seats share a lobby, reconnect and pause all nations before a
     await expect(blue.locator("#lobby")).toContainText("green-3");
     await blue.locator("#start").click();
     await expect(green.locator("#move")).toBeEnabled();
+    const recovery = pages[6];
+    await expect(recovery.locator("#move")).toBeDisabled();
+    await expect(recovery.locator("#resupply")).toBeDisabled();
+    await recovery.locator("#recruit").click();
+    await expect(
+      recovery.locator("#squad option[value^='blue-3-recruit']"),
+    ).toHaveCount(1);
+    await expect(recovery.locator("#move")).toBeEnabled();
+    await recovery.locator("#reassign").click();
+    await expect(recovery.locator("#commander")).toContainText("ACTIVE");
+    await expect(recovery.locator("#commander")).toContainText(
+      "blue-3-recruit",
+    );
     await green.reload();
     await green.locator("#join").click();
     await expect(green.locator("#identity")).toContainText("green-1");

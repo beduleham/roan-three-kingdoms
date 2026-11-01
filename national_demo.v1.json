@@ -108,11 +108,24 @@
   "damageXpDivisor": 10000,
   "damageMeritDivisor": 5000,
   "xpThresholds": [
-    0, 100, 240, 420, 640, 900, 1200, 1540, 1920, 2340, 2800, 3300, 3840, 4420,
-    5040, 5700, 6400, 7140, 7920, 8740, 9600, 10500, 11440, 12420, 13440, 14500,
-    15600, 16740, 17920, 19140, 20400, 21700, 23040, 24420, 25840, 27300, 28800,
-    30340, 31920, 33540
+    0, 17, 40, 69, 104, 145, 192, 245, 304, 369, 440, 517, 600, 689, 784, 885,
+    992, 1105, 1224, 1349, 1480, 1617, 1760, 1909, 2064, 2225, 2392, 2565, 2744,
+    2929, 3120, 3317, 3520, 3729, 3944, 4165, 4392, 4625, 4864, 5109
   ],
   "aiEveryTicks": 100,
-  "augmentCopies": 3
+  "augmentCopies": 3,
+  "policy": {
+    "version": "phase7-v1",
+    "homePresenceRewards": false,
+    "recoveryAtHome": true,
+    "unitCapacity": {
+      "junior": 20,
+      "sima": 25,
+      "xiaowei": 25,
+      "zhonglangjiang": 25,
+      "general": 25
+    },
+    "seededChoices": true,
+    "seededTargetTies": true
+  }
 }

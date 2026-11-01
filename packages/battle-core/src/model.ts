@@ -131,6 +131,12 @@ export const contactSchema = z.strictObject({
   preparedSpear: z.boolean().default(false),
 });
 export const scenarioSchema = z.strictObject({
+  choicePolicy: z
+    .strictObject({
+      augmentOffers: z.enum(["sorted", "seeded"]),
+      targetTies: z.enum(["id", "seeded"]),
+    })
+    .optional(),
   augmentDefinitions: augmentDefinitionsSchema.default([]),
   players: z.array(playerSchema).default([]),
   squads: z.array(squadSchema).default([]),
@@ -162,6 +168,7 @@ export const skillEffectSchema = z.strictObject({
 export type SkillEffect = z.infer<typeof skillEffectSchema>;
 export type Skill = "Q" | "W" | "R";
 export interface BattleState {
+  choicePolicy?: z.infer<typeof scenarioSchema>["choicePolicy"];
   augmentDefinitions: AugmentDefinition[];
   augmentProgress: AugmentProgress[];
   augmentEffects: AugmentEffect[];

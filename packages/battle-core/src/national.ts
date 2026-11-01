@@ -1,3 +1,5 @@
+import { allocateDamageProportionally } from "./damage-credit.js";
+import { canonicalJson } from "./canonical.js";
 import { z } from "zod";
 import type { BattleState, BattleEvent, Player } from "./model.js";
 import { squadSchema } from "./model.js";
@@ -12,6 +14,22 @@ const positive = z.number().int().positive().max(1000000);
 export const nationalRulesSchema = z
   .strictObject({
     experimental: z.literal(true),
+    policy: z
+      .strictObject({
+        version: z.literal("phase7-v1"),
+        homePresenceRewards: z.boolean(),
+        recoveryAtHome: z.boolean(),
+        unitCapacity: z.strictObject({
+          junior: positive,
+          sima: positive,
+          xiaowei: positive,
+          zhonglangjiang: positive,
+          general: positive,
+        }),
+        seededChoices: z.boolean(),
+        seededTargetTies: z.boolean(),
+      })
+      .optional(),
     objectives: objectiveRulesSchema,
     bases: z.record(z.string(), z.string()),
     checkpoints: z.array(positive).length(3),
@@ -48,6 +66,14 @@ export const nationalRulesSchema = z
     )
       c.addIssue({ code: "custom", message: "Nonascending progression/clock" });
     const ids = new Set(r.objectives.points.map((p) => p.id));
+    if (
+      r.policy &&
+      Object.values(r.policy.unitCapacity).some((v) => v < r.recruitSoldiers)
+    )
+      c.addIssue({
+        code: "custom",
+        message: "Policy capacity below recruit size",
+      });
     if (
       Object.keys(r.bases).length !== 3 ||
       Object.values(r.bases).some((id) => !ids.has(id)) ||
@@ -176,15 +202,22 @@ export function queueSupply(
                 near(point.position, s.position, r.objectives.radiusUnits),
             ),
         );
-  if (!squad || squad.ownerPlayerId !== playerId) return "NOT_OWNER";
-  if (!eligible(squad)) return "FORCED_STATE";
+  const wiped =
+    action.type === "RECRUIT" &&
+    !b.squads.some((s) => s.ownerPlayerId === p.id && s.hpMilli > 0);
+  const recovery = wiped && r.policy?.recoveryAtHome;
+  if (!recovery && (!squad || squad.ownerPlayerId !== p.id)) return "NOT_OWNER";
+  if (squad && !eligible(squad)) return "FORCED_STATE";
   const point = o.points.find(
     (point) =>
       point.open &&
       point.owner === p.nationId &&
       !point.contested &&
       !point.capturing &&
-      near(point.position, squad.position, r.objectives.radiusUnits),
+      (recovery
+        ? point.id === r.bases[p.nationId]
+        : !!squad &&
+          near(point.position, squad.position, r.objectives.radiusUnits)),
   );
   if (!point) return "NEED_FRIENDLY_POINT";
   let soldiers = r.recruitSoldiers,
@@ -192,7 +225,7 @@ export function queueSupply(
   if (action.type === "RESUPPLY") {
     soldiers = Math.min(
       r.refillSoldiers,
-      squad.maxSoldiers - livingSoldiers(squad, b.config),
+      squad!.maxSoldiers - livingSoldiers(squad!, b.config),
       cap(b, p).soldiers - capacity(b, p),
     );
     cost = soldiers * r.supplyCostPerSoldier;
@@ -207,14 +240,23 @@ export function queueSupply(
   p.supplyPoints -= cost;
   n.jobs.push({
     playerId,
-    squadId: action.type === "RESUPPLY" ? squad.id : null,
-    unitType: action.type === "RECRUIT" ? action.unitType : squad.unitType,
+    squadId: action.type === "RESUPPLY" ? squad!.id : null,
+    unitType: action.type === "RECRUIT" ? action.unitType : squad!.unitType,
     finishAt: b.tick + r.jobTicks,
     soldiers,
     cost,
     pointId: point.id,
   });
   return "SUPPLY_STARTED";
+}
+/** End-of-match reservations are refunded exactly once. */
+export function cancelNationalSupply(b: BattleState, n: NationalProgress) {
+  for (const job of n.jobs) {
+    const p = b.players.find((p) => p.id === job.playerId);
+    if (p) p.supplyPoints += job.cost;
+    n.stats[job.playerId]!.feedback = "SUPPLY_CANCELLED";
+  }
+  n.jobs = [];
 }
 export function finishNationalRanking(b: BattleState, n: NationalProgress) {
   const sorted = b.players
@@ -256,18 +298,34 @@ export function advanceNational(
       Math.max(0, (damageBefore[s.id] ?? s.hpMilli) - s.hpMilli),
     ]),
   );
-  for (const event of events)
-    if (event.type === "ATTACK_HIT" && event.delta && event.delta < 0) {
-      const attacker = b.squads.find((s) => s.id === event.actorId),
-        target = b.squads.find((s) => s.id === event.targetId);
-      if (!attacker || !target || attacker.nationId === target.nationId)
-        continue;
-      const stats = n.stats[attacker.ownerPlayerId]!;
-      const before = stats.damage;
-      const effective = Math.min(-event.delta, budgets[target.id] ?? 0);
-      budgets[target.id] = (budgets[target.id] ?? 0) - effective;
-      stats.damage += effective;
-      const p = b.players.find((p) => p.id === attacker.ownerPlayerId)!;
+  if (r.policy) {
+    const claims = events
+      .filter(
+        (e) =>
+          e.type === "ATTACK_HIT" &&
+          e.tick === b.tick - 1 &&
+          e.delta !== undefined &&
+          e.delta < 0,
+      )
+      .flatMap((e) => {
+        const actor = b.squads.find((s) => s.id === e.actorId),
+          target = b.squads.find((s) => s.id === e.targetId);
+        if (!actor || !target || actor.nationId === target.nationId) return [];
+        return [
+          {
+            claimId: canonicalJson([e.tick, e.type, e.actorId, e.targetId]),
+            actorId: actor.id,
+            targetId: target.id,
+            damage: -e.delta!,
+          },
+        ];
+      });
+    for (const credit of allocateDamageProportionally(claims, budgets)) {
+      const actor = b.squads.find((s) => s.id === credit.actorId)!,
+        p = b.players.find((p) => p.id === actor.ownerPlayerId)!,
+        stats = n.stats[p.id]!,
+        before = stats.damage;
+      stats.damage += credit.damage;
       p.xp +=
         Math.floor(stats.damage / r.damageXpDivisor) -
         Math.floor(before / r.damageXpDivisor);
@@ -275,14 +333,42 @@ export function advanceNational(
         Math.floor(stats.damage / r.damageMeritDivisor) -
         Math.floor(before / r.damageMeritDivisor);
     }
+  } else {
+    for (const event of events)
+      if (event.type === "ATTACK_HIT" && event.delta && event.delta < 0) {
+        const attacker = b.squads.find((s) => s.id === event.actorId),
+          target = b.squads.find((s) => s.id === event.targetId);
+        if (!attacker || !target || attacker.nationId === target.nationId)
+          continue;
+        const stats = n.stats[attacker.ownerPlayerId]!;
+        const before = stats.damage;
+        const effective = Math.min(-event.delta, budgets[target.id] ?? 0);
+        budgets[target.id] = (budgets[target.id] ?? 0) - effective;
+        stats.damage += effective;
+        const p = b.players.find((p) => p.id === attacker.ownerPlayerId)!;
+        p.xp +=
+          Math.floor(stats.damage / r.damageXpDivisor) -
+          Math.floor(before / r.damageXpDivisor);
+        p.merit +=
+          Math.floor(stats.damage / r.damageMeritDivisor) -
+          Math.floor(before / r.damageMeritDivisor);
+      }
+  }
   for (const point of o.points) {
-    if (!point.open || !point.owner || point.contested || point.capturing)
-      continue;
+    if (!point.open || !point.owner) continue;
+    const peaceful = !point.contested && !point.capturing;
+    const rewardPresence =
+      !r.policy ||
+      r.policy.homePresenceRewards ||
+      !Object.values(r.bases).includes(point.id);
     const captured = previousOwners[point.id] !== point.owner;
     const holding = b.tick % r.objectives.scoreEveryTicks === 0;
     for (const p of b.players.filter((p) => p.nationId === point.owner)) {
-      if (b.tick % r.supplyEveryTicks === 0) p.supplyPoints += r.supplyPerPoint;
+      if (peaceful && b.tick % r.supplyEveryTicks === 0)
+        p.supplyPoints += r.supplyPerPoint;
       if (
+        (rewardPresence || (captured && peaceful)) &&
+        (peaceful || (!!r.policy && point.contested)) &&
         b.squads.some(
           (s) =>
             s.ownerPlayerId === p.id &&
@@ -290,12 +376,12 @@ export function advanceNational(
             near(s.position, point.position, r.objectives.radiusUnits),
         )
       ) {
-        if (captured) {
+        if (captured && peaceful) {
           p.xp += r.captureXp;
           p.merit += r.captureMerit;
           n.stats[p.id]!.contribution++;
         }
-        if (holding) {
+        if (holding && rewardPresence) {
           p.xp += r.holdXp;
           p.merit += r.holdMerit;
           n.stats[p.id]!.contribution++;
@@ -310,6 +396,11 @@ export function advanceNational(
       { minMerit: number },
     ][];
     p.rank = ranks.filter(([, v]) => p.merit >= v.minMerit).at(-1)![0];
+    if (r.policy)
+      for (const s of b.squads.filter(
+        (s) => s.ownerPlayerId === p.id && s.hpMilli > 0,
+      ))
+        s.maxSoldiers = Math.max(s.maxSoldiers, r.policy.unitCapacity[p.rank]);
   }
   for (const job of n.jobs.filter((j) => j.finishAt <= b.tick)) {
     const p = b.players.find((p) => p.id === job.playerId)!,
@@ -322,6 +413,11 @@ export function advanceNational(
       point.capturing ||
       !point.open ||
       (!job.squadId &&
+        !(
+          r.policy?.recoveryAtHome &&
+          job.pointId === r.bases[p.nationId] &&
+          !b.squads.some((s) => s.ownerPlayerId === p.id && s.hpMilli > 0)
+        ) &&
         !b.squads.some(
           (s) =>
             s.ownerPlayerId === p.id &&
@@ -353,7 +449,9 @@ export function advanceNational(
           nationId: p.nationId,
           unitType: job.unitType,
           position: { ...point.position },
-          maxSoldiers: r.recruitMaxSoldiers,
+          maxSoldiers: r.policy
+            ? r.policy.unitCapacity[p.rank]
+            : r.recruitMaxSoldiers,
           hpMilli: job.soldiers * b.config.soldierHp * b.config.hpMilliPerHp,
           stance: "defensive",
         }),
@@ -393,6 +491,9 @@ export function advanceNational(
       outcome = finishObjectiveMatch(o, "time");
     else n.phase++;
   }
-  if (outcome.result) finishNationalRanking(b, n);
+  if (outcome.result) {
+    if (r.policy) cancelNationalSupply(b, n);
+    finishNationalRanking(b, n);
+  }
   return outcome;
 }

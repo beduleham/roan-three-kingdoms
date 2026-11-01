@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import rawNational from "../../../national_demo.v1.json" with { type: "json" };
 import { Room, ServerError, CloseCode, type Client } from "colyseus";
 import {
@@ -252,5 +253,6 @@ export class NationalBattleRoom extends BattleRoom {
     "national",
     undefined,
     nationalRulesSchema.parse(rawNational),
+    randomInt(1, 0x7fffffff),
   );
 }

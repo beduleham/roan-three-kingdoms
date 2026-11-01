@@ -1,3 +1,4 @@
+import { seededChoiceKey } from "./seeded-choice.js";
 import type { BasicCommand, BattleState, Squad } from "./model.js";
 import { advanceCharge } from "./warrior.js";
 import { skillMultiplier } from "./effects.js";
@@ -151,7 +152,15 @@ export function advanceOrders(state: BattleState): void {
         distanceSquared(s.position, a.position) -
         distanceSquared(s.position, b.position);
       return (
-        threatA - threatB || (d < 0n ? -1 : d > 0n ? 1 : compareIds(a.id, b.id))
+        threatA - threatB ||
+        (d < 0n
+          ? -1
+          : d > 0n
+            ? 1
+            : (state.choicePolicy?.targetTies === "seeded"
+                ? seededChoiceKey(state.seed, s.id, a.id) -
+                  seededChoiceKey(state.seed, s.id, b.id)
+                : 0) || compareIds(a.id, b.id))
       );
     });
     const target = explicit ?? current ?? candidates[0];

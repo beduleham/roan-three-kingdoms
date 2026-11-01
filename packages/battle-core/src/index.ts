@@ -44,6 +44,7 @@ export {
   queueSupply,
   advanceNational,
   finishNationalRanking,
+  cancelNationalSupply,
 } from "./national.js";
 export type {
   NationalRules,
@@ -51,3 +52,5 @@ export type {
   EconomyAction,
 } from "./national.js";
 export { experimentalAugments } from "./data/experimental-v0.1.js";
+
+export { allocateDamageProportionally } from "./damage-credit.js";

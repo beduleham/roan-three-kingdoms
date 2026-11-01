@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import raw from "../../../national_demo.v1.json";
+import raw from "../../../experiments/phase7/legacy-national.v1.json";
 import candidates from "../../../experiments/phase7/augment-candidates.v1.json";
 import {
   nationalRulesSchema,
@@ -53,7 +53,7 @@ describe("read-only national design audits", () => {
     });
   });
   it("matches the live progression formulas for a stationary one-point player", () => {
-    const m = new AuthoritativeMatch("national");
+    const m = new AuthoritativeMatch("national", undefined, rules);
     const short = { ...rules, checkpoints: [500, 600, 700] };
     const owners = Object.fromEntries(
       m.objectiveMatch!.points.map((p) => [p.id, p.owner]),
@@ -82,7 +82,7 @@ describe("read-only national design audits", () => {
     });
   });
   it("exposes the manual recruitment lockout after losing every owned squad", () => {
-    const m = new AuthoritativeMatch("national");
+    const m = new AuthoritativeMatch("national", undefined, rules);
     m.state.squads
       .filter((s) => s.ownerPlayerId === "blue-1")
       .forEach((s) => (s.hpMilli = 0));
@@ -99,7 +99,7 @@ describe("read-only national design audits", () => {
   });
   it("exposes current overkill credit dependence on attack-event order", () => {
     const credits = (reverse: boolean) => {
-      const m = new AuthoritativeMatch("national"),
+      const m = new AuthoritativeMatch("national", undefined, rules),
         target = m.state.squads.find((s) => s.id === "green-1-1")!;
       const before = target.hpMilli;
       target.hpMilli -= 90000;
@@ -142,7 +142,7 @@ describe("read-only national design audits", () => {
     expect(credits(true)).toEqual([0, 90000]);
   });
   it("exposes production AI target dependence on objective-array order", () => {
-    const a = new AuthoritativeMatch("national"),
+    const a = new AuthoritativeMatch("national", undefined, rules),
       reversed = structuredClone(rules);
     reversed.objectives.points.reverse();
     const b = new AuthoritativeMatch("national", undefined, reversed);
@@ -158,7 +158,7 @@ describe("read-only national design audits", () => {
     });
     const offers = [41, 42].map((seed) => {
       const b = initialNationalBattle(rules, seed),
-        m = new AuthoritativeMatch("national");
+        m = new AuthoritativeMatch("national", undefined, rules);
       m.state = b;
       for (let i = 0; i < 3; i++) m.join(String(i));
       m.start("0");
@@ -169,7 +169,7 @@ describe("read-only national design audits", () => {
     expect(offers[0]).toEqual(offers[1]);
   });
   it("reports separate damage/merit/XP/supply and only living soldiers", () => {
-    const m = new AuthoritativeMatch("national");
+    const m = new AuthoritativeMatch("national", undefined, rules);
     m.state.squads[0]!.hpMilli = 0;
     const metric = snapshotNationalMetrics(m.state, m.national!)[0]!;
     expect(metric).toMatchObject({
@@ -186,7 +186,7 @@ describe("read-only national design audits", () => {
 describe("isolated proposed augment catalog (never production enabled)", () => {
   const defs = augmentDefinitionsSchema.parse(candidates);
   it("contains nine different mechanics, gates R content and supports seven valid choices", () => {
-    const m = new AuthoritativeMatch("national");
+    const m = new AuthoritativeMatch("national", undefined, rules);
     m.state.augmentDefinitions = structuredClone(defs);
     expect(auditAugmentCatalog(m.state)).toMatchObject({
       ids: 9,
@@ -222,7 +222,8 @@ describe("isolated proposed augment catalog (never production enabled)", () => {
     }
     expect(new Set(m.state.augmentProgress[0]!.selected).size).toBe(7);
     expect(
-      new AuthoritativeMatch("national").state.augmentDefinitions[0]!.id,
+      new AuthoritativeMatch("national", undefined, rules).state
+        .augmentDefinitions[0]!.id,
     ).toMatch(/^national-/);
   });
   it.each(defs)(

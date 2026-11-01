@@ -14,7 +14,10 @@ import {
 } from "../dist/national-audit.js";
 const normal = JSON.parse(
   readFileSync(
-    new URL("../../../national_demo.v1.json", import.meta.url),
+    new URL(
+      "../../../experiments/phase7/legacy-national.v1.json",
+      import.meta.url,
+    ),
     "utf8",
   ),
 );

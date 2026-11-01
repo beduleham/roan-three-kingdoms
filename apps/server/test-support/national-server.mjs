@@ -12,6 +12,7 @@ const normal = JSON.parse(
 );
 const rules = {
   ...normal,
+  policy: { ...normal.policy, homePresenceRewards: true },
   checkpoints: [100, 130, 161],
   gapBp: [10000, 10000, 0],
   unifyAfterTick: 1000,
@@ -36,6 +37,19 @@ class AcceptanceRoom extends BattleRoom {
     this.match.state.squads
       .filter((s) => s.id.endsWith("-1"))
       .forEach((s) => (s.hpMilli -= 500000));
+    for (const s of this.match.state.squads.filter(
+      (s) => s.ownerPlayerId === "blue-3",
+    )) {
+      s.hpMilli = 0;
+      s.fsmState = "DEFEATED";
+    }
+    const c = this.match.state.commanders.find(
+      (c) => c.ownerPlayerId === "blue-3",
+    );
+    c.hpMilli = 0;
+    c.status = "WOUNDED";
+    c.assignedSquadId = null;
+    c.respawnRemainingTicks = 1;
     return super.onCreate(options);
   }
 }

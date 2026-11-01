@@ -1,3 +1,4 @@
+import rawNationalAugments from "../../../national_augments.v1.json" with { type: "json" };
 import rawNational from "../../../national_demo.v1.json" with { type: "json" };
 import rawObjectives from "../../../objective_demo.v1.json" with { type: "json" };
 import rawConfig from "../../../battle_config.v1.json" with { type: "json" };
@@ -8,7 +9,9 @@ import {
   queueSupply,
   advanceNational,
   finishNationalRanking,
+  cancelNationalSupply,
   experimentalAugments,
+  augmentDefinitionsSchema,
   type NationalRules,
   type NationalProgress,
   type EconomyAction,
@@ -140,14 +143,28 @@ export function initialNationalBattle(
   const bases = rules.bases;
   const base = (nation: string) =>
     rules.objectives.points.find((p) => p.id === bases[nation])!.position;
-  const defs = Array.from({ length: rules.augmentCopies }, (_, i) =>
+  const legacyDefs = Array.from({ length: rules.augmentCopies }, (_, i) =>
     experimentalAugments.map((d) => ({
       ...structuredClone(d),
       id: `national-${i}-${d.id}`,
     })),
   ).flat();
   return createBattle(config, seed, {
-    augmentDefinitions: defs,
+    augmentDefinitions: rules.policy
+      ? augmentDefinitionsSchema.parse(rawNationalAugments)
+      : legacyDefs,
+    ...(rules.policy
+      ? {
+          choicePolicy: {
+            augmentOffers: rules.policy.seededChoices
+              ? ("seeded" as const)
+              : ("sorted" as const),
+            targetTies: rules.policy.seededTargetTies
+              ? ("seeded" as const)
+              : ("id" as const),
+          },
+        }
+      : {}),
     players: nationalSlots.map((id) => ({
       id,
       nationId: id.split("-")[0]!,
@@ -206,6 +223,7 @@ export class AuthoritativeMatch {
     mode: MatchMode = "1v1",
     objectiveRules: ObjectiveRules = objectiveRulesSchema.parse(rawObjectives),
     nationalRules: NationalRules = nationalRulesSchema.parse(rawNational),
+    seed = 41,
   ) {
     this.nationalRules = nationalRulesSchema.parse(nationalRules);
     this.objectiveRules = objectiveRulesSchema.parse(
@@ -214,7 +232,7 @@ export class AuthoritativeMatch {
     this.mode = mode;
     this.state =
       mode === "national"
-        ? initialNationalBattle(this.nationalRules)
+        ? initialNationalBattle(this.nationalRules, seed)
         : mode === "3v3"
           ? initialTeamBattle()
           : initialOnlineBattle();
@@ -309,6 +327,7 @@ export class AuthoritativeMatch {
           recruitSoldiers: r.recruitSoldiers,
           jobTicks: r.jobTicks,
           rMinLevel: this.state.config.warriorSkills.R.minLevel,
+          policyVersion: r.policy?.version ?? "legacy",
         },
       },
     };
@@ -399,8 +418,11 @@ export class AuthoritativeMatch {
         this.objectiveMatch,
         "abandoned",
       );
-    if (this.national && this.objectiveMatch?.result)
+    if (this.national && this.objectiveMatch?.result) {
+      if (this.nationalRules.policy)
+        cancelNationalSupply(this.state, this.national);
       finishNationalRanking(this.state, this.national);
+    }
     this.drop(sessionId);
     this.seats.delete(sessionId);
     if (this.hostSessionId === sessionId)
