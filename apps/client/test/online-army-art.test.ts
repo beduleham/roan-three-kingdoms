@@ -43,6 +43,8 @@ function squad(): VisibleSquad {
 function context() {
   return {
     save: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
     restore: vi.fn(),
     beginPath: vi.fn(),
     ellipse: vi.fn(),
@@ -59,9 +61,9 @@ it("selects the visible soldier body above its authoritative foot without claimi
   expect(armyHit({ x: 132, y: 100 }, { x: 100, y: 100 })).toBe(false);
   expect(armyHit({ x: 100, y: 40 }, { x: 100, y: 100 })).toBe(false);
 });
-it("loads each shared atlas once and reports degraded loading without blocking input", () => {
+it("loads only initial shared atlases once and reports degraded loading without blocking input", () => {
   const art = setup();
-  expect(images).toHaveLength(9);
+  expect(images).toHaveLength(3);
   expect(art.status).toBe("ready");
   images[0]!.complete = false;
   expect(art.status).toBe("loading");
@@ -133,4 +135,43 @@ it("does not show an attack clip while the server-observed unit is routed", () =
   expect(
     calls.every((c) => !(c[0] as { src: string }).src.includes("attack")),
   ).toBe(true);
+});
+
+it("requests uncommon unit art only when visible and caches subsequent frames", () => {
+  const art = setup(),
+    ctx = context(),
+    s = squad();
+  expect(art.requestedAssets).toBe(3);
+  s.unitType = "cavalry";
+  art.draw(ctx, s, 0, 0, 1, [], false);
+  expect(art.requestedAssets).toBe(4);
+  art.draw(ctx, s, 0, 0, 2, [], false);
+  expect(art.requestedAssets).toBe(4);
+});
+
+it("draws an isolated observed-injury fade without creating a commander entity", () => {
+  const art = setup(),
+    ctx = context();
+  art.drawWounded(ctx, 30, 50, 0.5, false);
+  expect(ctx.drawImage).toHaveBeenCalledTimes(1);
+  expect(ctx.rotate).toHaveBeenCalledWith(0.4);
+  art.drawWounded(ctx, 30, 50, 0.5, true);
+  expect(ctx.rotate).toHaveBeenLastCalledWith(0);
+});
+
+it("reduced motion freezes both troop and commander gait frames while preserving their observed feet", () => {
+  const art = setup(),
+    ctx = context(),
+    s = squad();
+  art.reducedMotion = true;
+  art.draw(ctx, s, 20, 30, 0, [], true);
+  s.position.x += 100;
+  (ctx.drawImage as ReturnType<typeof vi.fn>).mockClear();
+  art.draw(ctx, s, 20, 30, 4, [], true);
+  expect(
+    (ctx.drawImage as ReturnType<typeof vi.fn>).mock.calls.every(
+      (c) => c[1] === 0,
+    ),
+  ).toBe(true);
+  expect(s.position.x).toBe(100);
 });

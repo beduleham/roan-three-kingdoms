@@ -49,3 +49,5 @@ npm ci 후 npm run dev로 Phaser 클라이언트를 실행합니다. 편성·조
 Phase7 후속: [인수 현황·대조 실험](docs/demo/phase7-acceptance-status.md), [실제 플레이 기록 절차](docs/network/PHASE7_PLAYTEST.md). `npm run sim:roles`는 운영값을 바꾸지 않는 오프라인 역할 대조 검사다. 국가 경기의 **내 경기 기록 저장 (JSON)**은 이 탭에서 관측한 본인 성장/선택/보급과 공개 결과를 내려받는다. 실제 인간 인수·공정성은 사용자 요청으로 보류하고 Phase8 화면 작업에 진입했다. 미검증 상태는 유지한다.
 
 Phase8: [전장 중심 온라인 HUD·공유 병종 아트 작업과 후속 목록](docs/network/PHASE8_GAME_SCREEN.md).
+
+Phase8 화면·연출 v1 개발/로컬 검증 완료: 국가전 쿼터뷰, 사건 기반 스킬/상태 연출, 기본 음소거 효과음, 제한된 리소스/프레임 갱신. [최종 실행 근거](docs/demo/phase8-completion-validation.md). 새 화면의 공개 인수는 Render 수동 배포 후 진행한다.

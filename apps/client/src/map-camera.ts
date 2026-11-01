@@ -3,6 +3,7 @@ export interface MapPosition {
   y: number;
 }
 export interface MapCamera {
+  projection?: "isometric";
   left: number;
   top: number;
   width: number;
@@ -57,6 +58,14 @@ export function worldToMap(
   position: MapPosition,
   camera: MapCamera,
 ): MapPosition {
+  if (camera.projection === "isometric") {
+    const x = position.x - camera.left,
+      y = position.y - camera.top;
+    return {
+      x: camera.offsetX + (x - y) * camera.scale,
+      y: camera.offsetY + ((x + y) * camera.scale) / 2,
+    };
+  }
   return {
     x: camera.offsetX + (position.x - camera.left) * camera.scale,
     y: camera.offsetY + (position.y - camera.top) * camera.scale,
@@ -67,8 +76,11 @@ export function mapToWorld(
   position: MapPosition,
   camera: MapCamera,
 ): MapPosition | null {
-  const x = (position.x - camera.offsetX) / camera.scale,
-    y = (position.y - camera.offsetY) / camera.scale;
+  if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) return null;
+  const sx = (position.x - camera.offsetX) / camera.scale,
+    sy = (position.y - camera.offsetY) / camera.scale;
+  const x = camera.projection === "isometric" ? sx / 2 + sy : sx,
+    y = camera.projection === "isometric" ? sy - sx / 2 : sy;
   if (
     x < -0.000001 ||
     y < -0.000001 ||
@@ -80,4 +92,41 @@ export function mapToWorld(
     x: camera.left + Math.max(0, Math.min(camera.width, x)),
     y: camera.top + Math.max(0, Math.min(camera.height, y)),
   };
+}
+
+/** Same world viewport; only its presentation transform changes. */
+export function createIsometricCamera(
+  world: MapPosition,
+  pixels: MapPosition,
+  zoom: number,
+  focus: MapPosition,
+  padding: number,
+): MapCamera {
+  const c = createMapCamera(world, pixels, zoom, focus, padding);
+  const sum = c.width + c.height,
+    scale = Math.min(
+      (pixels.x - padding * 2) / sum,
+      (2 * (pixels.y - padding * 2)) / sum,
+    );
+  return {
+    ...c,
+    projection: "isometric",
+    scale,
+    offsetX: (pixels.x - sum * scale) / 2 + c.height * scale,
+    offsetY: (pixels.y - (sum * scale) / 2) / 2,
+  };
+}
+export function projectedRadius(radius: number, c: MapCamera) {
+  const r = radius * c.scale;
+  return c.projection === "isometric"
+    ? { x: r * Math.SQRT2, y: r / Math.SQRT2 }
+    : { x: r, y: r };
+}
+export function viewportCorners(c: MapCamera) {
+  return [
+    { x: c.left, y: c.top },
+    { x: c.left + c.width, y: c.top },
+    { x: c.left + c.width, y: c.top + c.height },
+    { x: c.left, y: c.top + c.height },
+  ].map((p) => worldToMap(p, c));
 }
