@@ -1,3 +1,5 @@
+> 2026-11-01 후속 결정: 사용자는 실제 인간 위치/역할 교대·성장 분포·증강 효용·지원/방어 평가를 보류하고 Phase8 개발 진입을 요청했다. 아래 실행 근거는 보존하며 미검증 항목을 통과로 바꾸지 않는다. [Phase8 작업](../network/PHASE8_GAME_SCREEN.md).
+
 # Phase 7 — implementation and acceptance boundary (2026-11-01 Korea)
 
 ## What is ready
@@ -40,7 +42,7 @@ This is a counterexample to “south cannot win” and shows the original one-re
 | Augment eligibility/trigger/expiry/stacking                      | Contract tests exist; comparative human usefulness unmeasured                                                                  |
 | Support/defense ranking fairness                                 | Real field defense shares hold rewards; arbitrary support weights not introduced; outcome normalization unaccepted             |
 | Strategic decision density and low unnecessary APM               | Requires real participant decisions/feedback; unmeasured                                                                       |
-| Phase8                                                           | Not started                                                                                                                    |
+| Phase8                                                           | Entered by user direction; human balance checks deferred, not passed                                                           |
 
 Do not turn failed/absent evidence into checked completion. Phase7 engineering and automated diagnosis can be prepared here; final balance acceptance requires broader strategy/position evidence and actual playtests. The experimental labels remain.
 

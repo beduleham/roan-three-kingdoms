@@ -268,9 +268,16 @@ test("online command desk changes server state and displays commander cooldown",
     await red.locator("#join").click();
     await expect(blue.locator("#identity")).toContainText("blue");
     await expect(red.locator("#identity")).toContainText("red");
-    await blue.locator("#field").click({ position: { x: 220, y: 160 } });
+    const clickField = async (x, y) => {
+      const field = blue.locator("#field"),
+        box = await field.boundingBox();
+      await field.click({
+        position: { x: (x * box.width) / 720, y: (y * box.height) / 420 },
+      });
+    };
+    await clickField(220, 160);
     await expect(blue.locator("#selected")).toContainText("선택 blue-1");
-    await blue.locator("#field").click({ position: { x: 340, y: 220 } });
+    await clickField(340, 220);
     await expect(blue.locator("#dest-x")).toHaveValue("10");
     await blue.locator("#stance").selectOption("aggressive");
     await blue.locator("#applyStance").click();

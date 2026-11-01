@@ -1,11 +1,10 @@
-import type { Squad } from "../../../packages/battle-core/src/index.js";
 export const feedbackPolicy = {
   hitFlashTicks: 2,
   hitTint: 0xffc18c,
   normalTint: 0xffffff,
 };
 export function squadFeedback(
-  s: Pick<Squad, "hpMilli" | "fsmState">,
+  s: { hpMilli: number; fsmState: string },
   tick: number,
   lastDamageTick?: number,
 ) {
