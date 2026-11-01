@@ -46,4 +46,6 @@ npm ci 후 npm run dev로 Phaser 클라이언트를 실행합니다. 편성·조
 
 승인된 제안을 실제 국가 경기에 통합했다. [규칙](docs/network/PHASE7_POLICY_v1.md)·[검증 결과](docs/demo/phase7-policy-v1-validation.md)를 먼저 확인한다. `npm run sim:policy`는 정상 시계12경기와 재실행12회의 재현성을 검사한다. 배포 후 `DEMO_URL=https://roan-three-kingdoms.onrender.com npm run test:policy:public`로 짧은 권한/종료 smoke를 실행한다. 지도 공정성과 인간 성장·전략 밀도 인수는 아직 남아 있다.
 
-Phase7 후속: [인수 현황·대조 실험](docs/demo/phase7-acceptance-status.md), [실제 플레이 기록 절차](docs/network/PHASE7_PLAYTEST.md). `npm run sim:roles`는 운영값을 바꾸지 않는 오프라인 역할 대조 검사다. 국가 경기의 **내 경기 기록 저장 (JSON)**은 이 탭에서 관측한 본인 성장/선택/보급과 공개 결과를 내려받는다. 실제 인간 인수·공정성은 미완료이며 Phase8에는 진입하지 않았다.
+Phase7 후속: [인수 현황·대조 실험](docs/demo/phase7-acceptance-status.md), [실제 플레이 기록 절차](docs/network/PHASE7_PLAYTEST.md). `npm run sim:roles`는 운영값을 바꾸지 않는 오프라인 역할 대조 검사다. 국가 경기의 **내 경기 기록 저장 (JSON)**은 이 탭에서 관측한 본인 성장/선택/보급과 공개 결과를 내려받는다. 실제 인간 인수·공정성은 사용자 요청으로 보류하고 Phase8 화면 작업에 진입했다. 미검증 상태는 유지한다.
+
+Phase8: [전장 중심 온라인 HUD·공유 병종 아트 작업과 후속 목록](docs/network/PHASE8_GAME_SCREEN.md).

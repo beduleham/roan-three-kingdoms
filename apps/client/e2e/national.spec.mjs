@@ -28,6 +28,14 @@ test("three browsers supply, grow, select augments, recruit and agree on overtim
   try {
     await expect(blue.locator("#R")).toBeDisabled();
     await blue.locator("#start").click();
+    await expect(blue.locator("#online")).toHaveAttribute(
+      "data-presentation",
+      "phase8-hud-v1",
+    );
+    await expect(blue.locator("#online")).toHaveAttribute(
+      "data-army-art",
+      "ready",
+    );
     await expect(blue.locator("#resupply")).toBeEnabled();
     await blue.locator("#squad").selectOption("blue-1-1");
     await blue.locator("#resupply").click();
@@ -180,5 +188,36 @@ test("network clients cannot override rules, refill enemies or spoof growth; ene
     await expect.poll(() => denied?.reason).toBe("INVALID_FORMAT");
   } finally {
     await Promise.allSettled(peers.map((p) => p.leave()));
+  }
+});
+
+test("Phase8 HUD keeps battlefield commands accessible on desktop and narrow screens", async ({
+  browser,
+}) => {
+  const { pages, errors } = await guests(browser);
+  const blue = pages[0];
+  try {
+    await blue.locator("#start").click();
+    await expect(blue.locator("#online")).toHaveAttribute(
+      "data-army-art",
+      "ready",
+    );
+    const field = await blue.locator("#field").boundingBox();
+    const commands = await blue.locator("#war-commands").boundingBox();
+    expect(commands.y).toBeGreaterThan(field.y);
+    await blue.screenshot({ path: "/tmp/phase8-desktop.png", fullPage: true });
+    await blue.setViewportSize({ width: 390, height: 844 });
+    await expect(blue.locator("#move")).toBeEnabled();
+    await blue.locator("#move").click();
+    await expect(blue.locator("#result")).toContainText("명령 접수");
+    expect(
+      await blue.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await blue.screenshot({ path: "/tmp/phase8-mobile.png", fullPage: true });
+    expect(errors).toEqual([]);
+  } finally {
+    await Promise.all(pages.map((p) => p.close()));
   }
 });

@@ -59,3 +59,330 @@
 #map-panel p {
   line-height: 1.7;
 }
+
+/* Phase8: parchment, ink and brass; semantic controls keep their existing IDs. */
+body:has(#online) {
+  max-width: 1680px;
+  padding: 20px 28px;
+  background: radial-gradient(ellipse at 50% 0, #343d33, #171e1b 65%);
+}
+#online {
+  max-width: none;
+  color: #e5dcc4;
+}
+#online [hidden] {
+  display: none !important;
+}
+#online header {
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 4px 0 18px;
+  border-color: #9f885844;
+}
+#online header h1 {
+  font-size: clamp(19px, 2vw, 29px);
+  letter-spacing: 0.04em;
+}
+#online header > span:last-child {
+  margin-left: auto;
+  color: #b8aa87;
+  font-size: 12px;
+}
+.war-seal {
+  flex: 0 0 auto;
+  background: #973d30;
+  color: #f4dec1;
+  padding: 7px 12px;
+  border: 1px solid #d3a878;
+  font:
+    600 18px/1.1 "Noto Sans KR",
+    sans-serif;
+  box-shadow:
+    inset 0 0 0 3px #973d30,
+    inset 0 0 0 4px #d3a87899;
+}
+.war-nav {
+  flex: 1 0 100%;
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+.war-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0;
+}
+#online .war-entry > button {
+  min-height: 38px;
+}
+#online #connection {
+  font-size: 13px;
+  color: #d5c08d;
+  margin-left: 8px;
+}
+#online #invite {
+  flex: 1 0 100%;
+  font-size: 12px;
+  margin: 0;
+}
+#online #account-panel {
+  background: transparent;
+  border: 0;
+  margin: 0 0 0 auto;
+  padding: 0;
+  max-width: 460px;
+  font-size: 11px;
+}
+#online #account-panel p {
+  margin: 3px 0;
+}
+#online #lobby-panel {
+  flex: 1 0 100%;
+  margin: 0;
+  max-width: none;
+  padding: 10px 14px;
+  background: #202a25;
+  font-size: 12px;
+}
+#online #lobby-panel h2 {
+  display: inline;
+  margin-right: 12px;
+}
+#online #lobby {
+  display: inline;
+  line-height: 1.8;
+}
+.war-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 18px;
+  align-items: start;
+}
+#online .battle-stage {
+  display: block;
+  min-width: 0;
+}
+#online .war-sidebar {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.war-layout:has(.war-sidebar #map-panel[hidden]):has(
+    .war-sidebar #national-panel[hidden]
+  ) {
+  grid-template-columns: 1fr;
+}
+.war-sidebar:has(#map-panel[hidden]):has(#national-panel[hidden]) {
+  display: none;
+}
+#online .online-controls {
+  max-width: none;
+  margin: 0 0 14px;
+  border-radius: 2px;
+  border-color: #9b855248;
+  background: linear-gradient(120deg, #2c352c, #202a25);
+  padding: 14px;
+}
+#online .online-controls h2 {
+  margin: 0 0 10px;
+  color: #e8ce93;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+#online .online-controls h3 {
+  color: #d7c393;
+  font-size: 13px;
+  margin-top: 20px;
+  border-top: 1px solid #b49a5930;
+  padding-top: 12px;
+}
+#online .online-controls p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+#online button {
+  border-color: #a48e5b77;
+  border-radius: 2px;
+  background: #344236;
+}
+#online button:hover:not(:disabled) {
+  background: #536148;
+  border-color: #d1b876;
+}
+#online button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+#online #join,
+#online #start {
+  background: #9a4633;
+  color: #fff1cf;
+  border-color: #d7a06c;
+}
+#online select,
+#online input,
+#online textarea {
+  background: #17221c;
+  border: 1px solid #8d805d88;
+  color: #eadfca;
+  border-radius: 2px;
+  font: inherit;
+  padding: 7px;
+  max-width: 100%;
+}
+#online #national-panel label {
+  display: block;
+  font-size: 12px;
+}
+#online #playtest-notes {
+  width: 100%;
+  min-height: 60px;
+  margin-top: 6px;
+  resize: vertical;
+}
+#online #strategic-map {
+  width: 100%;
+  background: #cbb98f;
+}
+#online #map-panel .online-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+#online #map-panel button {
+  font-size: 11px;
+  padding: 6px;
+  margin: 0;
+}
+#online #map-panel p {
+  font-size: 11px;
+}
+#online #field {
+  max-width: none;
+  width: 100%;
+  border: 1px solid #bda268;
+  background: linear-gradient(135deg, #d8c79e, #ae9d79);
+  box-shadow: 0 12px 36px #0003;
+}
+.war-identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  font-size: 12px;
+}
+.war-identity p {
+  margin: 0 0 10px;
+}
+#online #objective-panel {
+  margin-bottom: 6px;
+  padding: 10px 14px;
+}
+#online #objective-panel p {
+  margin: 3px 0;
+}
+#online #objective-panel > p:last-of-type {
+  font-size: 11px;
+  color: #bdb297;
+}
+#online #objective-score {
+  font-size: 15px;
+  color: #f2d99b;
+}
+#online .point-details {
+  font-size: 11px;
+  margin-top: 7px;
+}
+#online .point-details pre {
+  white-space: pre-wrap;
+}
+.field-instruction {
+  color: #bfb18d;
+  font-size: 12px;
+  margin: 7px 0;
+}
+#online .war-commands {
+  margin-top: 12px;
+  border-top: 2px solid #ba9a58;
+}
+.unit-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  color: #e8ce93;
+}
+.unit-readout p {
+  margin: 0 0 8px;
+}
+#online .war-commands label {
+  font-size: 12px;
+}
+#online .war-commands #Q,
+#online .war-commands #W,
+#online .war-commands #R {
+  min-width: 100px;
+  background: #5a4730;
+}
+#online .war-diagnostics {
+  margin-top: 18px;
+  border-top: 1px solid #8c7a4e55;
+  padding: 12px 0;
+  font-size: 12px;
+  color: #b9ae96;
+}
+#online summary {
+  cursor: pointer;
+}
+#online .war-diagnostics pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#online #national-ranking {
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+@media (max-width: 1000px) {
+  body:has(#online) {
+    padding: 14px;
+  }
+  .war-layout {
+    grid-template-columns: minmax(0, 1fr) 270px;
+    gap: 12px;
+  }
+  #online header > span:last-child {
+    display: none;
+  }
+  #online #account-panel {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 740px) {
+  .war-layout {
+    grid-template-columns: 1fr;
+  }
+  #online .war-sidebar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  #online .online-controls {
+    padding: 10px;
+  }
+  #online header h1 {
+    font-size: 18px;
+  }
+  #online .war-commands label {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #online * {
+    scroll-behavior: auto;
+  }
+}
+#online[data-battle-started="true"] #lobby-panel > button,
+#online[data-battle-started="true"] #lobby-panel > label {
+  display: none;
+}

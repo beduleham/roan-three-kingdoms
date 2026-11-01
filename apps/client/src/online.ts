@@ -1,3 +1,5 @@
+import { mountOnlineShell } from "./online-shell.js";
+import { OnlineArmyArt, armyHit } from "./online-army-art.js";
 import { PlaytestRecord } from "./playtest-record.js";
 import { remainingMatchTicks } from "./match-clock.js";
 import { describeAugment } from "./augment-description.js";
@@ -59,6 +61,9 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <div class="online-actions"><button id="Q" data-command disabled>Q 돌격</button><button id="W" data-command disabled>W 함성</button><button id="R" data-command disabled>R 파죽지세</button></div></section>
 <p id="result" role="status"></p><h2>현재 관측 상태</h2><p id="selected"></p><p id="commander"></p><pre id="units"></pre><h2>마지막 적 관측</h2><pre id="last-seen"></pre><h2>최근 전투 사건</h2><pre id="events"></pre>
 <p>명령은 서버에서 검증됩니다. 화면 위치만 두 서버 상태 사이에서 보간합니다.</p>`;
+mountOnlineShell(root);
+root.querySelector("#war-commands")!.append(root.querySelector("#result")!);
+const armyArt = new OnlineArmyArt();
 const el = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
@@ -238,6 +243,7 @@ strategicMap.addEventListener("click", (event) => {
   if (world) setMapView("battle", world);
 });
 function render() {
+  root.dataset.battleStarted = String(lobbyStarted);
   if (mode === "national" && state && room && seat) {
     if (
       !playtest ||
@@ -589,7 +595,9 @@ function drawView(
         memory: true,
       });
   }
-  for (const s of state.squads.filter((s) => s.hpMilli > 0)) {
+  for (const s of state.squads
+    .filter((s) => s.hpMilli > 0)
+    .sort((a, b) => a.position.y - b.position.y || a.id.localeCompare(b.id))) {
     const old = previousState?.squads.find((p) => p.id === s.id);
     const xUnits = old
       ? old.position.x + (s.position.x - old.position.x) * alpha
@@ -613,13 +621,39 @@ function drawView(
         : s.nationId === "green"
           ? "#3b8656"
           : "#ae4a36";
-    ctx.fill();
+    if (mini) ctx.fill();
+    else
+      armyArt.draw(
+        ctx,
+        s,
+        x,
+        y,
+        state.tick,
+        lastEvents,
+        state.commanders.some(
+          (c) =>
+            c.status === "ACTIVE" &&
+            c.hpMilli > 0 &&
+            c.assignedSquadId === s.id,
+        ),
+        hasObjectives && mapView === "overview",
+      );
     if (
       s.id ===
       el<HTMLSelectElement>(s.ownerPlayerId === seat ? "squad" : "target").value
     ) {
       ctx.strokeStyle = "#e8bd51";
       ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(
+        x,
+        y + (mini ? 0 : 3),
+        mini ? 5 : 26,
+        mini ? 5 : 12,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.stroke();
     }
     if (!mini)
@@ -640,6 +674,7 @@ function drawView(
 }
 function draw() {
   if (!state) return;
+  root.dataset.armyArt = armyArt.status;
   const alpha = Math.min(1, (performance.now() - receivedAt) / 200),
     camera = fieldCamera();
   drawView(ctx, camera, alpha);
@@ -676,10 +711,14 @@ canvas.addEventListener("click", (event) => {
           }
         : s.position;
       const pixel = worldToMap(position, camera);
-      return { s, distance: Math.hypot(x - pixel.x, y - pixel.y) };
+      return {
+        s,
+        distance: Math.hypot(x - pixel.x, y - pixel.y),
+        artHit: armyHit({ x, y }, pixel),
+      };
     })
     .sort((a, b) => a.distance - b.distance)[0];
-  if (hit && hit.distance <= 25) {
+  if (hit && (hit.distance <= 25 || hit.artHit)) {
     if (hit.s.ownerPlayerId === seat)
       el<HTMLSelectElement>("squad").value = hit.s.id;
     else if (hit.s.nationId !== seat.split("-")[0])
@@ -707,6 +746,7 @@ canvas.addEventListener("click", (event) => {
   }
 });
 async function connect(createPrivate = false) {
+  armyArt.reset();
   el<HTMLButtonElement>("join").setAttribute("disabled", "");
   el<HTMLButtonElement>("create-private").setAttribute("disabled", "");
   el("connection").textContent = "접속 중";
