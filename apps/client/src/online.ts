@@ -1,3 +1,4 @@
+import { PlaytestRecord } from "./playtest-record.js";
 import { remainingMatchTicks } from "./match-clock.js";
 import { describeAugment } from "./augment-description.js";
 import mapSettings from "./map-view.json";
@@ -39,7 +40,7 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>${mode === "national" ? "빈자리를 AI로 채워 국가 경기 시작" : hasObjectives ? "거점 경기 시작" : "빈자리를 AI로 채워 시작"}</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
 <section id="objective-panel" class="online-controls" ${hasObjectives ? "" : "hidden"}><h2>${mode === "national" ? "국가 경기 · Phase 7 기준 v1 (검증 중)" : "거점 경기 · 시연 규칙"}</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 참가국 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
-<section id="national-panel" class="online-controls" ${mode === "national" ? "" : "hidden"}><h2>성장·보급</h2><p>본영 주둔은 XP·공적을 주지 않습니다. 승진은 병력 상한만 늘리며, 전멸 시 보유 본영에서 유료로 신규 편성할 수 있습니다.</p><p id="national-clock"></p><p id="national-player"></p><p id="national-economy"></p><button id="resupply" data-command disabled>선택 부대 충원</button><select id="recruit-unit"><option value="infantry">보병</option><option value="spears">창병</option><option value="archers">궁병</option><option value="cavalry">기병</option></select><button id="recruit" data-command disabled>추가 부대 편성</button><p id="supply-feedback" role="status"></p><h3>증강 선택</h3><p>Q/W/R의 공격·기동·전열 효과 9종입니다. 후보 3개 중 직접 선택하며 같은 증강은 다시 선택할 수 없습니다.</p><p id="augment-progress"></p><div id="augment-offer"></div><h3>전체 인간 공적 순위</h3><pre id="national-ranking"></pre></section>
+<section id="national-panel" class="online-controls" ${mode === "national" ? "" : "hidden"}><h2>성장·보급</h2><p>본영 주둔은 XP·공적을 주지 않습니다. 승진은 병력 상한만 늘리며, 전멸 시 보유 본영에서 유료로 신규 편성할 수 있습니다.</p><p id="national-clock"></p><p id="national-player"></p><p id="national-economy"></p><button id="resupply" data-command disabled>선택 부대 충원</button><select id="recruit-unit"><option value="infantry">보병</option><option value="spears">창병</option><option value="archers">궁병</option><option value="cavalry">기병</option></select><button id="recruit" data-command disabled>추가 부대 편성</button><p id="supply-feedback" role="status"></p><h3>증강 선택</h3><p>Q/W/R의 공격·기동·전열 효과 9종입니다. 후보 3개 중 직접 선택하며 같은 증강은 다시 선택할 수 없습니다.</p><p id="augment-progress"></p><div id="augment-offer"></div><h3>플레이테스트 기록</h3><p>이 탭에서 관측한 내 성장·증강·보급·입력과 공개 결과를 기록합니다. 새로고침하면 기록이 초기화됩니다. 30초 간격 관측이며 서버 리플레이가 아닙니다.</p><label>역할·선택 이유·불편했던 점 <textarea id="playtest-notes" maxlength="2000"></textarea></label><button id="export-playtest" disabled>내 경기 기록 저장 (JSON)</button><h3>전체 인간 공적 순위</h3><pre id="national-ranking"></pre></section>
 <p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><section id="map-panel" class="online-controls" ${hasObjectives ? "" : "hidden"} aria-label="지도와 시점">
 <h2>전국 지도 · 현재 시연 전역</h2><canvas id="strategic-map" width="300" height="180" aria-label="전국 지도: 클릭한 위치로 전투 시점 이동"></canvas>
 <p>지도 클릭은 시점만 이동합니다. 부대 이동은 전장에서 목적지를 지정한 뒤 이동 버튼을 누르세요.</p>
@@ -78,6 +79,7 @@ let ready = false;
 let lobbyStarted = mode === "1v1";
 let room: Awaited<ReturnType<Client["joinOrCreate"]>> | null = null;
 let state: BattleView | null = null;
+let playtest: PlaytestRecord | null = null;
 let previousState: BattleView | null = null;
 let lastEvents: VisibleBattleEvent[] = [];
 let receivedAt = 0;
@@ -236,6 +238,19 @@ strategicMap.addEventListener("click", (event) => {
   if (world) setMapView("battle", world);
 });
 function render() {
+  if (mode === "national" && state && room && seat) {
+    if (
+      !playtest ||
+      playtest.roomId !== room.roomId ||
+      playtest.seat !== seat
+    ) {
+      playtest = new PlaytestRecord(room.roomId, seat);
+      el<HTMLTextAreaElement>("playtest-notes").value = "";
+    }
+    playtest.observe(state);
+    el<HTMLButtonElement>("export-playtest").disabled =
+      playtest.firstTick === null;
+  }
   if (!state) return;
   el("clock").textContent =
     `${state.tick} tick · 상태 해시 ${hashReplayValue(state)}`;
@@ -468,6 +483,7 @@ function updateInviteLink() {
 }
 function send(command: Record<string, unknown>) {
   if (!room || !ready || state?.objectiveMatch?.result) return;
+  playtest?.command(state?.tick ?? 0, command.type);
   room.send("command", {
     squadIds: [el<HTMLSelectElement>("squad").value],
     ...command,
@@ -867,6 +883,7 @@ async function connect(createPrivate = false) {
     room.onMessage(
       "command-result",
       (response: { accepted: boolean; reason?: string }) => {
+        playtest?.reply(state?.tick ?? 0, response.accepted, response.reason);
         el("result").textContent = response.accepted
           ? "명령 접수 · 다음 tick에 검증"
           : `서버 거부: ${response.reason}`;
@@ -1041,3 +1058,18 @@ el("recruit").addEventListener("click", () =>
     unitType: el<HTMLSelectElement>("recruit-unit").value,
   }),
 );
+
+el("export-playtest").addEventListener("click", () => {
+  if (!playtest) return;
+  const url = URL.createObjectURL(
+    new Blob(
+      [playtest.export(el<HTMLTextAreaElement>("playtest-notes").value)],
+      { type: "application/json" },
+    ),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `phase7-playtest-${playtest.seat}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});

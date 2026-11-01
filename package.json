@@ -33,7 +33,8 @@
     "sim:balance": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && node apps/server/test-support/phase7-balance.mjs",
     "test:national:public": "node apps/server/test-support/public-national.mjs",
     "sim:policy": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && node apps/server/test-support/policy-validation.mjs",
-    "test:policy:public": "npm run build:core && npm run build:protocol && node apps/server/test-support/public-policy-smoke.mjs"
+    "test:policy:public": "npm run build:core && npm run build:protocol && node apps/server/test-support/public-policy-smoke.mjs",
+    "sim:roles": "npm run build:core && npm run build:protocol && npm run build --workspace @roan/server && node apps/server/test-support/phase7-role-audit.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
