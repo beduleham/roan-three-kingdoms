@@ -50,4 +50,6 @@ Phase7 후속: [인수 현황·대조 실험](docs/demo/phase7-acceptance-status
 
 Phase8: [전장 중심 온라인 HUD·공유 병종 아트 작업과 후속 목록](docs/network/PHASE8_GAME_SCREEN.md).
 
-Phase8 화면·연출 v1 개발/로컬 검증 완료: 국가전 쿼터뷰, 사건 기반 스킬/상태 연출, 기본 음소거 효과음, 제한된 리소스/프레임 갱신. [최종 실행 근거](docs/demo/phase8-completion-validation.md). 새 화면의 공개 인수는 Render 수동 배포 후 진행한다.
+Phase8 화면·연출 v1 개발/로컬 검증 완료: 국가전 쿼터뷰, 사건 기반 스킬/상태 연출, 기본 음소거 효과음, 제한된 리소스/프레임 갱신. [최종 실행 근거](docs/demo/phase8-completion-validation.md). 새 화면의 공개3브라우저 짧은 UI 인수도 완료했다.
+
+Phase8 공개 검증: [Render3브라우저 짧은 UI 인수 결과](docs/demo/phase8-public-acceptance.md). 배포 bundle 바이트와 로컬 검증 빌드가 일치하며, `DEMO_URL=https://roan-three-kingdoms.onrender.com npm run test:presentation:public`로 빌드 후 재검사할 수 있다.

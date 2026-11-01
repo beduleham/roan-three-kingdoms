@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "profile": "phase8-public-ui-v1",
+  "origin": "https://roan-three-kingdoms.onrender.com",
+  "clientAsset": "/assets/online-BzLKmCta.js",
+  "clientSha256": "f4642df0341cbea5da529acf4f2483d0b3c37a7c507eb2d1510053362a1222e2",
+  "threeIndependentBrowsers": true,
+  "samePrivateRoom": true,
+  "isometric": true,
+  "inverseClickAccepted": true,
+  "observedW": true,
+  "defaultMuted": true,
+  "userActivatedAudio": true,
+  "narrowNoOverflow": true,
+  "reducedMotion": true,
+  "matchingAbandonment": true,
+  "frozen": true,
+  "recordDownload": true,
+  "pageErrors": 0,
+  "proxyBrowserCertificateOverride": true,
+  "limits": "Short real production-room acceptance; no artificial growth, no full15-minute result, no public Q/R unlock or hardware/audio quality certification"
+}
