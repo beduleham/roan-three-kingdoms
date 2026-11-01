@@ -106,6 +106,39 @@ describe("Phase7 rule baseline v1", () => {
     expect(troop.maxSoldiers).toBe(20);
     expect(f.s.hpMilli).toBe(0);
   });
+  it("allows repeated manual paid recovery only after real supply income, with fresh IDs each time", () => {
+    const f = fixture();
+    const wipe = () =>
+      f.b.squads
+        .filter((s) => s.ownerPlayerId === f.p.id)
+        .forEach((s) => {
+          s.hpMilli = 0;
+          s.fsmState = "DEFEATED";
+        });
+    const recruit = () =>
+      queueSupply(f.b, f.n, f.o, rules, f.p.id, {
+        type: "RECRUIT",
+        unitType: "spears",
+        squadIds: [],
+      });
+    wipe();
+    expect(recruit()).toBe("SUPPLY_STARTED");
+    at(f, 30);
+    const firstId = f.b.squads.at(-1)!.id;
+    wipe();
+    expect(recruit()).toBe("INSUFFICIENT_SUPPLY");
+    for (let tick = 50; tick <= 750; tick += 50) at(f, tick);
+    expect(f.p.supplyPoints).toBe(40);
+    expect(f.p.level).toBe(1);
+    expect(recruit()).toBe("SUPPLY_STARTED");
+    at(f, 780);
+    const second = f.b.squads.at(-1)!;
+    expect(second.id).not.toBe(firstId);
+    expect(second.hpMilli).toBe(1000000);
+    expect(f.b.squads.find((s) => s.id === firstId)!.hpMilli).toBe(0);
+    expect(f.p.supplyPoints).toBe(0);
+    expect(f.n.jobs).toHaveLength(0);
+  });
   it.each(["lost", "contested", "capturing"])(
     "refunds wiped recovery when home is %s",
     (reason) => {

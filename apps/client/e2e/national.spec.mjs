@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { Client } from "@colyseus/sdk";
 async function guests(browser, count = 3) {
@@ -66,6 +67,26 @@ test("three browsers supply, grow, select augments, recruit and agree on overtim
     expect(ranking).toContain("green-1");
     expect(ranking).not.toContain("blue-2");
     await expect(blue.locator("#move")).toBeDisabled();
+    await blue
+      .locator("#playtest-notes")
+      .fill("방어 역할 / 증강을 고른 이유 기록");
+    const downloading = blue.waitForEvent("download");
+    await blue.locator("#export-playtest").click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe("phase7-playtest-blue-1.json");
+    const record = JSON.parse(await readFile(await download.path(), "utf8"));
+    expect(record.schema).toBe("phase7-playtest-v1");
+    expect(record.policyVersion).toBe("phase7-v1");
+    expect(record.seat).toBe("blue-1");
+    expect(record.result.result.reason).toBe("time");
+    expect(record.coverage.lastObservedTick).toBe(161);
+    expect(
+      record.submittedCommands.some((c) => c.type === "SELECT_AUGMENT"),
+    ).toBe(true);
+    expect(record.changes.some((c) => c.selected?.length > 0)).toBe(true);
+    expect(record.notes).toContain("방어 역할");
+    expect(JSON.stringify(record)).not.toContain("inviteKey");
+    expect(JSON.stringify(record)).not.toContain("reconnectionToken");
     expect(errors).toEqual([]);
   } finally {
     await Promise.all(pages.map((p) => p.close()));

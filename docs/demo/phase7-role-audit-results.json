@@ -1,0 +1,5322 @@
+{
+  "profile": "phase7-v1 offline role ablation; seed41",
+  "rules": {
+    "experimental": true,
+    "objectives": {
+      "experimental": true,
+      "captureTicks": 30,
+      "radiusUnits": 1500,
+      "scoreEveryTicks": 50,
+      "targetScore": 999999,
+      "limitTicks": 12600,
+      "finishOnTarget": false,
+      "finishOnLimit": false,
+      "points": [
+        {
+          "id": "base-blue",
+          "name": "청국 본영",
+          "position": {
+            "x": 3000,
+            "y": 2500
+          },
+          "opensAtTick": 0,
+          "score": 0
+        },
+        {
+          "id": "base-red",
+          "name": "적국 본영",
+          "position": {
+            "x": 21000,
+            "y": 2500
+          },
+          "opensAtTick": 0,
+          "score": 0
+        },
+        {
+          "id": "base-green",
+          "name": "녹국 본영",
+          "position": {
+            "x": 12000,
+            "y": 11500
+          },
+          "opensAtTick": 0,
+          "score": 0
+        },
+        {
+          "id": "outer-west",
+          "name": "서쪽 외곽",
+          "position": {
+            "x": 7000,
+            "y": 5500
+          },
+          "opensAtTick": 1200,
+          "score": 1
+        },
+        {
+          "id": "outer-east",
+          "name": "동쪽 외곽",
+          "position": {
+            "x": 17000,
+            "y": 5500
+          },
+          "opensAtTick": 1200,
+          "score": 1
+        },
+        {
+          "id": "outer-south",
+          "name": "남쪽 외곽",
+          "position": {
+            "x": 12000,
+            "y": 8500
+          },
+          "opensAtTick": 1200,
+          "score": 1
+        },
+        {
+          "id": "capital",
+          "name": "중앙성",
+          "position": {
+            "x": 12000,
+            "y": 5500
+          },
+          "opensAtTick": 3000,
+          "score": 2
+        }
+      ]
+    },
+    "bases": {
+      "blue": "base-blue",
+      "red": "base-red",
+      "green": "base-green"
+    },
+    "checkpoints": [
+      9000,
+      10800,
+      12600
+    ],
+    "gapBp": [
+      1000,
+      500,
+      0
+    ],
+    "unifyAfterTick": 6000,
+    "unifyHoldTicks": 450,
+    "unifyIds": [
+      "outer-west",
+      "outer-east",
+      "outer-south",
+      "capital"
+    ],
+    "initialSupply": 50,
+    "supplyEveryTicks": 50,
+    "supplyPerPoint": 2,
+    "supplyCostPerSoldier": 2,
+    "refillSoldiers": 5,
+    "jobTicks": 30,
+    "recruitCost": 40,
+    "recruitSoldiers": 10,
+    "recruitMaxSoldiers": 25,
+    "captureXp": 100,
+    "captureMerit": 600,
+    "holdXp": 20,
+    "holdMerit": 30,
+    "damageXpDivisor": 10000,
+    "damageMeritDivisor": 5000,
+    "xpThresholds": [
+      0,
+      17,
+      40,
+      69,
+      104,
+      145,
+      192,
+      245,
+      304,
+      369,
+      440,
+      517,
+      600,
+      689,
+      784,
+      885,
+      992,
+      1105,
+      1224,
+      1349,
+      1480,
+      1617,
+      1760,
+      1909,
+      2064,
+      2225,
+      2392,
+      2565,
+      2744,
+      2929,
+      3120,
+      3317,
+      3520,
+      3729,
+      3944,
+      4165,
+      4392,
+      4625,
+      4864,
+      5109
+    ],
+    "aiEveryTicks": 100,
+    "augmentCopies": 3,
+    "policy": {
+      "version": "phase7-v1",
+      "homePresenceRewards": false,
+      "recoveryAtHome": true,
+      "unitCapacity": {
+        "junior": 20,
+        "sima": 25,
+        "xiaowei": 25,
+        "zhonglangjiang": 25,
+        "general": 25
+      },
+      "seededChoices": true,
+      "seededTargetTies": true
+    }
+  },
+  "limitations": "Fixed map and entity labels. Six permutations isolate only macro role allocation; fixed fallback order, formation orientation and integer movement remain. Two full-clock cases defer unification offline only. Automated actors never choose skills, augments, formations or strategic retreat. No human growth or fairness acceptance.",
+  "baselineSummary": {
+    "winsByNation": {
+      "blue": 4,
+      "red": 4,
+      "green": 4
+    },
+    "winsByPhysicalOrigin": {
+      "blue": 8,
+      "red": 4,
+      "green": 0
+    },
+    "draws": 0
+  },
+  "distances": [
+    {
+      "nation": "blue",
+      "toPoints": {
+        "outer-west": 5000,
+        "outer-east": 14318,
+        "outer-south": 10817,
+        "capital": 9487
+      }
+    },
+    {
+      "nation": "red",
+      "toPoints": {
+        "outer-west": 14318,
+        "outer-east": 5000,
+        "outer-south": 10817,
+        "capital": 9487
+      }
+    },
+    {
+      "nation": "green",
+      "toPoints": {
+        "outer-west": 7810,
+        "outer-east": 7810,
+        "outer-south": 3000,
+        "capital": 6000
+      }
+    }
+  ],
+  "replayed": 8,
+  "summary": {
+    "normalWins": {
+      "blue": 4,
+      "red": 2,
+      "green": 0,
+      "null": 0
+    },
+    "fullClockLevels": [
+      {
+        "roles": [
+          0,
+          1,
+          2
+        ],
+        "tick": 9000,
+        "levels": [
+          35,
+          33,
+          34,
+          5,
+          6,
+          5,
+          16,
+          14,
+          10
+        ],
+        "earned": [
+          6,
+          5,
+          6,
+          1,
+          1,
+          1,
+          3,
+          2,
+          2
+        ]
+      },
+      {
+        "roles": [
+          2,
+          1,
+          0
+        ],
+        "tick": 9000,
+        "levels": [
+          35,
+          31,
+          34,
+          5,
+          6,
+          6,
+          15,
+          12,
+          11
+        ],
+        "earned": [
+          6,
+          5,
+          6,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ]
+      }
+    ]
+  },
+  "runs": [
+    {
+      "roles": [
+        0,
+        1,
+        2
+      ],
+      "fullClock": false,
+      "tick": 6449,
+      "result": {
+        "winner": "blue",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 422,
+          "red": 16,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-2": 208,
+        "green-1": 254,
+        "green-3": 303,
+        "red-3": 689,
+        "red-2": 1139,
+        "blue-3": 1347,
+        "red-1": 1802,
+        "blue-2": 2141
+      },
+      "recoveries": [
+        {
+          "seat": "green-1",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-2",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 400,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 700,
+          "accepted": true
+        },
+        {
+          "seat": "red-2",
+          "tick": 1200,
+          "accepted": true
+        },
+        {
+          "seat": "blue-3",
+          "tick": 1400,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 1900,
+          "accepted": true
+        },
+        {
+          "seat": "blue-2",
+          "tick": 2200,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1622,
+              "level": 22,
+              "merit": 3315,
+              "rank": "xiaowei",
+              "supply": 334,
+              "squads": 1,
+              "soldiers": 15,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8628336,
+              "contribution": 34,
+              "earned": 4
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 1100,
+              "level": 17,
+              "merit": 2011,
+              "rank": "sima",
+              "supply": 294,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 7208381,
+              "contribution": 19,
+              "earned": 3
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1306,
+              "level": 19,
+              "merit": 3553,
+              "rank": "xiaowei",
+              "supply": 294,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4867743,
+              "contribution": 29,
+              "earned": 3
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 126,
+              "level": 5,
+              "merit": 253,
+              "rank": "junior",
+              "supply": 126,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1268192,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 155,
+              "level": 6,
+              "merit": 310,
+              "rank": "junior",
+              "supply": 126,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1554573,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 142,
+              "level": 5,
+              "merit": 285,
+              "rank": "junior",
+              "supply": 166,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1429890,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 902,
+              "level": 16,
+              "merit": 2475,
+              "rank": "sima",
+              "supply": 162,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4428218,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 740,
+              "level": 14,
+              "merit": 1870,
+              "rank": "sima",
+              "supply": 162,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6201250,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 409,
+              "level": 10,
+              "merit": 819,
+              "rank": "junior",
+              "supply": 162,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4095979,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 2922,
+              "level": 29,
+              "merit": 5715,
+              "rank": "xiaowei",
+              "supply": 934,
+              "squads": 1,
+              "soldiers": 15,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8628336,
+              "contribution": 95,
+              "earned": 5
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 2400,
+              "level": 27,
+              "merit": 4411,
+              "rank": "xiaowei",
+              "supply": 894,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7208381,
+              "contribution": 80,
+              "earned": 4
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 2606,
+              "level": 28,
+              "merit": 5953,
+              "rank": "xiaowei",
+              "supply": 894,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4867743,
+              "contribution": 90,
+              "earned": 5
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 126,
+              "level": 5,
+              "merit": 253,
+              "rank": "junior",
+              "supply": 246,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1268192,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 155,
+              "level": 6,
+              "merit": 310,
+              "rank": "junior",
+              "supply": 246,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1554573,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 142,
+              "level": 5,
+              "merit": 285,
+              "rank": "junior",
+              "supply": 286,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1429890,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 902,
+              "level": 16,
+              "merit": 2475,
+              "rank": "sima",
+              "supply": 282,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4428218,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 740,
+              "level": 14,
+              "merit": 1870,
+              "rank": "sima",
+              "supply": 282,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6201250,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 409,
+              "level": 10,
+              "merit": 819,
+              "rank": "junior",
+              "supply": 282,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4095979,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 3082,
+          "level": 30,
+          "merit": 5955,
+          "rank": "xiaowei",
+          "supply": 1014,
+          "squads": 1,
+          "soldiers": 15,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 8628336,
+          "contribution": 103,
+          "earned": 5
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 2560,
+          "level": 27,
+          "merit": 4651,
+          "rank": "xiaowei",
+          "supply": 974,
+          "squads": 1,
+          "soldiers": 10,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 7208381,
+          "contribution": 88,
+          "earned": 4
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 2766,
+          "level": 29,
+          "merit": 6193,
+          "rank": "zhonglangjiang",
+          "supply": 974,
+          "squads": 1,
+          "soldiers": 9,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 4867743,
+          "contribution": 98,
+          "earned": 5
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 126,
+          "level": 5,
+          "merit": 253,
+          "rank": "junior",
+          "supply": 262,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1268192,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 155,
+          "level": 6,
+          "merit": 310,
+          "rank": "junior",
+          "supply": 262,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1554573,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 142,
+          "level": 5,
+          "merit": 285,
+          "rank": "junior",
+          "supply": 302,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1429890,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 902,
+          "level": 16,
+          "merit": 2475,
+          "rank": "sima",
+          "supply": 298,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 4428218,
+          "contribution": 15,
+          "earned": 3
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 740,
+          "level": 14,
+          "merit": 1870,
+          "rank": "sima",
+          "supply": 298,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 6201250,
+          "contribution": 2,
+          "earned": 2
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 409,
+          "level": 10,
+          "merit": 819,
+          "rank": "junior",
+          "supply": 298,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4095979,
+          "contribution": 0,
+          "earned": 2
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1382,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1663,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1831,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2170,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2254,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3038,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": "blue"
+          }
+        }
+      ],
+      "hash": "f61627cf1026c2d0400d88988449e4cb1bc84bee68ffc733f6ca9f1b59190fb8"
+    },
+    {
+      "roles": [
+        0,
+        2,
+        1
+      ],
+      "fullClock": false,
+      "tick": 6449,
+      "result": {
+        "winner": "red",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 6,
+          "red": 431,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-2": 179,
+        "green-3": 236,
+        "green-1": 580,
+        "blue-2": 782,
+        "blue-3": 889,
+        "blue-1": 1350
+      },
+      "recoveries": [
+        {
+          "seat": "green-2",
+          "tick": 200,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-1",
+          "tick": 600,
+          "accepted": true
+        },
+        {
+          "seat": "blue-2",
+          "tick": 800,
+          "accepted": true
+        },
+        {
+          "seat": "blue-3",
+          "tick": 900,
+          "accepted": true
+        },
+        {
+          "seat": "blue-1",
+          "tick": 1400,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 727,
+              "level": 14,
+              "merit": 1835,
+              "rank": "sima",
+              "supply": 142,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5879131,
+              "contribution": 3,
+              "earned": 2
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 401,
+              "level": 10,
+              "merit": 802,
+              "rank": "junior",
+              "supply": 142,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4012882,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 635,
+              "level": 13,
+              "merit": 1660,
+              "rank": "sima",
+              "supply": 142,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5151449,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 210,
+              "level": 7,
+              "merit": 421,
+              "rank": "junior",
+              "supply": 130,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 2108404,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 102,
+              "level": 4,
+              "merit": 204,
+              "rank": "junior",
+              "supply": 130,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1022311,
+              "contribution": 0,
+              "earned": 0
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 181,
+              "level": 6,
+              "merit": 362,
+              "rank": "junior",
+              "supply": 130,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1812409,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 1317,
+              "level": 19,
+              "merit": 3114,
+              "rank": "xiaowei",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4772534,
+              "contribution": 34,
+              "earned": 3
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 774,
+              "level": 14,
+              "merit": 1548,
+              "rank": "sima",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 11,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 7740330,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 1525,
+              "level": 21,
+              "merit": 3540,
+              "rank": "xiaowei",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7052526,
+              "contribution": 33,
+              "earned": 3
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 727,
+              "level": 14,
+              "merit": 1835,
+              "rank": "sima",
+              "supply": 262,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5879131,
+              "contribution": 3,
+              "earned": 2
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 401,
+              "level": 10,
+              "merit": 802,
+              "rank": "junior",
+              "supply": 262,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4012882,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 635,
+              "level": 13,
+              "merit": 1660,
+              "rank": "sima",
+              "supply": 262,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5151449,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 210,
+              "level": 7,
+              "merit": 421,
+              "rank": "junior",
+              "supply": 250,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 2108404,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 102,
+              "level": 4,
+              "merit": 204,
+              "rank": "junior",
+              "supply": 250,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1022311,
+              "contribution": 0,
+              "earned": 0
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 181,
+              "level": 6,
+              "merit": 362,
+              "rank": "junior",
+              "supply": 250,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1812409,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 2617,
+              "level": 28,
+              "merit": 5514,
+              "rank": "xiaowei",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4772534,
+              "contribution": 95,
+              "earned": 5
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 2074,
+              "level": 25,
+              "merit": 3948,
+              "rank": "xiaowei",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 11,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7740330,
+              "contribution": 61,
+              "earned": 4
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 2825,
+              "level": 29,
+              "merit": 5940,
+              "rank": "xiaowei",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7052526,
+              "contribution": 94,
+              "earned": 5
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 727,
+          "level": 14,
+          "merit": 1835,
+          "rank": "sima",
+          "supply": 278,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 5879131,
+          "contribution": 3,
+          "earned": 2
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 401,
+          "level": 10,
+          "merit": 802,
+          "rank": "junior",
+          "supply": 278,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4012882,
+          "contribution": 0,
+          "earned": 2
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 635,
+          "level": 13,
+          "merit": 1660,
+          "rank": "sima",
+          "supply": 278,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 5151449,
+          "contribution": 2,
+          "earned": 2
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 210,
+          "level": 7,
+          "merit": 421,
+          "rank": "junior",
+          "supply": 266,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 2108404,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 102,
+          "level": 4,
+          "merit": 204,
+          "rank": "junior",
+          "supply": 266,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1022311,
+          "contribution": 0,
+          "earned": 0
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 181,
+          "level": 6,
+          "merit": 362,
+          "rank": "junior",
+          "supply": 266,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1812409,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 2777,
+          "level": 29,
+          "merit": 5754,
+          "rank": "xiaowei",
+          "supply": 1032,
+          "squads": 1,
+          "soldiers": 5,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 4772534,
+          "contribution": 103,
+          "earned": 5
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 2234,
+          "level": 26,
+          "merit": 4188,
+          "rank": "xiaowei",
+          "supply": 1032,
+          "squads": 1,
+          "soldiers": 11,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 7740330,
+          "contribution": 69,
+          "earned": 4
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 2985,
+          "level": 30,
+          "merit": 6180,
+          "rank": "zhonglangjiang",
+          "supply": 1032,
+          "squads": 1,
+          "soldiers": 10,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 7052526,
+          "contribution": 102,
+          "earned": 5
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": null,
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1390,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": null,
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1414,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "red",
+            "outer-east": null,
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1674,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "red",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3029,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "red",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": "red"
+          }
+        }
+      ],
+      "hash": "df39a71f8582c8721a329e360cd35cb4ed647d73c01a0d6b2d8d6846c3bd3848"
+    },
+    {
+      "roles": [
+        1,
+        0,
+        2
+      ],
+      "fullClock": false,
+      "tick": 6449,
+      "result": {
+        "winner": "blue",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 436,
+          "red": 3,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-2": 204,
+        "green-1": 245,
+        "green-3": 351,
+        "red-1": 616,
+        "red-2": 858,
+        "red-3": 1272,
+        "blue-1": 1449
+      },
+      "recoveries": [
+        {
+          "seat": "green-1",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-2",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 400,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 700,
+          "accepted": true
+        },
+        {
+          "seat": "red-2",
+          "tick": 900,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 1300,
+          "accepted": true
+        },
+        {
+          "seat": "blue-1",
+          "tick": 1500,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1255,
+              "level": 19,
+              "merit": 2621,
+              "rank": "sima",
+              "supply": 322,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5757278,
+              "contribution": 30,
+              "earned": 3
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 1683,
+              "level": 22,
+              "merit": 4246,
+              "rank": "xiaowei",
+              "supply": 362,
+              "squads": 1,
+              "soldiers": 11,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7431788,
+              "contribution": 35,
+              "earned": 4
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 775,
+              "level": 14,
+              "merit": 1550,
+              "rank": "sima",
+              "supply": 362,
+              "squads": 1,
+              "soldiers": 19,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 7753898,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 161,
+              "level": 6,
+              "merit": 322,
+              "rank": "junior",
+              "supply": 130,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1612402,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 106,
+              "level": 5,
+              "merit": 212,
+              "rank": "junior",
+              "supply": 130,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1060685,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 172,
+              "level": 6,
+              "merit": 345,
+              "rank": "junior",
+              "supply": 130,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1727870,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 274,
+              "level": 8,
+              "merit": 548,
+              "rank": "junior",
+              "supply": 136,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 2744458,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 448,
+              "level": 11,
+              "merit": 896,
+              "rank": "junior",
+              "supply": 136,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4482520,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 870,
+              "level": 15,
+              "merit": 2530,
+              "rank": "sima",
+              "supply": 136,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6501443,
+              "contribution": 3,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 2555,
+              "level": 27,
+              "merit": 5021,
+              "rank": "xiaowei",
+              "supply": 922,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 5757278,
+              "contribution": 91,
+              "earned": 4
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 2983,
+              "level": 30,
+              "merit": 6646,
+              "rank": "zhonglangjiang",
+              "supply": 962,
+              "squads": 1,
+              "soldiers": 11,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 7431788,
+              "contribution": 96,
+              "earned": 5
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 2075,
+              "level": 25,
+              "merit": 3950,
+              "rank": "xiaowei",
+              "supply": 962,
+              "squads": 1,
+              "soldiers": 19,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7753898,
+              "contribution": 61,
+              "earned": 4
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 161,
+              "level": 6,
+              "merit": 322,
+              "rank": "junior",
+              "supply": 250,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1612402,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 106,
+              "level": 5,
+              "merit": 212,
+              "rank": "junior",
+              "supply": 250,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1060685,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 172,
+              "level": 6,
+              "merit": 345,
+              "rank": "junior",
+              "supply": 250,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1727870,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 274,
+              "level": 8,
+              "merit": 548,
+              "rank": "junior",
+              "supply": 256,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 2744458,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 448,
+              "level": 11,
+              "merit": 896,
+              "rank": "junior",
+              "supply": 256,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4482520,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 870,
+              "level": 15,
+              "merit": 2530,
+              "rank": "sima",
+              "supply": 256,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6501443,
+              "contribution": 3,
+              "earned": 2
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 2715,
+          "level": 28,
+          "merit": 5261,
+          "rank": "xiaowei",
+          "supply": 1002,
+          "squads": 1,
+          "soldiers": 10,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 5757278,
+          "contribution": 99,
+          "earned": 5
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 3143,
+          "level": 31,
+          "merit": 6886,
+          "rank": "zhonglangjiang",
+          "supply": 1042,
+          "squads": 1,
+          "soldiers": 11,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 7431788,
+          "contribution": 104,
+          "earned": 5
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 2235,
+          "level": 26,
+          "merit": 4190,
+          "rank": "xiaowei",
+          "supply": 1042,
+          "squads": 1,
+          "soldiers": 19,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 7753898,
+          "contribution": 69,
+          "earned": 4
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 161,
+          "level": 6,
+          "merit": 322,
+          "rank": "junior",
+          "supply": 266,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1612402,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 106,
+          "level": 5,
+          "merit": 212,
+          "rank": "junior",
+          "supply": 266,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1060685,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 172,
+          "level": 6,
+          "merit": 345,
+          "rank": "junior",
+          "supply": 266,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1727870,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 274,
+          "level": 8,
+          "merit": 548,
+          "rank": "junior",
+          "supply": 272,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 2744458,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 448,
+          "level": 11,
+          "merit": 896,
+          "rank": "junior",
+          "supply": 272,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4482520,
+          "contribution": 0,
+          "earned": 2
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 870,
+          "level": 15,
+          "merit": 2530,
+          "rank": "sima",
+          "supply": 272,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 6501443,
+          "contribution": 3,
+          "earned": 2
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": null,
+            "outer-east": "red",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1310,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": null,
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1335,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": null,
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1452,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1509,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1594,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3029,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": "blue"
+          }
+        }
+      ],
+      "hash": "0580e4d4bb664b745e84b58deaf73d43df43265042493ef05cd44066e2eb429c"
+    },
+    {
+      "roles": [
+        1,
+        2,
+        0
+      ],
+      "fullClock": false,
+      "tick": 6449,
+      "result": {
+        "winner": "blue",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 442,
+          "red": 1,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-1": 190,
+        "green-3": 235,
+        "green-2": 520,
+        "red-3": 666,
+        "blue-2": 839,
+        "red-2": 864,
+        "red-1": 1254
+      },
+      "recoveries": [
+        {
+          "seat": "green-1",
+          "tick": 200,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-2",
+          "tick": 600,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 700,
+          "accepted": true
+        },
+        {
+          "seat": "blue-2",
+          "tick": 900,
+          "accepted": true
+        },
+        {
+          "seat": "red-2",
+          "tick": 900,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 1300,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1623,
+              "level": 22,
+              "merit": 3307,
+              "rank": "xiaowei",
+              "supply": 474,
+              "squads": 1,
+              "soldiers": 18,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8436681,
+              "contribution": 35,
+              "earned": 4
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 1426,
+              "level": 20,
+              "merit": 3703,
+              "rank": "xiaowei",
+              "supply": 434,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4266916,
+              "contribution": 38,
+              "earned": 3
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 690,
+              "level": 14,
+              "merit": 1380,
+              "rank": "sima",
+              "supply": 474,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6902810,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 120,
+              "level": 5,
+              "merit": 241,
+              "rank": "junior",
+              "supply": 20,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1207015,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 188,
+              "level": 6,
+              "merit": 376,
+              "rank": "junior",
+              "supply": 60,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1880336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 134,
+              "level": 5,
+              "merit": 269,
+              "rank": "junior",
+              "supply": 60,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1346862,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 546,
+              "level": 12,
+              "merit": 1482,
+              "rank": "sima",
+              "supply": 132,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4260449,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 504,
+              "level": 11,
+              "merit": 1008,
+              "rank": "junior",
+              "supply": 132,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5044444,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 418,
+              "level": 10,
+              "merit": 836,
+              "rank": "junior",
+              "supply": 132,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4184612,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 2923,
+              "level": 29,
+              "merit": 5707,
+              "rank": "xiaowei",
+              "supply": 1194,
+              "squads": 1,
+              "soldiers": 18,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8436681,
+              "contribution": 96,
+              "earned": 5
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 2726,
+              "level": 28,
+              "merit": 6103,
+              "rank": "zhonglangjiang",
+              "supply": 1154,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 4266916,
+              "contribution": 99,
+              "earned": 5
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1990,
+              "level": 24,
+              "merit": 3780,
+              "rank": "xiaowei",
+              "supply": 1194,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 6902810,
+              "contribution": 61,
+              "earned": 4
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 120,
+              "level": 5,
+              "merit": 241,
+              "rank": "junior",
+              "supply": 20,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1207015,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 188,
+              "level": 6,
+              "merit": 376,
+              "rank": "junior",
+              "supply": 60,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1880336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 134,
+              "level": 5,
+              "merit": 269,
+              "rank": "junior",
+              "supply": 60,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1346862,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 546,
+              "level": 12,
+              "merit": 1482,
+              "rank": "sima",
+              "supply": 252,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4260449,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 504,
+              "level": 11,
+              "merit": 1008,
+              "rank": "junior",
+              "supply": 252,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5044444,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 418,
+              "level": 10,
+              "merit": 836,
+              "rank": "junior",
+              "supply": 252,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4184612,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 3083,
+          "level": 30,
+          "merit": 5947,
+          "rank": "xiaowei",
+          "supply": 1290,
+          "squads": 1,
+          "soldiers": 18,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 8436681,
+          "contribution": 104,
+          "earned": 5
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 2886,
+          "level": 29,
+          "merit": 6343,
+          "rank": "zhonglangjiang",
+          "supply": 1250,
+          "squads": 1,
+          "soldiers": 9,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 4266916,
+          "contribution": 107,
+          "earned": 5
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 2150,
+          "level": 25,
+          "merit": 4020,
+          "rank": "xiaowei",
+          "supply": 1290,
+          "squads": 1,
+          "soldiers": 9,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 6902810,
+          "contribution": 69,
+          "earned": 4
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 120,
+          "level": 5,
+          "merit": 241,
+          "rank": "junior",
+          "supply": 20,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1207015,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 188,
+          "level": 6,
+          "merit": 376,
+          "rank": "junior",
+          "supply": 60,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1880336,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 134,
+          "level": 5,
+          "merit": 269,
+          "rank": "junior",
+          "supply": 60,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1346862,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 546,
+          "level": 12,
+          "merit": 1482,
+          "rank": "sima",
+          "supply": 268,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 4260449,
+          "contribution": 2,
+          "earned": 2
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 504,
+          "level": 11,
+          "merit": 1008,
+          "rank": "junior",
+          "supply": 268,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 5044444,
+          "contribution": 0,
+          "earned": 2
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 418,
+          "level": 10,
+          "merit": 836,
+          "rank": "junior",
+          "supply": 268,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4184612,
+          "contribution": 0,
+          "earned": 2
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 517,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "blue",
+            "outer-west": null,
+            "outer-east": null,
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "blue",
+            "outer-west": null,
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1316,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "blue",
+            "outer-west": null,
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1354,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "blue",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3029,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "blue",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": "blue"
+          }
+        }
+      ],
+      "hash": "a72784c1dfab78e28d357a1f37dd54fd8bd6bffa2f2e8e6892642617ba6ae228"
+    },
+    {
+      "roles": [
+        2,
+        0,
+        1
+      ],
+      "fullClock": false,
+      "tick": 6449,
+      "result": {
+        "winner": "red",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 33,
+          "red": 394,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-2": 180,
+        "green-3": 234,
+        "green-1": 332,
+        "red-1": 1075,
+        "red-3": 1275,
+        "blue-2": 1417,
+        "blue-1": 1504,
+        "blue-3": 1941
+      },
+      "recoveries": [
+        {
+          "seat": "green-2",
+          "tick": 200,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-1",
+          "tick": 400,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 1100,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 1300,
+          "accepted": true
+        },
+        {
+          "seat": "blue-2",
+          "tick": 1500,
+          "accepted": true
+        },
+        {
+          "seat": "blue-1",
+          "tick": 1600,
+          "accepted": true
+        },
+        {
+          "seat": "blue-3",
+          "tick": 2000,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1264,
+              "level": 19,
+              "merit": 3609,
+              "rank": "xiaowei",
+              "supply": 196,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7248788,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 724,
+              "level": 14,
+              "merit": 1809,
+              "rank": "sima",
+              "supply": 196,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5446830,
+              "contribution": 5,
+              "earned": 2
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1017,
+              "level": 17,
+              "merit": 2245,
+              "rank": "sima",
+              "supply": 196,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5376258,
+              "contribution": 20,
+              "earned": 3
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 164,
+              "level": 6,
+              "merit": 329,
+              "rank": "junior",
+              "supply": 128,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1647298,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 93,
+              "level": 4,
+              "merit": 186,
+              "rank": "junior",
+              "supply": 128,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 933013,
+              "contribution": 0,
+              "earned": 0
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 161,
+              "level": 6,
+              "merit": 322,
+              "rank": "junior",
+              "supply": 128,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1614741,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 413,
+              "level": 10,
+              "merit": 826,
+              "rank": "junior",
+              "supply": 238,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4134472,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 1517,
+              "level": 21,
+              "merit": 4495,
+              "rank": "xiaowei",
+              "supply": 278,
+              "squads": 1,
+              "soldiers": 16,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8378572,
+              "contribution": 18,
+              "earned": 3
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 889,
+              "level": 16,
+              "merit": 2168,
+              "rank": "sima",
+              "supply": 238,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 7692707,
+              "contribution": 2,
+              "earned": 3
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1264,
+              "level": 19,
+              "merit": 3609,
+              "rank": "xiaowei",
+              "supply": 316,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7248788,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 724,
+              "level": 14,
+              "merit": 1809,
+              "rank": "sima",
+              "supply": 316,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5446830,
+              "contribution": 5,
+              "earned": 2
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1017,
+              "level": 17,
+              "merit": 2245,
+              "rank": "sima",
+              "supply": 316,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 5376258,
+              "contribution": 20,
+              "earned": 3
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 164,
+              "level": 6,
+              "merit": 329,
+              "rank": "junior",
+              "supply": 248,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1647298,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 93,
+              "level": 4,
+              "merit": 186,
+              "rank": "junior",
+              "supply": 248,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 933013,
+              "contribution": 0,
+              "earned": 0
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 161,
+              "level": 6,
+              "merit": 322,
+              "rank": "junior",
+              "supply": 248,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1614741,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 413,
+              "level": 10,
+              "merit": 826,
+              "rank": "junior",
+              "supply": 838,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4134472,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 2817,
+              "level": 29,
+              "merit": 6895,
+              "rank": "zhonglangjiang",
+              "supply": 878,
+              "squads": 1,
+              "soldiers": 16,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 8378572,
+              "contribution": 79,
+              "earned": 5
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 889,
+              "level": 16,
+              "merit": 2168,
+              "rank": "sima",
+              "supply": 838,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 7692707,
+              "contribution": 2,
+              "earned": 3
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 1264,
+          "level": 19,
+          "merit": 3609,
+          "rank": "xiaowei",
+          "supply": 332,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 7248788,
+          "contribution": 15,
+          "earned": 3
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 724,
+          "level": 14,
+          "merit": 1809,
+          "rank": "sima",
+          "supply": 332,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 5446830,
+          "contribution": 5,
+          "earned": 2
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 1017,
+          "level": 17,
+          "merit": 2245,
+          "rank": "sima",
+          "supply": 332,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 5376258,
+          "contribution": 20,
+          "earned": 3
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 164,
+          "level": 6,
+          "merit": 329,
+          "rank": "junior",
+          "supply": 264,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1647298,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 93,
+          "level": 4,
+          "merit": 186,
+          "rank": "junior",
+          "supply": 264,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 933013,
+          "contribution": 0,
+          "earned": 0
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 161,
+          "level": 6,
+          "merit": 322,
+          "rank": "junior",
+          "supply": 264,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1614741,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 413,
+          "level": 10,
+          "merit": 826,
+          "rank": "junior",
+          "supply": 918,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4134472,
+          "contribution": 0,
+          "earned": 2
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 2977,
+          "level": 30,
+          "merit": 7135,
+          "rank": "zhonglangjiang",
+          "supply": 958,
+          "squads": 1,
+          "soldiers": 16,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 8378572,
+          "contribution": 87,
+          "earned": 5
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 889,
+          "level": 16,
+          "merit": 2168,
+          "rank": "sima",
+          "supply": 918,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 7692707,
+          "contribution": 2,
+          "earned": 3
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1482,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1982,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2054,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2405,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2574,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "red",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2652,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "red",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3048,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "red",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": "red"
+          }
+        }
+      ],
+      "hash": "2bfcdb4f30e4cec2f7cf05bb6b60c8c1eae572181255e968c18cb785266ec051"
+    },
+    {
+      "roles": [
+        2,
+        1,
+        0
+      ],
+      "fullClock": false,
+      "tick": 6449,
+      "result": {
+        "winner": "blue",
+        "reason": "unification",
+        "tick": 6449,
+        "scores": {
+          "blue": 431,
+          "red": 9,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-1": 205,
+        "green-3": 262,
+        "green-2": 285,
+        "red-3": 995,
+        "red-2": 1149,
+        "red-1": 1513
+      },
+      "recoveries": [
+        {
+          "seat": "green-1",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-2",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 1000,
+          "accepted": true
+        },
+        {
+          "seat": "red-2",
+          "tick": 1200,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 1600,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1517,
+              "level": 21,
+              "merit": 3954,
+              "rank": "xiaowei",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 6,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 6570967,
+              "contribution": 31,
+              "earned": 3
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 695,
+              "level": 14,
+              "merit": 1390,
+              "rank": "sima",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6954628,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1426,
+              "level": 20,
+              "merit": 3743,
+              "rank": "xiaowei",
+              "supply": 352,
+              "squads": 2,
+              "soldiers": 28,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 5065447,
+              "contribution": 34,
+              "earned": 3
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 121,
+              "level": 5,
+              "merit": 243,
+              "rank": "junior",
+              "supply": 124,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1217180,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 360,
+              "rank": "junior",
+              "supply": 124,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1803336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 361,
+              "rank": "junior",
+              "supply": 124,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1807182,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 816,
+              "level": 15,
+              "merit": 2353,
+              "rank": "sima",
+              "supply": 148,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4568045,
+              "contribution": 10,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 584,
+              "level": 12,
+              "merit": 1169,
+              "rank": "junior",
+              "supply": 148,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5846842,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 449,
+              "level": 11,
+              "merit": 898,
+              "rank": "junior",
+              "supply": 148,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4491232,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 2817,
+              "level": 29,
+              "merit": 6354,
+              "rank": "zhonglangjiang",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 6,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 6570967,
+              "contribution": 92,
+              "earned": 5
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 1995,
+              "level": 24,
+              "merit": 3790,
+              "rank": "xiaowei",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 6954628,
+              "contribution": 61,
+              "earned": 4
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 2726,
+              "level": 28,
+              "merit": 6143,
+              "rank": "zhonglangjiang",
+              "supply": 952,
+              "squads": 2,
+              "soldiers": 28,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 5065447,
+              "contribution": 95,
+              "earned": 5
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 121,
+              "level": 5,
+              "merit": 243,
+              "rank": "junior",
+              "supply": 244,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1217180,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 360,
+              "rank": "junior",
+              "supply": 244,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1803336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 361,
+              "rank": "junior",
+              "supply": 244,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1807182,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 816,
+              "level": 15,
+              "merit": 2353,
+              "rank": "sima",
+              "supply": 268,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4568045,
+              "contribution": 10,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 584,
+              "level": 12,
+              "merit": 1169,
+              "rank": "junior",
+              "supply": 268,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5846842,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 449,
+              "level": 11,
+              "merit": 898,
+              "rank": "junior",
+              "supply": 268,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4491232,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 2977,
+          "level": 30,
+          "merit": 6594,
+          "rank": "zhonglangjiang",
+          "supply": 1032,
+          "squads": 1,
+          "soldiers": 6,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 6570967,
+          "contribution": 100,
+          "earned": 5
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 2155,
+          "level": 25,
+          "merit": 4030,
+          "rank": "xiaowei",
+          "supply": 1032,
+          "squads": 1,
+          "soldiers": 5,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 6954628,
+          "contribution": 69,
+          "earned": 4
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 2886,
+          "level": 29,
+          "merit": 6383,
+          "rank": "zhonglangjiang",
+          "supply": 1032,
+          "squads": 2,
+          "soldiers": 28,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 5065447,
+          "contribution": 103,
+          "earned": 5
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 121,
+          "level": 5,
+          "merit": 243,
+          "rank": "junior",
+          "supply": 260,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1217180,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 180,
+          "level": 6,
+          "merit": 360,
+          "rank": "junior",
+          "supply": 260,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1803336,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 180,
+          "level": 6,
+          "merit": 361,
+          "rank": "junior",
+          "supply": 260,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1807182,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 816,
+          "level": 15,
+          "merit": 2353,
+          "rank": "sima",
+          "supply": 284,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 4568045,
+          "contribution": 10,
+          "earned": 2
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 584,
+          "level": 12,
+          "merit": 1169,
+          "rank": "junior",
+          "supply": 284,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 5846842,
+          "contribution": 0,
+          "earned": 2
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 449,
+          "level": 11,
+          "merit": 898,
+          "rank": "junior",
+          "supply": 284,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4491232,
+          "contribution": 0,
+          "earned": 2
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1542,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1553,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1749,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1930,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3029,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": "blue"
+          }
+        }
+      ],
+      "hash": "802fa4eb9fcdf9a27c1b2e962c3ba3437fcad72c7ec051e35fde689de8ae0e81"
+    },
+    {
+      "roles": [
+        0,
+        1,
+        2
+      ],
+      "fullClock": true,
+      "tick": 9000,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 9000,
+        "scores": {
+          "blue": 682,
+          "red": 16,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-2": 208,
+        "green-1": 254,
+        "green-3": 303,
+        "red-3": 689,
+        "red-2": 1139,
+        "blue-3": 1347,
+        "red-1": 1802,
+        "blue-2": 2141
+      },
+      "recoveries": [
+        {
+          "seat": "green-1",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-2",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 400,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 700,
+          "accepted": true
+        },
+        {
+          "seat": "red-2",
+          "tick": 1200,
+          "accepted": true
+        },
+        {
+          "seat": "blue-3",
+          "tick": 1400,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 1900,
+          "accepted": true
+        },
+        {
+          "seat": "blue-2",
+          "tick": 2200,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1622,
+              "level": 22,
+              "merit": 3315,
+              "rank": "xiaowei",
+              "supply": 334,
+              "squads": 1,
+              "soldiers": 15,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8628336,
+              "contribution": 34,
+              "earned": 4
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 1100,
+              "level": 17,
+              "merit": 2011,
+              "rank": "sima",
+              "supply": 294,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 7208381,
+              "contribution": 19,
+              "earned": 3
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1306,
+              "level": 19,
+              "merit": 3553,
+              "rank": "xiaowei",
+              "supply": 294,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4867743,
+              "contribution": 29,
+              "earned": 3
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 126,
+              "level": 5,
+              "merit": 253,
+              "rank": "junior",
+              "supply": 126,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1268192,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 155,
+              "level": 6,
+              "merit": 310,
+              "rank": "junior",
+              "supply": 126,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1554573,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 142,
+              "level": 5,
+              "merit": 285,
+              "rank": "junior",
+              "supply": 166,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1429890,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 902,
+              "level": 16,
+              "merit": 2475,
+              "rank": "sima",
+              "supply": 162,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4428218,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 740,
+              "level": 14,
+              "merit": 1870,
+              "rank": "sima",
+              "supply": 162,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6201250,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 409,
+              "level": 10,
+              "merit": 819,
+              "rank": "junior",
+              "supply": 162,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4095979,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 2922,
+              "level": 29,
+              "merit": 5715,
+              "rank": "xiaowei",
+              "supply": 934,
+              "squads": 1,
+              "soldiers": 15,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 8628336,
+              "contribution": 95,
+              "earned": 5
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 2400,
+              "level": 27,
+              "merit": 4411,
+              "rank": "xiaowei",
+              "supply": 894,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 7208381,
+              "contribution": 80,
+              "earned": 4
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 2606,
+              "level": 28,
+              "merit": 5953,
+              "rank": "xiaowei",
+              "supply": 894,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 4867743,
+              "contribution": 90,
+              "earned": 5
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 126,
+              "level": 5,
+              "merit": 253,
+              "rank": "junior",
+              "supply": 246,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1268192,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 155,
+              "level": 6,
+              "merit": 310,
+              "rank": "junior",
+              "supply": 246,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1554573,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 142,
+              "level": 5,
+              "merit": 285,
+              "rank": "junior",
+              "supply": 286,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1429890,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 902,
+              "level": 16,
+              "merit": 2475,
+              "rank": "sima",
+              "supply": 282,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4428218,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 740,
+              "level": 14,
+              "merit": 1870,
+              "rank": "sima",
+              "supply": 282,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6201250,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 409,
+              "level": 10,
+              "merit": 819,
+              "rank": "junior",
+              "supply": 282,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4095979,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 9000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 4122,
+              "level": 35,
+              "merit": 7515,
+              "rank": "zhonglangjiang",
+              "supply": 1534,
+              "squads": 1,
+              "soldiers": 15,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 8628336,
+              "contribution": 155,
+              "earned": 6
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 3600,
+              "level": 33,
+              "merit": 6211,
+              "rank": "zhonglangjiang",
+              "supply": 1494,
+              "squads": 1,
+              "soldiers": 10,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 7208381,
+              "contribution": 140,
+              "earned": 5
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 3806,
+              "level": 34,
+              "merit": 7753,
+              "rank": "zhonglangjiang",
+              "supply": 1494,
+              "squads": 1,
+              "soldiers": 9,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 4867743,
+              "contribution": 150,
+              "earned": 6
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 126,
+              "level": 5,
+              "merit": 253,
+              "rank": "junior",
+              "supply": 366,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1268192,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 155,
+              "level": 6,
+              "merit": 310,
+              "rank": "junior",
+              "supply": 366,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1554573,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 142,
+              "level": 5,
+              "merit": 285,
+              "rank": "junior",
+              "supply": 406,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1429890,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 902,
+              "level": 16,
+              "merit": 2475,
+              "rank": "sima",
+              "supply": 402,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4428218,
+              "contribution": 15,
+              "earned": 3
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 740,
+              "level": 14,
+              "merit": 1870,
+              "rank": "sima",
+              "supply": 402,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6201250,
+              "contribution": 2,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 409,
+              "level": 10,
+              "merit": 819,
+              "rank": "junior",
+              "supply": 402,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4095979,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 4122,
+          "level": 35,
+          "merit": 7515,
+          "rank": "zhonglangjiang",
+          "supply": 1534,
+          "squads": 1,
+          "soldiers": 15,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 8628336,
+          "contribution": 155,
+          "earned": 6
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 3600,
+          "level": 33,
+          "merit": 6211,
+          "rank": "zhonglangjiang",
+          "supply": 1494,
+          "squads": 1,
+          "soldiers": 10,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 7208381,
+          "contribution": 140,
+          "earned": 5
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 3806,
+          "level": 34,
+          "merit": 7753,
+          "rank": "zhonglangjiang",
+          "supply": 1494,
+          "squads": 1,
+          "soldiers": 9,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 4867743,
+          "contribution": 150,
+          "earned": 6
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 126,
+          "level": 5,
+          "merit": 253,
+          "rank": "junior",
+          "supply": 366,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1268192,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 155,
+          "level": 6,
+          "merit": 310,
+          "rank": "junior",
+          "supply": 366,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1554573,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 142,
+          "level": 5,
+          "merit": 285,
+          "rank": "junior",
+          "supply": 406,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1429890,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 902,
+          "level": 16,
+          "merit": 2475,
+          "rank": "sima",
+          "supply": 402,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 4428218,
+          "contribution": 15,
+          "earned": 3
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 740,
+          "level": 14,
+          "merit": 1870,
+          "rank": "sima",
+          "supply": 402,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 6201250,
+          "contribution": 2,
+          "earned": 2
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 409,
+          "level": 10,
+          "merit": 819,
+          "rank": "junior",
+          "supply": 402,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4095979,
+          "contribution": 0,
+          "earned": 2
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1382,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "red",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1663,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1831,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2170,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 2254,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3038,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": "blue"
+          }
+        }
+      ],
+      "hash": "3b8093448636d9784ee8a48dbe6499a524f8d87cd4d6f1ded31c434053b87e1a"
+    },
+    {
+      "roles": [
+        2,
+        1,
+        0
+      ],
+      "fullClock": true,
+      "tick": 9000,
+      "result": {
+        "winner": "blue",
+        "reason": "time",
+        "tick": 9000,
+        "scores": {
+          "blue": 691,
+          "red": 9,
+          "green": 0
+        }
+      },
+      "firstWipe": {
+        "green-1": 205,
+        "green-3": 262,
+        "green-2": 285,
+        "red-3": 995,
+        "red-2": 1149,
+        "red-1": 1513
+      },
+      "recoveries": [
+        {
+          "seat": "green-1",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-2",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "green-3",
+          "tick": 300,
+          "accepted": true
+        },
+        {
+          "seat": "red-3",
+          "tick": 1000,
+          "accepted": true
+        },
+        {
+          "seat": "red-2",
+          "tick": 1200,
+          "accepted": true
+        },
+        {
+          "seat": "red-1",
+          "tick": 1600,
+          "accepted": true
+        }
+      ],
+      "samples": [
+        {
+          "tick": 3000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 1517,
+              "level": 21,
+              "merit": 3954,
+              "rank": "xiaowei",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 6,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 6570967,
+              "contribution": 31,
+              "earned": 3
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 695,
+              "level": 14,
+              "merit": 1390,
+              "rank": "sima",
+              "supply": 352,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 6954628,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 1426,
+              "level": 20,
+              "merit": 3743,
+              "rank": "xiaowei",
+              "supply": 352,
+              "squads": 2,
+              "soldiers": 28,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 5065447,
+              "contribution": 34,
+              "earned": 3
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 121,
+              "level": 5,
+              "merit": 243,
+              "rank": "junior",
+              "supply": 124,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1217180,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 360,
+              "rank": "junior",
+              "supply": 124,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1803336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 361,
+              "rank": "junior",
+              "supply": 124,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1807182,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 816,
+              "level": 15,
+              "merit": 2353,
+              "rank": "sima",
+              "supply": 148,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4568045,
+              "contribution": 10,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 584,
+              "level": 12,
+              "merit": 1169,
+              "rank": "junior",
+              "supply": 148,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5846842,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 449,
+              "level": 11,
+              "merit": 898,
+              "rank": "junior",
+              "supply": 148,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4491232,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 6000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 2817,
+              "level": 29,
+              "merit": 6354,
+              "rank": "zhonglangjiang",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 6,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 6570967,
+              "contribution": 92,
+              "earned": 5
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 1995,
+              "level": 24,
+              "merit": 3790,
+              "rank": "xiaowei",
+              "supply": 952,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 6954628,
+              "contribution": 61,
+              "earned": 4
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 2726,
+              "level": 28,
+              "merit": 6143,
+              "rank": "zhonglangjiang",
+              "supply": 952,
+              "squads": 2,
+              "soldiers": 28,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 5065447,
+              "contribution": 95,
+              "earned": 5
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 121,
+              "level": 5,
+              "merit": 243,
+              "rank": "junior",
+              "supply": 244,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1217180,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 360,
+              "rank": "junior",
+              "supply": 244,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1803336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 361,
+              "rank": "junior",
+              "supply": 244,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1807182,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 816,
+              "level": 15,
+              "merit": 2353,
+              "rank": "sima",
+              "supply": 268,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4568045,
+              "contribution": 10,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 584,
+              "level": 12,
+              "merit": 1169,
+              "rank": "junior",
+              "supply": 268,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5846842,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 449,
+              "level": 11,
+              "merit": 898,
+              "rank": "junior",
+              "supply": 268,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4491232,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        },
+        {
+          "tick": 9000,
+          "players": [
+            {
+              "id": "blue-1",
+              "nation": "blue",
+              "xp": 4017,
+              "level": 35,
+              "merit": 8154,
+              "rank": "zhonglangjiang",
+              "supply": 1552,
+              "squads": 1,
+              "soldiers": 6,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 6570967,
+              "contribution": 152,
+              "earned": 6
+            },
+            {
+              "id": "blue-2",
+              "nation": "blue",
+              "xp": 3195,
+              "level": 31,
+              "merit": 5590,
+              "rank": "xiaowei",
+              "supply": 1552,
+              "squads": 1,
+              "soldiers": 5,
+              "squadCap": 3,
+              "soldierCap": 60,
+              "damage": 6954628,
+              "contribution": 121,
+              "earned": 5
+            },
+            {
+              "id": "blue-3",
+              "nation": "blue",
+              "xp": 3926,
+              "level": 34,
+              "merit": 7943,
+              "rank": "zhonglangjiang",
+              "supply": 1552,
+              "squads": 2,
+              "soldiers": 28,
+              "squadCap": 3,
+              "soldierCap": 75,
+              "damage": 5065447,
+              "contribution": 155,
+              "earned": 6
+            },
+            {
+              "id": "green-1",
+              "nation": "green",
+              "xp": 121,
+              "level": 5,
+              "merit": 243,
+              "rank": "junior",
+              "supply": 364,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1217180,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-2",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 360,
+              "rank": "junior",
+              "supply": 364,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1803336,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "green-3",
+              "nation": "green",
+              "xp": 180,
+              "level": 6,
+              "merit": 361,
+              "rank": "junior",
+              "supply": 364,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 1807182,
+              "contribution": 0,
+              "earned": 1
+            },
+            {
+              "id": "red-1",
+              "nation": "red",
+              "xp": 816,
+              "level": 15,
+              "merit": 2353,
+              "rank": "sima",
+              "supply": 388,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 50,
+              "damage": 4568045,
+              "contribution": 10,
+              "earned": 2
+            },
+            {
+              "id": "red-2",
+              "nation": "red",
+              "xp": 584,
+              "level": 12,
+              "merit": 1169,
+              "rank": "junior",
+              "supply": 388,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 5846842,
+              "contribution": 0,
+              "earned": 2
+            },
+            {
+              "id": "red-3",
+              "nation": "red",
+              "xp": 449,
+              "level": 11,
+              "merit": 898,
+              "rank": "junior",
+              "supply": 388,
+              "squads": 0,
+              "soldiers": 0,
+              "squadCap": 2,
+              "soldierCap": 40,
+              "damage": 4491232,
+              "contribution": 0,
+              "earned": 2
+            }
+          ]
+        }
+      ],
+      "players": [
+        {
+          "id": "blue-1",
+          "nation": "blue",
+          "xp": 4017,
+          "level": 35,
+          "merit": 8154,
+          "rank": "zhonglangjiang",
+          "supply": 1552,
+          "squads": 1,
+          "soldiers": 6,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 6570967,
+          "contribution": 152,
+          "earned": 6
+        },
+        {
+          "id": "blue-2",
+          "nation": "blue",
+          "xp": 3195,
+          "level": 31,
+          "merit": 5590,
+          "rank": "xiaowei",
+          "supply": 1552,
+          "squads": 1,
+          "soldiers": 5,
+          "squadCap": 3,
+          "soldierCap": 60,
+          "damage": 6954628,
+          "contribution": 121,
+          "earned": 5
+        },
+        {
+          "id": "blue-3",
+          "nation": "blue",
+          "xp": 3926,
+          "level": 34,
+          "merit": 7943,
+          "rank": "zhonglangjiang",
+          "supply": 1552,
+          "squads": 2,
+          "soldiers": 28,
+          "squadCap": 3,
+          "soldierCap": 75,
+          "damage": 5065447,
+          "contribution": 155,
+          "earned": 6
+        },
+        {
+          "id": "green-1",
+          "nation": "green",
+          "xp": 121,
+          "level": 5,
+          "merit": 243,
+          "rank": "junior",
+          "supply": 364,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1217180,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-2",
+          "nation": "green",
+          "xp": 180,
+          "level": 6,
+          "merit": 360,
+          "rank": "junior",
+          "supply": 364,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1803336,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "green-3",
+          "nation": "green",
+          "xp": 180,
+          "level": 6,
+          "merit": 361,
+          "rank": "junior",
+          "supply": 364,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 1807182,
+          "contribution": 0,
+          "earned": 1
+        },
+        {
+          "id": "red-1",
+          "nation": "red",
+          "xp": 816,
+          "level": 15,
+          "merit": 2353,
+          "rank": "sima",
+          "supply": 388,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 50,
+          "damage": 4568045,
+          "contribution": 10,
+          "earned": 2
+        },
+        {
+          "id": "red-2",
+          "nation": "red",
+          "xp": 584,
+          "level": 12,
+          "merit": 1169,
+          "rank": "junior",
+          "supply": 388,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 5846842,
+          "contribution": 0,
+          "earned": 2
+        },
+        {
+          "id": "red-3",
+          "nation": "red",
+          "xp": 449,
+          "level": 11,
+          "merit": 898,
+          "rank": "junior",
+          "supply": 388,
+          "squads": 0,
+          "soldiers": 0,
+          "squadCap": 2,
+          "soldierCap": 40,
+          "damage": 4491232,
+          "contribution": 0,
+          "earned": 2
+        }
+      ],
+      "captureChanges": [
+        {
+          "tick": 1229,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1542,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": null,
+            "capital": null
+          }
+        },
+        {
+          "tick": 1553,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1749,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "red",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 1930,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": null
+          }
+        },
+        {
+          "tick": 3029,
+          "owners": {
+            "base-blue": "blue",
+            "base-red": "red",
+            "base-green": "green",
+            "outer-west": "blue",
+            "outer-east": "blue",
+            "outer-south": "blue",
+            "capital": "blue"
+          }
+        }
+      ],
+      "hash": "1e90110a867e282ed5f31652ffe771b9b85f82601add82a6845dfe41bf559a57"
+    }
+  ]
+}
