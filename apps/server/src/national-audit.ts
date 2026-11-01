@@ -10,14 +10,29 @@ export function auditNationalEconomy(b: BattleState, r: NationalRules) {
     initial = original.reduce((n, s) => n + livingSoldiers(s, b.config), 0),
     originalMax = original.reduce((n, s) => n + s.maxSoldiers, 0);
   const ranks = Object.entries(b.config.rankCaps).map(([rank, c]) => {
+    const rankOriginalMax = r.policy
+      ? original.reduce(
+          (n, s) =>
+            n +
+            Math.max(
+              s.maxSoldiers,
+              r.policy!.unitCapacity[
+                rank as keyof typeof r.policy.unitCapacity
+              ],
+            ),
+          0,
+        )
+      : originalMax;
     const recruits = Math.max(0, c.squads - original.length),
       reachable = Math.min(
         c.soldiers,
-        originalMax + recruits * r.recruitMaxSoldiers,
+        rankOriginalMax + recruits * r.recruitMaxSoldiers,
       );
     const recruitCount = Math.min(
       recruits,
-      Math.ceil(Math.max(0, reachable - originalMax) / r.recruitMaxSoldiers),
+      Math.ceil(
+        Math.max(0, reachable - rankOriginalMax) / r.recruitMaxSoldiers,
+      ),
     );
     const refill = Math.max(
       0,
@@ -38,7 +53,10 @@ export function auditNationalEconomy(b: BattleState, r: NationalRules) {
     };
   });
   const idle = r.checkpoints.map((tick) => {
-    const holds = Math.floor(tick / r.objectives.scoreEveryTicks),
+    const holds =
+        r.policy && !r.policy.homePresenceRewards
+          ? 0
+          : Math.floor(tick / r.objectives.scoreEveryTicks),
       xp = holds * r.holdXp,
       merit = holds * r.holdMerit;
     const income = Math.floor(tick / r.supplyEveryTicks) * r.supplyPerPoint;
@@ -77,7 +95,9 @@ export function auditAugmentCatalog(b: BattleState) {
     checkpoints: [...b.config.augmentLevels],
     candidateCount: 3,
     selectionPolicy:
-      "first three eligible unselected IDs sorted lexically; seed does not randomize offers",
+      b.choicePolicy?.augmentOffers === "seeded"
+        ? "seed/player/checkpoint ranked eligible unselected IDs"
+        : "first three eligible unselected IDs sorted lexically; seed does not randomize offers",
   };
 }
 export function snapshotNationalMetrics(
@@ -108,85 +128,4 @@ export function snapshotNationalMetrics(
   });
 }
 
-export interface DamageClaim {
-  claimId: string;
-  actorId: string;
-  targetId: string;
-  damage: number;
-}
-/** Offline proposal only. Caller must supply trusted, enemy-only claims and stable event identities. */
-export function allocateDamageProportionally(
-  claims: readonly DamageClaim[],
-  actualLoss: Readonly<Record<string, number>>,
-) {
-  const seen = new Map<string, DamageClaim>(),
-    actors = new Map<string, bigint>(),
-    targets = new Map<string, Map<string, bigint>>();
-  const valid = (x: number) => Number.isSafeInteger(x) && x >= 0;
-  for (const value of Object.values(actualLoss))
-    if (!valid(value)) throw Error("Invalid effective HP loss");
-  for (const claim of claims) {
-    if (
-      !claim.claimId ||
-      !claim.actorId ||
-      !claim.targetId ||
-      !valid(claim.damage)
-    )
-      throw Error("Invalid damage claim");
-    const old = seen.get(claim.claimId);
-    if (old) {
-      if (
-        old.actorId !== claim.actorId ||
-        old.targetId !== claim.targetId ||
-        old.damage !== claim.damage
-      )
-        throw Error("Conflicting claim identity");
-      continue;
-    }
-    seen.set(claim.claimId, claim);
-    actors.set(claim.actorId, 0n);
-    const group = targets.get(claim.targetId) ?? new Map<string, bigint>();
-    group.set(
-      claim.actorId,
-      (group.get(claim.actorId) ?? 0n) + BigInt(claim.damage),
-    );
-    targets.set(claim.targetId, group);
-  }
-  for (const [target, group] of targets) {
-    const total = [...group.values()].reduce((a, b) => a + b, 0n);
-    if (total === 0n) continue;
-    const loss = BigInt(actualLoss[target] ?? 0),
-      budget = loss < total ? loss : total;
-    const shares = [...group].map(([actorId, damage]) => ({
-      actorId,
-      amount: (budget * damage) / total,
-      remainder: (budget * damage) % total,
-    }));
-    shares.sort((a, b) =>
-      a.remainder > b.remainder
-        ? -1
-        : a.remainder < b.remainder
-          ? 1
-          : a.actorId < b.actorId
-            ? -1
-            : a.actorId > b.actorId
-              ? 1
-              : 0,
-    );
-    let remaining = budget - shares.reduce((sum, s) => sum + s.amount, 0n);
-    for (const share of shares) {
-      if (remaining > 0n) {
-        share.amount++;
-        remaining--;
-      }
-      actors.set(share.actorId, actors.get(share.actorId)! + share.amount);
-    }
-  }
-  return [...actors]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([actorId, damage]) => {
-      if (damage > BigInt(Number.MAX_SAFE_INTEGER))
-        throw Error("Unsafe aggregate damage credit");
-      return { actorId, damage: Number(damage) };
-    });
-}
+export { allocateDamageProportionally } from "../../../packages/battle-core/dist/index.js";

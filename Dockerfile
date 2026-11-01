@@ -15,7 +15,7 @@ COPY --from=build /app/packages/battle-core/package.json ./packages/battle-core/
 COPY --from=build /app/packages/battle-core/dist ./packages/battle-core/dist
 COPY --from=build /app/packages/protocol/package.json ./packages/protocol/package.json
 COPY --from=build /app/packages/protocol/dist ./packages/protocol/dist
-COPY --from=build /app/battle_config.v1.json /app/fog_config.v1.json /app/objective_demo.v1.json /app/national_demo.v1.json ./
+COPY --from=build /app/battle_config.v1.json /app/fog_config.v1.json /app/objective_demo.v1.json /app/national_demo.v1.json /app/national_augments.v1.json ./
 RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 2567

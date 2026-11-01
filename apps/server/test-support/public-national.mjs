@@ -68,6 +68,12 @@ try {
       pages.map((p) => p.locator("#online").getAttribute("data-room-id")),
     )
   ).every((r, i, a) => r === a[0]);
+  assert(
+    !(await pages[0].locator("#national-clock").textContent()).includes(
+      "phase7-v1",
+    ),
+    "This home-idle long-run harness is legacy only. Use test:policy:public and the active-playtest checklist for Phase7.",
+  );
   await pages[0].locator("#start").click();
   await expect(pages[0].locator("#move")).toBeEnabled();
   evidence.checks.started = true;

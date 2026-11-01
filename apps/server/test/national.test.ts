@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import rawRules from "../../../national_demo.v1.json";
+import rawRules from "../../../experiments/phase7/legacy-national.v1.json";
 import {
   AuthoritativeMatch,
   initialNationalBattle,
@@ -37,7 +37,7 @@ function advance(f: ReturnType<typeof fixture>, tick = f.b.tick + 1) {
   );
 }
 function match(count = 3) {
-  const m = new AuthoritativeMatch("national");
+  const m = new AuthoritativeMatch("national", undefined, rules);
   for (let i = 0; i < count; i++) m.join(`s${i}`);
   m.start("s0");
   return m;
@@ -343,7 +343,7 @@ describe("national clock, ranking and authority", () => {
     ]);
   });
   it("requires three human nations, denies spoofing, projects allied growth only and freezes on drop/end", () => {
-    const m = new AuthoritativeMatch("national");
+    const m = new AuthoritativeMatch("national", undefined, rules);
     m.join("a");
     m.join("b");
     expect(m.start("a").reason).toBe("NEED_THREE_NATIONS");

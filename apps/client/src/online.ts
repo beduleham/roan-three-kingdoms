@@ -38,8 +38,8 @@ root.innerHTML = `<header><h1>로언 베이의 삼국지 · 온라인 ${mode ===
 <section id="account-panel" aria-label="로그인"><p id="account-status" role="status">게스트 이용 중</p><div id="google-login" hidden></div><button id="account-logout" hidden>로그아웃 · 게스트로 전환</button><p>로그인 없이 게스트로도 접속할 수 있습니다. 계정 변경은 경기에서 나간 뒤 가능합니다.</p></section>
 <button id="join">빠른 접속 / 초대 입장</button> <button id="create-private">새 초대 전용 경기</button> <button id="leave" disabled>경기 나가기</button> <span id="connection" role="status">접속 대기</span><p id="invite" hidden>초대 링크 (링크 소지자 입장): <a id="invite-link"></a> <button id="copy-invite">복사</button> <button id="rotate-invite" disabled>초대 링크 재발급</button></p>
 <section id="lobby-panel" ${mode === "1v1" ? "hidden" : ""}><h2>경기 로비</h2><p id="lobby"></p><button id="start" disabled>${mode === "national" ? "빈자리를 AI로 채워 국가 경기 시작" : hasObjectives ? "거점 경기 시작" : "빈자리를 AI로 채워 시작"}</button><label>참가자 <select id="remove-seat"></select></label><button id="remove-player" disabled>로비에서 내보내기</button></section>
-<section id="objective-panel" class="online-controls" ${hasObjectives ? "" : "hidden"}><h2>${mode === "national" ? "국가 경기 · 미확정 실험 프로필" : "거점 경기 · 시연 규칙"}</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 참가국 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
-<section id="national-panel" class="online-controls" ${mode === "national" ? "" : "hidden"}><h2>성장·보급</h2><p>3국가×3좌석 · 본영3/외곽3/중앙성1. 새 성장·보급 수치는 실험 기준이며 기존 1대1 시연 규칙과 별도입니다.</p><p id="national-clock"></p><p id="national-player"></p><p id="national-economy"></p><button id="resupply" data-command disabled>선택 부대 충원</button><select id="recruit-unit"><option value="infantry">보병</option><option value="spears">창병</option><option value="archers">궁병</option><option value="cavalry">기병</option></select><button id="recruit" data-command disabled>추가 부대 편성</button><p id="supply-feedback" role="status"></p><h3>증강 선택</h3><p>실험 후보: 돌파·기동·군율 각3개. 같은 효과가 중첩될 수 있으며 정식 후보군은 미정입니다.</p><p id="augment-progress"></p><div id="augment-offer"></div><h3>전체 인간 공적 순위</h3><pre id="national-ranking"></pre></section>
+<section id="objective-panel" class="online-controls" ${hasObjectives ? "" : "hidden"}><h2>${mode === "national" ? "국가 경기 · Phase 7 기준 v1 (검증 중)" : "거점 경기 · 시연 규칙"}</h2><p id="objective-rules"></p><p id="objective-score" role="status"></p><pre id="objective-points"></pre><p id="match-result" role="status"></p><button id="next-match" hidden>새 초대 경기 만들기</button><p>거점 소유권·점령 진행·국가 점수는 참가국 공개 정보입니다. 단절 시 경기 시간이 멈추며, 참가자가 나가거나 예약이 만료되면 승패 없이 중단됩니다.</p></section>
+<section id="national-panel" class="online-controls" ${mode === "national" ? "" : "hidden"}><h2>성장·보급</h2><p>본영 주둔은 XP·공적을 주지 않습니다. 승진은 병력 상한만 늘리며, 전멸 시 보유 본영에서 유료로 신규 편성할 수 있습니다.</p><p id="national-clock"></p><p id="national-player"></p><p id="national-economy"></p><button id="resupply" data-command disabled>선택 부대 충원</button><select id="recruit-unit"><option value="infantry">보병</option><option value="spears">창병</option><option value="archers">궁병</option><option value="cavalry">기병</option></select><button id="recruit" data-command disabled>추가 부대 편성</button><p id="supply-feedback" role="status"></p><h3>증강 선택</h3><p>Q/W/R의 공격·기동·전열 효과 9종입니다. 후보 3개 중 직접 선택하며 같은 증강은 다시 선택할 수 없습니다.</p><p id="augment-progress"></p><div id="augment-offer"></div><h3>전체 인간 공적 순위</h3><pre id="national-ranking"></pre></section>
 <p id="identity"></p><p id="clock"></p><p id="vision-info"></p><p>전장에서 아군·적군을 클릭해 선택하고, 빈 땅을 클릭해 목적지를 지정하세요.</p><section id="map-panel" class="online-controls" ${hasObjectives ? "" : "hidden"} aria-label="지도와 시점">
 <h2>전국 지도 · 현재 시연 전역</h2><canvas id="strategic-map" width="300" height="180" aria-label="전국 지도: 클릭한 위치로 전투 시점 이동"></canvas>
 <p>지도 클릭은 시점만 이동합니다. 부대 이동은 전장에서 목적지를 지정한 뒤 이동 버튼을 누르세요.</p>
@@ -290,7 +290,7 @@ function render() {
     me = national?.players.find((p) => p.id === seat);
   if (national && me) {
     el("national-clock").textContent =
-      `${["15분 판정 전", "18분 연장", "21분 최종 연장"][national.phase]} · 다음 판정 ${Math.max(0, Math.ceil(((national.deadline - state.tick) * state.config.tickMs) / 1000))}초 · 천하통일 ${national.unifyNation ?? "없음"} ${national.unifyTicks}/${national.unifyRequired} tick`;
+      `${national.rules.policyVersion ?? "legacy"} · ${["15분 판정 전", "18분 연장", "21분 최종 연장"][national.phase]} · 다음 판정 ${Math.max(0, Math.ceil(((national.deadline - state.tick) * state.config.tickMs) / 1000))}초 · 천하통일 ${national.unifyNation ?? "없음"} ${national.unifyTicks}/${national.unifyRequired} tick`;
     el("national-player").textContent =
       `Lv.${me.level} · XP ${me.xp}/${me.nextXp ?? "MAX"} · 공적 ${me.merit} · 관직 ${me.rank} · 지휘 상한 ${me.cap.squads}부대/${me.cap.soldiers}명`;
     el("national-economy").textContent =
@@ -309,7 +309,10 @@ function render() {
           FORCED_STATE: "현재 상태에서는 보급할 수 없습니다",
         } as Record<string, string>
       )[me.feedback] ?? me.feedback;
-    el<HTMLButtonElement>("resupply").disabled = !canCommand || !!me.job;
+    el<HTMLButtonElement>("resupply").disabled =
+      !canCommand ||
+      !!me.job ||
+      !state.squads.some((s) => s.ownerPlayerId === seat && s.hpMilli > 0);
     el<HTMLButtonElement>("recruit").disabled = !canCommand || !!me.job;
     el("augment-progress").textContent =
       `선택 ${me.selected.length}/7${me.offer ? ` · ${me.offer.checkpoint}레벨 선택 대기` : " · 다음 성장 기회 대기"}`;
@@ -353,7 +356,9 @@ function render() {
           .join("\n")
       : "경기 종료 후 국가 승패와 관계없이 모든 인간 참가자를 표시합니다.";
   }
-  const own = state.squads.filter((s) => s.ownerPlayerId === seat);
+  const own = state.squads.filter(
+    (s) => s.ownerPlayerId === seat && s.hpMilli > 0,
+  );
   const enemy = state.squads.filter(
     (s) => s.nationId !== state!.nationId && s.hpMilli > 0,
   );
@@ -420,7 +425,17 @@ function render() {
       ? `대기 ${commander.cooldownTicks[skill]} tick`
       : "";
   }
-  el<HTMLButtonElement>("attack").disabled = !canCommand || enemy.length === 0;
+  el<HTMLButtonElement>("attack").disabled =
+    !canCommand || !own.length || enemy.length === 0;
+  for (const id of [
+    "move",
+    "advance",
+    "retreat",
+    "applyStance",
+    "applyFormation",
+    "reassign",
+  ])
+    el<HTMLButtonElement>(id).disabled = !canCommand || !own.length;
 }
 function refreshControls() {
   for (const button of document.querySelectorAll<HTMLButtonElement>(
@@ -558,7 +573,7 @@ function drawView(
         memory: true,
       });
   }
-  for (const s of state.squads) {
+  for (const s of state.squads.filter((s) => s.hpMilli > 0)) {
     const old = previousState?.squads.find((p) => p.id === s.id);
     const xUnits = old
       ? old.position.x + (s.position.x - old.position.x) * alpha

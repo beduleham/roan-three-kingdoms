@@ -98,6 +98,7 @@ export interface BattleView {
       recruitSoldiers: number;
       jobTicks: number;
       rMinLevel: number;
+      policyVersion?: string;
     };
   };
   objectiveMatch?: {

@@ -1,0 +1,215 @@
+[
+  {
+    "id": "p7-q-attack",
+    "category": "warrior-attack",
+    "minLevel": 5,
+    "sourceSkill": "Q",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onChargeImpact",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "cavalry"]
+    },
+    "effect": {
+      "stat": "attack",
+      "bonusBp": 1500
+    },
+    "durationTicks": 30,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 1500
+    }
+  },
+  {
+    "id": "p7-q-speed",
+    "category": "warrior-speed",
+    "minLevel": 5,
+    "sourceSkill": "Q",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onChargeImpact",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "cavalry"]
+    },
+    "effect": {
+      "stat": "speed",
+      "bonusBp": 1000
+    },
+    "durationTicks": 30,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 1000
+    }
+  },
+  {
+    "id": "p7-q-cohesionDamageReduction",
+    "category": "warrior-cohesionDamageReduction",
+    "minLevel": 5,
+    "sourceSkill": "Q",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onChargeImpact",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "cavalry"]
+    },
+    "effect": {
+      "stat": "cohesionDamageReduction",
+      "bonusBp": 2000
+    },
+    "durationTicks": 30,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 2000
+    }
+  },
+  {
+    "id": "p7-w-attack",
+    "category": "warrior-attack",
+    "minLevel": 5,
+    "sourceSkill": "W",
+    "targetPolicy": "cast-targets",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onSkillCast",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "archers", "cavalry"]
+    },
+    "effect": {
+      "stat": "attack",
+      "bonusBp": 1500
+    },
+    "durationTicks": 60,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 1500
+    }
+  },
+  {
+    "id": "p7-w-speed",
+    "category": "warrior-speed",
+    "minLevel": 5,
+    "sourceSkill": "W",
+    "targetPolicy": "cast-targets",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onSkillCast",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "archers", "cavalry"]
+    },
+    "effect": {
+      "stat": "speed",
+      "bonusBp": 1000
+    },
+    "durationTicks": 60,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 1000
+    }
+  },
+  {
+    "id": "p7-w-cohesionDamageReduction",
+    "category": "warrior-cohesionDamageReduction",
+    "minLevel": 5,
+    "sourceSkill": "W",
+    "targetPolicy": "cast-targets",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onSkillCast",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "archers", "cavalry"]
+    },
+    "effect": {
+      "stat": "cohesionDamageReduction",
+      "bonusBp": 2000
+    },
+    "durationTicks": 60,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 2000
+    }
+  },
+  {
+    "id": "p7-r-attack",
+    "category": "warrior-attack",
+    "minLevel": 15,
+    "sourceSkill": "R",
+    "targetPolicy": "cast-targets",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onSkillCast",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "archers", "cavalry"]
+    },
+    "effect": {
+      "stat": "attack",
+      "bonusBp": 1500
+    },
+    "durationTicks": 60,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 1500
+    }
+  },
+  {
+    "id": "p7-r-speed",
+    "category": "warrior-speed",
+    "minLevel": 15,
+    "sourceSkill": "R",
+    "targetPolicy": "cast-targets",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onSkillCast",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "archers", "cavalry"]
+    },
+    "effect": {
+      "stat": "speed",
+      "bonusBp": 1000
+    },
+    "durationTicks": 60,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 1000
+    }
+  },
+  {
+    "id": "p7-r-cohesionDamageReduction",
+    "category": "warrior-cohesionDamageReduction",
+    "minLevel": 15,
+    "sourceSkill": "R",
+    "targetPolicy": "cast-targets",
+    "endOnDisabled": true,
+    "version": "phase7-proposal-v1",
+    "designStatus": "experimental-not-balance-validated",
+    "trigger": "onSkillCast",
+    "eligibility": {
+      "unitTypes": ["infantry", "spears", "archers", "cavalry"]
+    },
+    "effect": {
+      "stat": "cohesionDamageReduction",
+      "bonusBp": 2000
+    },
+    "durationTicks": 60,
+    "stackingPolicy": {
+      "mode": "refresh",
+      "maxStacks": 1,
+      "capBp": 2000
+    }
+  }
+]
